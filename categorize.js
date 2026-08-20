@@ -71,4 +71,19 @@ function guessCategory(name) {
   return 'other';
 }
 
-module.exports = { CATEGORIES, CATEGORY_IDS, guessCategory };
+// Common items that hint at a default storage location when none is stated.
+const FRIDGE_HINTS = ['milk', 'egg', 'cheese', 'yogurt', 'butter', 'cream', 'juice', 'leftover'];
+const FREEZER_HINTS = ['ice cream', 'frozen', 'popsicle'];
+
+function includesWord(lower, hint) {
+  return new RegExp(`\\b${hint}`, 'i').test(lower);
+}
+
+function guessLocation(name) {
+  const lower = (name || '').toLowerCase();
+  if (FREEZER_HINTS.some((h) => includesWord(lower, h))) return 'freezer';
+  if (FRIDGE_HINTS.some((h) => includesWord(lower, h))) return 'fridge';
+  return 'pantry';
+}
+
+module.exports = { CATEGORIES, CATEGORY_IDS, guessCategory, guessLocation };

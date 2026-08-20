@@ -3,6 +3,7 @@
 // key required — just keyword and pattern matching.
 
 const { extractExpiration } = require('./dateParser');
+const { guessLocation } = require('./categorize');
 
 const NUMBER_WORDS = {
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
@@ -37,10 +38,6 @@ const LOCATION_WORDS = {
   freezer: 'freezer',
 };
 
-// Common items that hint at a default location when none is stated.
-const FRIDGE_HINTS = ['milk', 'egg', 'cheese', 'yogurt', 'butter', 'cream', 'juice', 'leftover'];
-const FREEZER_HINTS = ['ice cream', 'frozen', 'popsicle'];
-
 function findKeyword(text, keywords) {
   for (const kw of keywords) {
     const re = new RegExp(`\\b${kw.replace(/ /g, '\\s+')}\\b`, 'i');
@@ -61,17 +58,6 @@ function titleCase(str) {
     .filter(Boolean)
     .map((w) => w[0].toUpperCase() + w.slice(1))
     .join(' ');
-}
-
-function includesWord(lower, hint) {
-  return new RegExp(`\\b${hint}`, 'i').test(lower);
-}
-
-function guessLocation(name) {
-  const lower = name.toLowerCase();
-  if (FREEZER_HINTS.some((h) => includesWord(lower, h))) return 'freezer';
-  if (FRIDGE_HINTS.some((h) => includesWord(lower, h))) return 'fridge';
-  return 'pantry';
 }
 
 // Compound quantity phrases checked before single-word numbers, longest first.

@@ -16,6 +16,9 @@
     "node": ">=18"
   },
   "devDependencies": {
-    "@zxing/library": "^0.21.3"
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@zxing/library": "^0.21.3",
+    "tesseract.js": "^7.0.0",
+    "tesseract.js-core": "^7.0.0"
   }
 }

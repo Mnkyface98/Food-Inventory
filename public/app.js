@@ -26,6 +26,9 @@
   const barcodeStatus = document.getElementById('barcode-status');
   const barcodeCancelBtn = document.getElementById('barcode-cancel');
 
+  const receiptInput = document.getElementById('receipt-input');
+  const receiptStatus = document.getElementById('receipt-status');
+
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
   let categoryLabels = {};
@@ -463,6 +466,70 @@
       ]);
     }
   }
+
+  // --- Receipt scanning ---------------------------------------------------
+  //
+  // Uses the device's native camera/photo picker (a plain file input —
+  // simpler and more reliable than a live video overlay for capturing a
+  // single high-res still) then runs OCR entirely on-device via
+  // Tesseract.js, fully vendored locally (engine + English language data)
+  // so it works offline after the page has loaded and nothing is uploaded
+  // anywhere. The recognized text is sent to the server for free,
+  // rule-based line parsing, then goes through the same review-card flow
+  // as voice and barcode entry.
+
+  const hasTesseract = typeof window.Tesseract !== 'undefined';
+  if (!hasTesseract) {
+    receiptInput.disabled = true;
+  }
+
+  receiptInput.addEventListener('change', async () => {
+    const file = receiptInput.files && receiptInput.files[0];
+    if (!file) return;
+
+    receiptStatus.classList.remove('hidden');
+    receiptStatus.textContent = 'Reading receipt… this can take a few seconds.';
+
+    let worker = null;
+    try {
+      if (!hasTesseract) throw new Error('Receipt scanning is not available in this browser.');
+
+      worker = await window.Tesseract.createWorker('eng', window.Tesseract.OEM.LSTM_ONLY, {
+        workerPath: 'vendor/tesseract/worker.min.js',
+        corePath: 'vendor/tesseract/tesseract-core-lstm.wasm.js',
+        langPath: 'vendor/tesseract',
+        gzip: true,
+        logger: (m) => {
+          if (m.status && typeof m.progress === 'number') {
+            receiptStatus.textContent = `${m.status}… ${Math.round(m.progress * 100)}%`;
+          }
+        },
+      });
+      const { data } = await worker.recognize(file);
+
+      receiptStatus.textContent = 'Finding items…';
+      const result = await api('/api/receipt/parse', {
+        method: 'POST',
+        body: JSON.stringify({ text: data.text }),
+      });
+
+      voiceReviewEl.classList.remove('hidden');
+      renderReview(result.items);
+      showToast(`Found ${result.items.length} item${result.items.length === 1 ? '' : 's'} on the receipt`);
+    } catch (err) {
+      showToast(`Couldn't read that receipt: ${err.message}`);
+    } finally {
+      if (worker) {
+        try {
+          await worker.terminate();
+        } catch (err) {
+          // ignore — worker may already be gone
+        }
+      }
+      receiptStatus.classList.add('hidden');
+      receiptInput.value = ''; // allow re-selecting the same file
+    }
+  });
 
   voiceForm.addEventListener('submit', (e) => {
     e.preventDefault();

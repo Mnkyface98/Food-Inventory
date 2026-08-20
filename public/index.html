@@ -38,6 +38,11 @@
         Barcode scanning needs camera access, which isn't available in this
         browser/context.
       </p>
+      <label for="receipt-input" class="btn btn-secondary btn-full receipt-label">
+        🧾 Scan a receipt
+      </label>
+      <input id="receipt-input" type="file" accept="image/*" capture="environment" class="visually-hidden" />
+      <p id="receipt-status" class="mic-hint hidden"></p>
       <div id="voice-review" class="voice-review hidden"></div>
     </section>
 
@@ -108,6 +113,7 @@
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script src="vendor/zxing.min.js"></script>
+  <script src="vendor/tesseract/tesseract.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

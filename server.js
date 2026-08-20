@@ -4,6 +4,7 @@ const db = require('./db');
 const { parseTranscript } = require('./voiceParser');
 const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
 const { lookupBarcode } = require('./barcode');
+const { parseReceiptText } = require('./receiptParser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -212,6 +213,36 @@ app.get('/api/barcode/:code', async (req, res) => {
     const status = err.code === 'NOT_FOUND' ? 404 : 502;
     res.status(status).json({ error: err.message });
   }
+});
+
+// Parse raw OCR'd receipt text into candidate items. Read-only — the
+// client reviews/edits each item before it's saved, same as voice and
+// barcode entry.
+app.post('/api/receipt/parse', (req, res) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!text.trim()) {
+    return res.status(400).json({ error: 'text is required.' });
+  }
+
+  const { items } = parseReceiptText(text);
+  const cleaned = items
+    .map((item) => ({
+      name: typeof item.name === 'string' ? item.name.trim() : '',
+      quantity: Number.isFinite(Number(item.quantity)) ? Math.max(0, Number(item.quantity)) : 1,
+      unit: typeof item.unit === 'string' ? item.unit.trim() : '',
+      location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
+      category: CATEGORY_IDS.has(item.category) ? item.category : guessCategory(item.name),
+      action: 'add',
+      expirationDate: cleanExpirationDate(item.expirationDate),
+    }))
+    .filter((item) => item.name);
+
+  if (cleaned.length === 0) {
+    return res.status(422).json({
+      error: "Couldn't find any items on that receipt. Try a clearer photo, or add items manually.",
+    });
+  }
+  res.json({ items: cleaned });
 });
 
 // Delete an item entirely.

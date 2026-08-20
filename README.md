@@ -4,9 +4,9 @@ A simple, mobile-friendly web app for tracking what's in your pantry, fridge,
 and freezer. Data is stored in a real SQLite database file, so it persists
 across restarts — nothing lives only in browser memory or localStorage.
 
-Milestones so far: a list view with manual add/use controls, voice /
-quick-sentence entry, food categories with smart sorting, expiration dates,
-and barcode scanning. Receipt scanning is planned as a follow-up.
+Every way of updating your inventory — manual buttons, voice/text, barcode
+scan, or receipt photo — feeds the same list, with items categorized by food
+type and sorted so what's expiring soon or running low surfaces first.
 
 ## Features
 
@@ -31,6 +31,9 @@ and barcode scanning. Receipt scanning is planned as a follow-up.
 - **Barcode scanning**: tap 📷, point your phone's camera at a product
   barcode, and it's looked up automatically (name, category, package size)
   and dropped into the same review flow as voice entry
+- **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
+  OCR'd and parsed into a list of candidate items to review — a fast way to
+  restock a whole grocery trip at once
 - Delete items you no longer want to track
 - Filter by location and search by name
 - Responsive, large-tap-target layout designed for phone browsers
@@ -109,6 +112,29 @@ stocking one.
   manually — nothing is guessed at random.
 - The scanned barcode number itself isn't stored — only the resulting item.
 
+## Receipt scanning
+
+Tap **🧾 Scan a receipt** to take (or choose) a photo of a paper receipt.
+Each recognized product line becomes an editable review card — same flow as
+voice and barcode entry, add-vs-use toggle included, nothing saved until you
+confirm.
+
+- **OCR runs entirely on-device** via [Tesseract.js](https://github.com/naptha/tesseract.js)
+  — engine *and* the English language model are fully vendored locally in
+  `public/vendor/tesseract/` (~7 MB total), so it works offline after the
+  page has loaded and the photo never leaves your device. First recognition
+  on a phone can take some seconds; a status line shows progress.
+- **Line parsing** is a free, rule-based parser (`receiptParser.js`) that
+  keeps lines ending in a price and drops everything else (store name/
+  address, subtotal/tax/total, card/auth info, footers) — real receipts
+  use heavily abbreviated names ("GV WHL MILK GAL"), so double-check the
+  review cards before confirming. If a line happens to show an expiration/
+  sell-by date, that's picked up too.
+- OCR accuracy depends a lot on photo quality — flat, well-lit, and
+  in-focus works best. A blurry or angled photo may miss items or misread
+  names; nothing is guessed beyond what's on the page, and unrecognized
+  photos say so rather than fabricating items.
+
 ## API
 
 | Method | Path                     | Description                             |
@@ -121,6 +147,7 @@ stocking one.
 | DELETE | `/api/items/:id`           | Remove an item                          |
 | POST   | `/api/voice/parse`         | Parse a sentence into structured item(s) (read-only — doesn't write to the DB) |
 | GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
+| POST   | `/api/receipt/parse`       | Parse OCR'd receipt text into candidate item(s) (read-only) |
 
 ## Roadmap
 
@@ -128,4 +155,4 @@ stocking one.
 - [x] Food categories + low-stock/expiring-first sorting within each category
 - [x] Expiration date capture (manual + voice/text phrases)
 - [x] Barcode scanning
-- [ ] Receipt scanning / OCR import
+- [x] Receipt scanning / OCR import
