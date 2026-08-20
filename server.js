@@ -11,6 +11,22 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const VALID_LOCATIONS = new Set(['pantry', 'fridge', 'freezer']);
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Accept an expiration date field that may be absent, null, '', or an
+// actual "YYYY-MM-DD" string. Returns a clean ISO string or null.
+function cleanExpirationDate(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return ISO_DATE_RE.test(trimmed) ? trimmed : null;
+}
+
+// When merging quantity into an existing item, keep the SOONER of the two
+// expiration dates — that's the batch that needs to be used first.
+function mergeExpirationDate(existingDate, incomingDate) {
+  if (existingDate && incomingDate) return existingDate < incomingDate ? existingDate : incomingDate;
+  return existingDate || incomingDate || null;
+}
 
 function serializeItem(row) {
   return {
@@ -20,6 +36,7 @@ function serializeItem(row) {
     unit: row.unit,
     location: row.location,
     category: row.category,
+    expirationDate: row.expiration_date || null,
     updatedAt: row.updated_at,
   };
 }
@@ -29,11 +46,21 @@ app.get('/api/categories', (req, res) => {
   res.json(CATEGORIES);
 });
 
-// List all items. Ordered by location, then category, then quantity
-// ascending within each category so low-stock items surface at the top.
+// List all items. Ordered by location, then category; within a category,
+// items with an expiration date sort first (soonest first), then items
+// without one sort by quantity ascending (low-stock first).
 app.get('/api/items', (req, res) => {
   const rows = db
-    .prepare('SELECT * FROM items ORDER BY location, category, quantity, name COLLATE NOCASE')
+    .prepare(
+      `SELECT * FROM items
+       ORDER BY
+         location,
+         category,
+         CASE WHEN expiration_date IS NOT NULL AND expiration_date != '' THEN 0 ELSE 1 END,
+         expiration_date,
+         quantity,
+         name COLLATE NOCASE`
+    )
     .all();
   res.json(rows.map(serializeItem));
 });
@@ -41,7 +68,7 @@ app.get('/api/items', (req, res) => {
 // Create a new item, or if an item with the same name/unit/location already
 // exists, add to its quantity instead of creating a duplicate row.
 app.post('/api/items', (req, res) => {
-  const { name, quantity, unit, location, category } = req.body || {};
+  const { name, quantity, unit, location, category, expirationDate } = req.body || {};
 
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Item name is required.' });
@@ -54,6 +81,7 @@ app.post('/api/items', (req, res) => {
   const cleanLocation = VALID_LOCATIONS.has(location) ? location : 'pantry';
   const cleanName = name.trim();
   const cleanCategory = CATEGORY_IDS.has(category) ? category : guessCategory(cleanName);
+  const cleanExpiration = cleanExpirationDate(expirationDate);
 
   const existing = db
     .prepare(
@@ -64,16 +92,17 @@ app.post('/api/items', (req, res) => {
 
   let row;
   if (existing) {
+    const mergedExpiration = mergeExpirationDate(existing.expiration_date, cleanExpiration);
     db.prepare(
-      `UPDATE items SET quantity = quantity + ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(qty, existing.id);
+      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(qty, mergedExpiration, existing.id);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id);
   } else {
     const info = db
       .prepare(
-        `INSERT INTO items (name, quantity, unit, location, category) VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO items (name, quantity, unit, location, category, expiration_date) VALUES (?, ?, ?, ?, ?, ?)`
       )
-      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory);
+      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -115,14 +144,18 @@ app.put('/api/items/:id', (req, res) => {
   const unit = typeof req.body.unit === 'string' ? req.body.unit.trim() : existing.unit;
   const location = VALID_LOCATIONS.has(req.body.location) ? req.body.location : existing.location;
   const category = CATEGORY_IDS.has(req.body.category) ? req.body.category : existing.category;
+  // expirationDate: omit the field to leave it unchanged; send '' or null to clear it.
+  const expirationDate = 'expirationDate' in req.body
+    ? cleanExpirationDate(req.body.expirationDate)
+    : existing.expiration_date;
   const qty = req.body.quantity !== undefined ? Number(req.body.quantity) : existing.quantity;
   if (!Number.isFinite(qty) || qty < 0) {
     return res.status(400).json({ error: 'Quantity must be a non-negative number.' });
   }
 
   db.prepare(
-    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(name, qty, unit, location, category, id);
+    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(name, qty, unit, location, category, expirationDate, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });
@@ -148,6 +181,7 @@ app.post('/api/voice/parse', (req, res) => {
           location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
           category: guessCategory(name),
           action: item.action === 'use' ? 'use' : 'add',
+          expirationDate: cleanExpirationDate(item.expirationDate),
         };
       })
       .filter((item) => item.name);

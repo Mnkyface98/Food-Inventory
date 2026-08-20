@@ -8,6 +8,7 @@
   const unitInput = document.getElementById('item-unit');
   const locationSelect = document.getElementById('item-location');
   const categorySelect = document.getElementById('item-category');
+  const expirationInput = document.getElementById('item-expiration');
   const tabsEl = document.getElementById('location-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -28,6 +29,39 @@
   // An item at or below this quantity is flagged "Low" so it's easy to
   // spot at the top of its category group.
   const LOW_STOCK_THRESHOLD = 1;
+  // An item expiring within this many days gets the amber "soon" badge.
+  const EXPIRING_SOON_DAYS = 3;
+
+  function daysUntil(dateStr) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const target = new Date(y, m - 1, d);
+    return Math.round((target - today) / 86400000);
+  }
+
+  function formatExpiration(dateStr) {
+    const days = daysUntil(dateStr);
+    let className = 'expiry-ok';
+    let text;
+    if (days < 0) {
+      className = 'expiry-expired';
+      text = days === -1 ? 'Expired yesterday' : `Expired ${-days}d ago`;
+    } else if (days === 0) {
+      className = 'expiry-soon';
+      text = 'Expires today';
+    } else if (days === 1) {
+      className = 'expiry-soon';
+      text = 'Expires tomorrow';
+    } else if (days <= EXPIRING_SOON_DAYS) {
+      className = 'expiry-soon';
+      text = `Expires in ${days}d`;
+    } else {
+      const [, m, d] = dateStr.split('-').map(Number);
+      text = `Exp ${m}/${d}`;
+    }
+    return { text, className };
+  }
 
   async function loadCategories() {
     try {
@@ -145,6 +179,13 @@
       lowBadge.textContent = item.quantity <= 0 ? 'Out' : 'Low';
       metaEl.appendChild(lowBadge);
     }
+    if (item.expirationDate) {
+      const { text, className } = formatExpiration(item.expirationDate);
+      const expBadge = document.createElement('span');
+      expBadge.className = `expiry-badge ${className}`;
+      expBadge.textContent = text;
+      metaEl.appendChild(expBadge);
+    }
 
     info.appendChild(nameEl);
     info.appendChild(metaEl);
@@ -231,6 +272,7 @@
     const unit = unitInput.value.trim();
     const location = locationSelect.value;
     const category = categorySelect.value || undefined; // empty = let server guess
+    const expirationDate = expirationInput.value || undefined;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -243,7 +285,7 @@
     try {
       const saved = await api('/api/items', {
         method: 'POST',
-        body: JSON.stringify({ name, quantity, unit, location, category }),
+        body: JSON.stringify({ name, quantity, unit, location, category, expirationDate }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
       if (idx === -1) items.push(saved);
@@ -254,6 +296,7 @@
       qtyInput.value = '1';
       unitInput.value = '';
       categorySelect.value = '';
+      expirationInput.value = '';
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
@@ -448,6 +491,15 @@
       fieldsRow.appendChild(unitEl);
       fieldsRow.appendChild(locEl);
 
+      const expRow = document.createElement('div');
+      expRow.className = 'field-row';
+      const expEl = document.createElement('input');
+      expEl.type = 'date';
+      expEl.setAttribute('aria-label', 'Expiration date');
+      if (state.expirationDate) expEl.value = state.expirationDate;
+      expEl.addEventListener('input', () => (state.expirationDate = expEl.value || null));
+      expRow.appendChild(expEl);
+
       const note = document.createElement('p');
       note.className = 'review-note hidden';
 
@@ -495,6 +547,7 @@
                 unit: state.unit,
                 location: state.location,
                 category: state.category,
+                expirationDate: state.expirationDate,
               }),
             });
             const i = items.findIndex((it) => it.id === saved.id);
@@ -522,6 +575,7 @@
       card.appendChild(header);
       card.appendChild(catRow);
       card.appendChild(fieldsRow);
+      card.appendChild(expRow);
       card.appendChild(note);
       card.appendChild(buttons);
       voiceReviewEl.appendChild(card);

@@ -2,6 +2,8 @@
 // structured pantry/fridge/freezer inventory changes. No external API or
 // key required — just keyword and pattern matching.
 
+const { extractExpiration } = require('./dateParser');
+
 const NUMBER_WORDS = {
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, dozen: 12,
@@ -165,6 +167,7 @@ function parseSegment(rawSegment) {
     unit,
     location: location || guessLocation(name),
     action,
+    expirationDate: null,
   };
 }
 
@@ -174,16 +177,28 @@ function parseSegment(rawSegment) {
  * the pantry and I used the last of the milk" -> two items.
  *
  * @param {string} transcript
- * @returns {{items: Array<{name:string, quantity:number, unit:string, location:string, action:string}>}}
+ * @returns {{items: Array<{name:string, quantity:number, unit:string, location:string, action:string, expirationDate:string|null}>}}
  */
 function parseTranscript(transcript) {
+  // Pull out an expiration-date clause ("expires next friday", "best by
+  // 8/25") from the *whole* sentence first, before splitting into items —
+  // otherwise a clause like ", expires in 3 days" gets sheared apart by
+  // the comma-based item split below. The extracted date is applied to
+  // every item in the sentence, which covers the common case of one item
+  // per utterance; a sentence naming several items with a single date is
+  // an edge case the user can still fix in the review card.
+  const { text: withoutDate, expirationDate } = extractExpiration(transcript);
+
   // Split on "and", commas, or "also" so one sentence can describe several items.
-  const segments = transcript
+  const segments = withoutDate
     .split(/\band\b|,|\balso\b/i)
     .map((s) => s.trim())
     .filter(Boolean);
 
   const items = segments.map(parseSegment).filter(Boolean);
+  if (expirationDate) {
+    for (const item of items) item.expirationDate = expirationDate;
+  }
   return { items };
 }
 

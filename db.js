@@ -31,6 +31,7 @@ db.exec(`
 const existingColumns = new Set(db.prepare('PRAGMA table_info(items)').all().map((c) => c.name));
 const MIGRATIONS = [
   ["ALTER TABLE items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'", 'category'],
+  ["ALTER TABLE items ADD COLUMN expiration_date TEXT", 'expiration_date'],
 ];
 for (const [sql, column] of MIGRATIONS) {
   if (!existingColumns.has(column)) {

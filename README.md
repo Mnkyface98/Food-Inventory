@@ -20,8 +20,13 @@ quick-sentence entry. Receipt scanning is planned as a follow-up.
   Bakery, Grains & Pasta, Canned Goods, Condiments & Sauces, Spices &
   Baking, Snacks, Beverages, Other) — guessed automatically from the item
   name, editable via a dropdown
-- Within each category, **lowest-quantity items sort to the top** (with
-  "Low"/"Out" badges) so what needs restocking is easy to spot
+- **Expiration dates**: optional, set manually or captured from voice/typed
+  phrases like *"expires next Friday"* or *"best by 8/25"*. Items with a
+  date sort to the top of their category (soonest first), with "Expires
+  today/tomorrow" and "Expired" badges
+- Within each category, items with no expiration date sort by
+  **lowest quantity first** (with "Low"/"Out" badges) so what needs
+  restocking is easy to spot
 - Delete items you no longer want to track
 - Filter by location and search by name
 - Responsive, large-tap-target layout designed for phone browsers
@@ -73,6 +78,12 @@ saved, so nothing is written on a bad guess.
 - For "use" entries, it matches against your existing items by name; if it
   can't find a match it tells you rather than silently creating a phantom
   item.
+- **Expiration phrases** are recognized too: "expires <date>", "best by
+  <date>", "use by <date>", "good until/till <date>", "sell by <date>".
+  `<date>` can be relative ("tomorrow", "next Friday", "in 3 days", "next
+  week") or absolute ("8/25", "8/25/2026", "August 25th"). Adding more
+  stock of an item that already has a date keeps the **sooner** of the two
+  dates, since that's the batch that needs using first.
 
 ## API
 
@@ -80,7 +91,7 @@ saved, so nothing is written on a bad guess.
 | ------ | ------------------------ | ---------------------------------------- |
 | GET    | `/api/categories`          | List valid food categories              |
 | GET    | `/api/items`              | List all items (grouped by location/category, low-stock first) |
-| POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted) |
+| POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted; expiration date kept as the sooner of the two on merge) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
@@ -90,6 +101,6 @@ saved, so nothing is written on a bad guess.
 
 - [x] Voice entry ("add two cans of beans")
 - [x] Food categories + low-stock/expiring-first sorting within each category
-- [ ] Expiration date capture
+- [x] Expiration date capture (manual + voice/text phrases)
 - [ ] Barcode scanning
 - [ ] Receipt scanning / OCR import
