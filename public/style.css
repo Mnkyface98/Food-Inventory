@@ -66,6 +66,12 @@ main {
   gap: 0.5rem;
 }
 
+.field-row.two-up {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
 input, select {
   width: 100%;
   font-size: 1rem;
@@ -274,6 +280,32 @@ input:focus, select:focus, button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+.category-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 1.1rem 0 0.4rem;
+  padding: 0 0.1rem;
+}
+
+.category-heading:first-child {
+  margin-top: 0.2rem;
+}
+
+.low-stock-badge {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: #fbe8e3;
+  color: var(--danger);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .item-card {

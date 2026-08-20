@@ -16,6 +16,12 @@ quick-sentence entry. Receipt scanning is planned as a follow-up.
   like *"add two cans of black beans to the pantry"* or *"used the last of
   the milk"* — it's parsed into structured item(s) that you review and edit
   before anything is saved
+- **Categorized by food type** (Produce, Dairy & Eggs, Meat & Seafood, Frozen,
+  Bakery, Grains & Pasta, Canned Goods, Condiments & Sauces, Spices &
+  Baking, Snacks, Beverages, Other) — guessed automatically from the item
+  name, editable via a dropdown
+- Within each category, **lowest-quantity items sort to the top** (with
+  "Low"/"Out" badges) so what needs restocking is easy to spot
 - Delete items you no longer want to track
 - Filter by location and search by name
 - Responsive, large-tap-target layout designed for phone browsers
@@ -72,8 +78,9 @@ saved, so nothing is written on a bad guess.
 
 | Method | Path                     | Description                             |
 | ------ | ------------------------ | ---------------------------------------- |
-| GET    | `/api/items`              | List all items                          |
-| POST   | `/api/items`               | Add an item (merges into an existing matching item) |
+| GET    | `/api/categories`          | List valid food categories              |
+| GET    | `/api/items`              | List all items (grouped by location/category, low-stock first) |
+| POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
@@ -82,5 +89,7 @@ saved, so nothing is written on a bad guess.
 ## Roadmap
 
 - [x] Voice entry ("add two cans of beans")
+- [x] Food categories + low-stock/expiring-first sorting within each category
+- [ ] Expiration date capture
+- [ ] Barcode scanning
 - [ ] Receipt scanning / OCR import
-- [ ] Low-stock alerts / shopping list export

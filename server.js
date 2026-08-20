@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const db = require('./db');
 const { parseTranscript } = require('./voiceParser');
+const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,14 +19,21 @@ function serializeItem(row) {
     quantity: row.quantity,
     unit: row.unit,
     location: row.location,
+    category: row.category,
     updatedAt: row.updated_at,
   };
 }
 
-// List all items, most recently updated first.
+// The list of valid categories, for the client to build its dropdowns from.
+app.get('/api/categories', (req, res) => {
+  res.json(CATEGORIES);
+});
+
+// List all items. Ordered by location, then category, then quantity
+// ascending within each category so low-stock items surface at the top.
 app.get('/api/items', (req, res) => {
   const rows = db
-    .prepare('SELECT * FROM items ORDER BY location, name COLLATE NOCASE')
+    .prepare('SELECT * FROM items ORDER BY location, category, quantity, name COLLATE NOCASE')
     .all();
   res.json(rows.map(serializeItem));
 });
@@ -33,7 +41,7 @@ app.get('/api/items', (req, res) => {
 // Create a new item, or if an item with the same name/unit/location already
 // exists, add to its quantity instead of creating a duplicate row.
 app.post('/api/items', (req, res) => {
-  const { name, quantity, unit, location } = req.body || {};
+  const { name, quantity, unit, location, category } = req.body || {};
 
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Item name is required.' });
@@ -45,6 +53,7 @@ app.post('/api/items', (req, res) => {
   const cleanUnit = typeof unit === 'string' ? unit.trim() : '';
   const cleanLocation = VALID_LOCATIONS.has(location) ? location : 'pantry';
   const cleanName = name.trim();
+  const cleanCategory = CATEGORY_IDS.has(category) ? category : guessCategory(cleanName);
 
   const existing = db
     .prepare(
@@ -62,9 +71,9 @@ app.post('/api/items', (req, res) => {
   } else {
     const info = db
       .prepare(
-        `INSERT INTO items (name, quantity, unit, location) VALUES (?, ?, ?, ?)`
+        `INSERT INTO items (name, quantity, unit, location, category) VALUES (?, ?, ?, ?, ?)`
       )
-      .run(cleanName, qty, cleanUnit, cleanLocation);
+      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -105,14 +114,15 @@ app.put('/api/items/:id', (req, res) => {
     : existing.name;
   const unit = typeof req.body.unit === 'string' ? req.body.unit.trim() : existing.unit;
   const location = VALID_LOCATIONS.has(req.body.location) ? req.body.location : existing.location;
+  const category = CATEGORY_IDS.has(req.body.category) ? req.body.category : existing.category;
   const qty = req.body.quantity !== undefined ? Number(req.body.quantity) : existing.quantity;
   if (!Number.isFinite(qty) || qty < 0) {
     return res.status(400).json({ error: 'Quantity must be a non-negative number.' });
   }
 
   db.prepare(
-    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(name, qty, unit, location, id);
+    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(name, qty, unit, location, category, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });
@@ -129,13 +139,17 @@ app.post('/api/voice/parse', (req, res) => {
   try {
     const { items } = parseTranscript(transcript);
     const cleaned = items
-      .map((item) => ({
-        name: typeof item.name === 'string' ? item.name.trim() : '',
-        quantity: Number.isFinite(Number(item.quantity)) ? Math.max(0, Number(item.quantity)) : 1,
-        unit: typeof item.unit === 'string' ? item.unit.trim() : '',
-        location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
-        action: item.action === 'use' ? 'use' : 'add',
-      }))
+      .map((item) => {
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        return {
+          name,
+          quantity: Number.isFinite(Number(item.quantity)) ? Math.max(0, Number(item.quantity)) : 1,
+          unit: typeof item.unit === 'string' ? item.unit.trim() : '',
+          location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
+          category: guessCategory(name),
+          action: item.action === 'use' ? 'use' : 'add',
+        };
+      })
       .filter((item) => item.name);
 
     if (cleaned.length === 0) {

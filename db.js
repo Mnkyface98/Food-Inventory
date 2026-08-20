@@ -26,4 +26,16 @@ db.exec(`
   );
 `);
 
+// Lightweight migrations: add any columns introduced after the initial
+// release to existing databases, without touching data already stored.
+const existingColumns = new Set(db.prepare('PRAGMA table_info(items)').all().map((c) => c.name));
+const MIGRATIONS = [
+  ["ALTER TABLE items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'", 'category'],
+];
+for (const [sql, column] of MIGRATIONS) {
+  if (!existingColumns.has(column)) {
+    db.exec(sql);
+  }
+}
+
 module.exports = db;

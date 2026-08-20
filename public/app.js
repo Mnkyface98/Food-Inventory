@@ -7,6 +7,7 @@
   const qtyInput = document.getElementById('item-qty');
   const unitInput = document.getElementById('item-unit');
   const locationSelect = document.getElementById('item-location');
+  const categorySelect = document.getElementById('item-category');
   const tabsEl = document.getElementById('location-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -18,9 +19,31 @@
   const voiceReviewEl = document.getElementById('voice-review');
 
   let items = [];
+  let categories = []; // [{id, label}], loaded from the server
+  let categoryLabels = {};
   let activeLocation = 'all';
   let searchTerm = '';
   let toastTimer = null;
+
+  // An item at or below this quantity is flagged "Low" so it's easy to
+  // spot at the top of its category group.
+  const LOW_STOCK_THRESHOLD = 1;
+
+  async function loadCategories() {
+    try {
+      categories = await api('/api/categories');
+      categoryLabels = Object.fromEntries(categories.map((c) => [c.id, c.label]));
+      for (const cat of categories) {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.label;
+        categorySelect.appendChild(opt);
+      }
+    } catch (err) {
+      // Non-fatal: category dropdowns just stay empty/"Auto" if this fails.
+      console.error('Failed to load categories', err);
+    }
+  }
 
   function formatQty(qty) {
     // Trim trailing zeros for whole numbers but keep decimals like 1.5
@@ -78,7 +101,17 @@
     }
     emptyStateEl.classList.add('hidden');
 
+    // Group by category, preserving the server's ordering within each
+    // group (category, then quantity ascending — low stock first).
+    let currentCategory = null;
     for (const item of filtered) {
+      if (item.category !== currentCategory) {
+        currentCategory = item.category;
+        const heading = document.createElement('li');
+        heading.className = 'category-heading';
+        heading.textContent = categoryLabels[item.category] || 'Other';
+        listEl.appendChild(heading);
+      }
       listEl.appendChild(renderItem(item));
     }
   }
@@ -105,6 +138,12 @@
       const unitSpan = document.createElement('span');
       unitSpan.textContent = item.unit;
       metaEl.appendChild(unitSpan);
+    }
+    if (item.quantity <= LOW_STOCK_THRESHOLD) {
+      const lowBadge = document.createElement('span');
+      lowBadge.className = 'low-stock-badge';
+      lowBadge.textContent = item.quantity <= 0 ? 'Out' : 'Low';
+      metaEl.appendChild(lowBadge);
     }
 
     info.appendChild(nameEl);
@@ -191,6 +230,7 @@
     const quantity = Number(qtyInput.value);
     const unit = unitInput.value.trim();
     const location = locationSelect.value;
+    const category = categorySelect.value || undefined; // empty = let server guess
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -203,7 +243,7 @@
     try {
       const saved = await api('/api/items', {
         method: 'POST',
-        body: JSON.stringify({ name, quantity, unit, location }),
+        body: JSON.stringify({ name, quantity, unit, location, category }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
       if (idx === -1) items.push(saved);
@@ -213,6 +253,7 @@
       nameInput.value = '';
       qtyInput.value = '1';
       unitInput.value = '';
+      categorySelect.value = '';
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
@@ -360,6 +401,20 @@
       header.appendChild(nameInputEl);
       header.appendChild(toggle);
 
+      const catRow = document.createElement('div');
+      catRow.className = 'field-row';
+      const catEl = document.createElement('select');
+      catEl.setAttribute('aria-label', 'Category');
+      categories.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.label;
+        if (cat.id === state.category) opt.selected = true;
+        catEl.appendChild(opt);
+      });
+      catEl.addEventListener('change', () => (state.category = catEl.value));
+      catRow.appendChild(catEl);
+
       const fieldsRow = document.createElement('div');
       fieldsRow.className = 'field-row three-up';
 
@@ -439,6 +494,7 @@
                 quantity: state.quantity,
                 unit: state.unit,
                 location: state.location,
+                category: state.category,
               }),
             });
             const i = items.findIndex((it) => it.id === saved.id);
@@ -464,6 +520,7 @@
       buttons.appendChild(dismissBtn);
 
       card.appendChild(header);
+      card.appendChild(catRow);
       card.appendChild(fieldsRow);
       card.appendChild(note);
       card.appendChild(buttons);
@@ -475,5 +532,5 @@
     }
   }
 
-  loadItems();
+  loadCategories().then(loadItems);
 })();

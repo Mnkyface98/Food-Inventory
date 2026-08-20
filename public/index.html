@@ -39,13 +39,18 @@
         <div class="field-row">
           <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" required />
         </div>
-        <div class="field-row three-up">
+        <div class="field-row two-up">
           <input id="item-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="1" required />
           <input id="item-unit" type="text" placeholder="Unit (e.g. cups, lbs)" list="unit-options" />
+        </div>
+        <div class="field-row two-up">
           <select id="item-location" aria-label="Location">
             <option value="pantry">Pantry</option>
             <option value="fridge">Fridge</option>
             <option value="freezer">Freezer</option>
+          </select>
+          <select id="item-category" aria-label="Category">
+            <option value="">Category: Auto</option>
           </select>
         </div>
         <datalist id="unit-options">
