@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="theme-color" content="#2f6f4f" />
+  <title>Pantry &amp; Fridge Inventory</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>🥫 Pantry &amp; Fridge</h1>
+  </header>
+
+  <main>
+    <section class="add-card" aria-label="Add an item">
+      <form id="add-form" autocomplete="off">
+        <div class="field-row">
+          <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" required />
+        </div>
+        <div class="field-row three-up">
+          <input id="item-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="1" required />
+          <input id="item-unit" type="text" placeholder="Unit (e.g. cups, lbs)" list="unit-options" />
+          <select id="item-location" aria-label="Location">
+            <option value="pantry">Pantry</option>
+            <option value="fridge">Fridge</option>
+            <option value="freezer">Freezer</option>
+          </select>
+        </div>
+        <datalist id="unit-options">
+          <option value="pcs"></option>
+          <option value="lbs"></option>
+          <option value="oz"></option>
+          <option value="cups"></option>
+          <option value="bags"></option>
+          <option value="cans"></option>
+          <option value="boxes"></option>
+          <option value="jars"></option>
+          <option value="bottles"></option>
+        </datalist>
+        <button type="submit" class="btn btn-primary btn-full">+ Add item</button>
+      </form>
+    </section>
+
+    <nav class="tabs" id="location-tabs" aria-label="Filter by location">
+      <button class="tab active" data-location="all">All</button>
+      <button class="tab" data-location="pantry">Pantry</button>
+      <button class="tab" data-location="fridge">Fridge</button>
+      <button class="tab" data-location="freezer">Freezer</button>
+    </nav>
+
+    <div class="field-row search-row">
+      <input id="search" type="search" placeholder="Search items…" />
+    </div>
+
+    <section aria-label="Inventory list">
+      <p id="empty-state" class="empty-state hidden">Nothing here yet. Add your first item above.</p>
+      <p id="status-line" class="status-line hidden"></p>
+      <ul id="item-list" class="item-list"></ul>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
