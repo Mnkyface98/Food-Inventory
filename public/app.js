@@ -11,6 +11,12 @@
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
 
+  const voiceForm = document.getElementById('voice-form');
+  const voiceTextInput = document.getElementById('voice-text');
+  const micBtn = document.getElementById('mic-btn');
+  const micHint = document.getElementById('mic-hint');
+  const voiceReviewEl = document.getElementById('voice-review');
+
   let items = [];
   let activeLocation = 'all';
   let searchTerm = '';
@@ -227,6 +233,247 @@
     searchTerm = searchInput.value.trim().toLowerCase();
     render();
   });
+
+  // --- Voice / quick-sentence entry -----------------------------------
+  //
+  // Flow: capture a sentence (typed, or spoken via the browser's built-in
+  // Web Speech API — free, no server key needed) -> send it to the server
+  // for free, rule-based parsing into structured items -> show an
+  // editable review card per item -> user confirms each one, which then
+  // goes through the normal add/adjust endpoints. Nothing is written to
+  // the database until the user confirms.
+
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+
+  if (SpeechRecognitionCtor) {
+    micBtn.classList.remove('hidden');
+    recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.addEventListener('start', () => {
+      micBtn.classList.add('listening');
+    });
+    recognition.addEventListener('end', () => {
+      micBtn.classList.remove('listening');
+    });
+    recognition.addEventListener('error', (e) => {
+      micBtn.classList.remove('listening');
+      if (e.error !== 'aborted' && e.error !== 'no-speech') {
+        showToast(`Mic error: ${e.error}`);
+      }
+    });
+    recognition.addEventListener('result', (e) => {
+      const transcript = e.results[0][0].transcript;
+      voiceTextInput.value = transcript;
+      parseVoiceText(transcript);
+    });
+
+    micBtn.addEventListener('click', () => {
+      if (micBtn.classList.contains('listening')) {
+        recognition.stop();
+      } else {
+        voiceTextInput.value = '';
+        recognition.start();
+      }
+    });
+  } else {
+    micHint.classList.remove('hidden');
+  }
+
+  voiceForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = voiceTextInput.value.trim();
+    if (!text) return;
+    parseVoiceText(text);
+  });
+
+  async function parseVoiceText(text) {
+    voiceReviewEl.innerHTML = '';
+    voiceReviewEl.classList.remove('hidden');
+    voiceReviewEl.innerHTML = '<p class="status-line">Parsing…</p>';
+    try {
+      const result = await api('/api/voice/parse', {
+        method: 'POST',
+        body: JSON.stringify({ transcript: text }),
+      });
+      renderReview(result.items);
+    } catch (err) {
+      voiceReviewEl.innerHTML = `<p class="review-note">${err.message}</p>`;
+    }
+  }
+
+  function findMatchingItem(name, location) {
+    const lower = name.trim().toLowerCase();
+    return (
+      items.find((i) => i.name.toLowerCase() === lower && i.location === location) ||
+      items.find((i) => i.name.toLowerCase() === lower)
+    );
+  }
+
+  function renderReview(parsedItems) {
+    voiceReviewEl.innerHTML = '';
+
+    parsedItems.forEach((parsed, idx) => {
+      const state = { ...parsed };
+      const card = document.createElement('div');
+      card.className = 'review-card';
+
+      const header = document.createElement('div');
+      header.className = 'review-card-header';
+
+      const nameInputEl = document.createElement('input');
+      nameInputEl.type = 'text';
+      nameInputEl.value = state.name;
+      nameInputEl.setAttribute('aria-label', 'Item name');
+      nameInputEl.style.flex = '1';
+      nameInputEl.addEventListener('input', () => (state.name = nameInputEl.value));
+
+      const toggle = document.createElement('div');
+      toggle.className = 'action-toggle';
+      const addToggleBtn = document.createElement('button');
+      addToggleBtn.type = 'button';
+      addToggleBtn.dataset.action = 'add';
+      addToggleBtn.textContent = 'Add';
+      const useToggleBtn = document.createElement('button');
+      useToggleBtn.type = 'button';
+      useToggleBtn.dataset.action = 'use';
+      useToggleBtn.textContent = 'Use';
+      function refreshToggle() {
+        addToggleBtn.classList.toggle('active', state.action === 'add');
+        useToggleBtn.classList.toggle('active', state.action === 'use');
+      }
+      addToggleBtn.addEventListener('click', () => {
+        state.action = 'add';
+        refreshToggle();
+      });
+      useToggleBtn.addEventListener('click', () => {
+        state.action = 'use';
+        refreshToggle();
+      });
+      refreshToggle();
+      toggle.appendChild(addToggleBtn);
+      toggle.appendChild(useToggleBtn);
+
+      header.appendChild(nameInputEl);
+      header.appendChild(toggle);
+
+      const fieldsRow = document.createElement('div');
+      fieldsRow.className = 'field-row three-up';
+
+      const qtyEl = document.createElement('input');
+      qtyEl.type = 'number';
+      qtyEl.min = '0';
+      qtyEl.step = 'any';
+      qtyEl.value = state.quantity;
+      qtyEl.setAttribute('aria-label', 'Quantity');
+      qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
+
+      const unitEl = document.createElement('input');
+      unitEl.type = 'text';
+      unitEl.value = state.unit;
+      unitEl.placeholder = 'Unit';
+      unitEl.setAttribute('aria-label', 'Unit');
+      unitEl.addEventListener('input', () => (state.unit = unitEl.value));
+
+      const locEl = document.createElement('select');
+      locEl.setAttribute('aria-label', 'Location');
+      ['pantry', 'fridge', 'freezer'].forEach((loc) => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc[0].toUpperCase() + loc.slice(1);
+        if (loc === state.location) opt.selected = true;
+        locEl.appendChild(opt);
+      });
+      locEl.addEventListener('change', () => (state.location = locEl.value));
+
+      fieldsRow.appendChild(qtyEl);
+      fieldsRow.appendChild(unitEl);
+      fieldsRow.appendChild(locEl);
+
+      const note = document.createElement('p');
+      note.className = 'review-note hidden';
+
+      const buttons = document.createElement('div');
+      buttons.className = 'review-card-buttons';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.className = 'btn btn-primary';
+      confirmBtn.textContent = 'Confirm';
+      const dismissBtn = document.createElement('button');
+      dismissBtn.type = 'button';
+      dismissBtn.className = 'btn btn-secondary';
+      dismissBtn.textContent = 'Discard';
+
+      dismissBtn.addEventListener('click', () => {
+        card.remove();
+        if (!voiceReviewEl.children.length) voiceReviewEl.classList.add('hidden');
+      });
+
+      confirmBtn.addEventListener('click', async () => {
+        confirmBtn.disabled = true;
+        note.classList.add('hidden');
+        try {
+          if (!state.name.trim()) throw new Error('Item name is required.');
+          if (state.action === 'use') {
+            const match = findMatchingItem(state.name, state.location);
+            if (!match) {
+              throw new Error(
+                `No existing item named "${state.name}" to use. Switch to Add, or add it first.`
+              );
+            }
+            const updated = await api(`/api/items/${match.id}/adjust`, {
+              method: 'POST',
+              body: JSON.stringify({ delta: -Math.abs(state.quantity) }),
+            });
+            const i = items.findIndex((it) => it.id === updated.id);
+            if (i !== -1) items[i] = updated;
+            showToast(`Used ${state.quantity} ${state.unit || ''} ${state.name}`.trim());
+          } else {
+            const saved = await api('/api/items', {
+              method: 'POST',
+              body: JSON.stringify({
+                name: state.name,
+                quantity: state.quantity,
+                unit: state.unit,
+                location: state.location,
+              }),
+            });
+            const i = items.findIndex((it) => it.id === saved.id);
+            if (i === -1) items.push(saved);
+            else items[i] = saved;
+            showToast(`Added ${state.name}`);
+          }
+          render();
+          card.remove();
+          if (!voiceReviewEl.children.length) {
+            voiceReviewEl.classList.add('hidden');
+            voiceTextInput.value = '';
+          }
+        } catch (err) {
+          note.textContent = err.message;
+          note.classList.remove('hidden');
+        } finally {
+          confirmBtn.disabled = false;
+        }
+      });
+
+      buttons.appendChild(confirmBtn);
+      buttons.appendChild(dismissBtn);
+
+      card.appendChild(header);
+      card.appendChild(fieldsRow);
+      card.appendChild(note);
+      card.appendChild(buttons);
+      voiceReviewEl.appendChild(card);
+    });
+
+    if (parsedItems.length === 0) {
+      voiceReviewEl.innerHTML = '<p class="review-note">Couldn\'t find any items in that. Try rephrasing.</p>';
+    }
+  }
 
   loadItems();
 })();

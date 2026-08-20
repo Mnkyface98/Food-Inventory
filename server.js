@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const db = require('./db');
+const { parseTranscript } = require('./voiceParser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -114,6 +115,36 @@ app.put('/api/items/:id', (req, res) => {
   ).run(name, qty, unit, location, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
+});
+
+// Parse a spoken or typed sentence into structured item changes.
+// Does NOT write to the database — the client reviews/edits the result
+// and then calls the existing add/adjust endpoints to commit it.
+app.post('/api/voice/parse', (req, res) => {
+  const transcript = typeof req.body?.transcript === 'string' ? req.body.transcript.trim() : '';
+  if (!transcript) {
+    return res.status(400).json({ error: 'transcript is required.' });
+  }
+
+  try {
+    const { items } = parseTranscript(transcript);
+    const cleaned = items
+      .map((item) => ({
+        name: typeof item.name === 'string' ? item.name.trim() : '',
+        quantity: Number.isFinite(Number(item.quantity)) ? Math.max(0, Number(item.quantity)) : 1,
+        unit: typeof item.unit === 'string' ? item.unit.trim() : '',
+        location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
+        action: item.action === 'use' ? 'use' : 'add',
+      }))
+      .filter((item) => item.name);
+
+    if (cleaned.length === 0) {
+      return res.status(422).json({ error: "Couldn't find any items in that. Try rephrasing." });
+    }
+    res.json({ items: cleaned });
+  } catch (err) {
+    res.status(422).json({ error: err.message });
+  }
 });
 
 // Delete an item entirely.

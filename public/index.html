@@ -13,6 +13,27 @@
   </header>
 
   <main>
+    <section class="add-card voice-card" aria-label="Quick add by voice or sentence">
+      <form id="voice-form" autocomplete="off">
+        <div class="field-row voice-row">
+          <input
+            id="voice-text"
+            type="text"
+            placeholder="Say or type e.g. &quot;add two cans of black beans&quot;"
+          />
+          <button type="button" id="mic-btn" class="btn mic-btn hidden" aria-label="Speak to add or use an item">
+            🎤
+          </button>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-full">Parse it</button>
+        <p id="mic-hint" class="mic-hint hidden">
+          Voice capture isn't supported in this browser. Try Chrome, or use your
+          keyboard's dictation button while typing above.
+        </p>
+      </form>
+      <div id="voice-review" class="voice-review hidden"></div>
+    </section>
+
     <section class="add-card" aria-label="Add an item">
       <form id="add-form" autocomplete="off">
         <div class="field-row">
