@@ -31,6 +31,13 @@
           keyboard's dictation button while typing above.
         </p>
       </form>
+      <button type="button" id="barcode-btn" class="btn btn-secondary btn-full hidden">
+        📷 Scan a barcode
+      </button>
+      <p id="barcode-hint" class="mic-hint hidden">
+        Barcode scanning needs camera access, which isn't available in this
+        browser/context.
+      </p>
       <div id="voice-review" class="voice-review hidden"></div>
     </section>
 
@@ -90,8 +97,17 @@
     </section>
   </main>
 
+  <div id="barcode-modal" class="barcode-modal hidden" role="dialog" aria-label="Scan a barcode">
+    <div class="barcode-modal-inner">
+      <video id="barcode-video" playsinline muted></video>
+      <p id="barcode-status" class="barcode-status">Point your camera at a barcode…</p>
+      <button type="button" id="barcode-cancel" class="btn btn-secondary btn-full">Cancel</button>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
+  <script src="vendor/zxing.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

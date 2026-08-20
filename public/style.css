@@ -445,6 +445,40 @@ input:focus, select:focus, button:focus-visible {
   display: none !important;
 }
 
+.barcode-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: 1.2rem;
+}
+
+.barcode-modal-inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+#barcode-video {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: #111;
+}
+
+.barcode-status {
+  color: #fff;
+  text-align: center;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
 .toast {
   position: fixed;
   bottom: 1rem;

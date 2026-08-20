@@ -19,6 +19,13 @@
   const micHint = document.getElementById('mic-hint');
   const voiceReviewEl = document.getElementById('voice-review');
 
+  const barcodeBtn = document.getElementById('barcode-btn');
+  const barcodeHint = document.getElementById('barcode-hint');
+  const barcodeModal = document.getElementById('barcode-modal');
+  const barcodeVideo = document.getElementById('barcode-video');
+  const barcodeStatus = document.getElementById('barcode-status');
+  const barcodeCancelBtn = document.getElementById('barcode-cancel');
+
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
   let categoryLabels = {};
@@ -365,6 +372,96 @@
     });
   } else {
     micHint.classList.remove('hidden');
+  }
+
+  // --- Barcode scanning -------------------------------------------------
+  //
+  // Camera decoding runs entirely on-device via ZXing (vendored locally,
+  // no CDN dependency) — no image is ever uploaded anywhere. Once a
+  // barcode is decoded, the server looks it up against Open Food Facts
+  // (a free, keyless public product database) and the result goes through
+  // the same review-card flow as voice entry, so nothing is saved until
+  // the user confirms.
+
+  const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const hasZXing = typeof window.ZXing !== 'undefined';
+  let codeReader = null;
+
+  if (hasCamera && hasZXing) {
+    barcodeBtn.classList.remove('hidden');
+  } else {
+    barcodeHint.classList.remove('hidden');
+  }
+
+  function stopScanning() {
+    if (codeReader) {
+      try {
+        codeReader.reset();
+      } catch (err) {
+        // ignore — reader may already be stopped
+      }
+    }
+    barcodeModal.classList.add('hidden');
+  }
+
+  barcodeBtn.addEventListener('click', async () => {
+    barcodeModal.classList.remove('hidden');
+    barcodeStatus.textContent = 'Point your camera at a barcode…';
+    codeReader = new window.ZXing.BrowserMultiFormatReader();
+    try {
+      await codeReader.decodeFromConstraints(
+        { video: { facingMode: 'environment' } },
+        barcodeVideo,
+        (result) => {
+          if (result) {
+            const code = result.getText();
+            stopScanning();
+            handleBarcodeResult(code);
+          }
+          // Per-frame "not found" errors are expected while scanning and
+          // are intentionally ignored — decodeFromConstraints calls this
+          // callback continuously until reset().
+        }
+      );
+    } catch (err) {
+      stopScanning();
+      showToast(`Camera error: ${err.message}`);
+    }
+  });
+
+  barcodeCancelBtn.addEventListener('click', stopScanning);
+
+  async function handleBarcodeResult(code) {
+    voiceReviewEl.classList.remove('hidden');
+    try {
+      const product = await api(`/api/barcode/${encodeURIComponent(code)}`);
+      renderReview([
+        {
+          name: product.name,
+          quantity: product.quantity,
+          unit: product.unit,
+          location: 'pantry',
+          category: product.category,
+          action: 'add',
+          expirationDate: null,
+        },
+      ]);
+      showToast(`Found: ${product.name}`);
+    } catch (err) {
+      showToast(err.message);
+      // Still let the user add it manually — pre-fill an empty review card.
+      renderReview([
+        {
+          name: '',
+          quantity: 1,
+          unit: '',
+          location: 'pantry',
+          category: 'other',
+          action: 'add',
+          expirationDate: null,
+        },
+      ]);
+    }
   }
 
   voiceForm.addEventListener('submit', (e) => {

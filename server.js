@@ -3,6 +3,7 @@ const path = require('path');
 const db = require('./db');
 const { parseTranscript } = require('./voiceParser');
 const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
+const { lookupBarcode } = require('./barcode');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -192,6 +193,24 @@ app.post('/api/voice/parse', (req, res) => {
     res.json({ items: cleaned });
   } catch (err) {
     res.status(422).json({ error: err.message });
+  }
+});
+
+// Look up a scanned barcode against a free product database (Open Food
+// Facts). Read-only — doesn't write to the DB; the client reviews the
+// result the same way it reviews a voice-parsed item before saving.
+app.get('/api/barcode/:code', async (req, res) => {
+  const { code } = req.params;
+  if (!/^\d{6,14}$/.test(code)) {
+    return res.status(400).json({ error: "That doesn't look like a valid barcode." });
+  }
+
+  try {
+    const product = await lookupBarcode(code);
+    res.json(product);
+  } catch (err) {
+    const status = err.code === 'NOT_FOUND' ? 404 : 502;
+    res.status(status).json({ error: err.message });
   }
 });
 

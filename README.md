@@ -4,8 +4,9 @@ A simple, mobile-friendly web app for tracking what's in your pantry, fridge,
 and freezer. Data is stored in a real SQLite database file, so it persists
 across restarts — nothing lives only in browser memory or localStorage.
 
-Milestones so far: a list view with manual add/use controls, plus voice /
-quick-sentence entry. Receipt scanning is planned as a follow-up.
+Milestones so far: a list view with manual add/use controls, voice /
+quick-sentence entry, food categories with smart sorting, expiration dates,
+and barcode scanning. Receipt scanning is planned as a follow-up.
 
 ## Features
 
@@ -27,6 +28,9 @@ quick-sentence entry. Receipt scanning is planned as a follow-up.
 - Within each category, items with no expiration date sort by
   **lowest quantity first** (with "Low"/"Out" badges) so what needs
   restocking is easy to spot
+- **Barcode scanning**: tap 📷, point your phone's camera at a product
+  barcode, and it's looked up automatically (name, category, package size)
+  and dropped into the same review flow as voice entry
 - Delete items you no longer want to track
 - Filter by location and search by name
 - Responsive, large-tap-target layout designed for phone browsers
@@ -85,6 +89,26 @@ saved, so nothing is written on a bad guess.
   stock of an item that already has a date keeps the **sooner** of the two
   dates, since that's the batch that needs using first.
 
+## Barcode scanning
+
+Tap **📷 Scan a barcode**, point your camera at a product's barcode, and hold
+steady for a second. The result goes through the same editable review card
+as voice entry — nothing saves until you confirm — with the "Add"/"Use"
+toggle available too, so scanning works for using up an item as well as
+stocking one.
+
+- **Camera decoding** runs entirely on-device via
+  [ZXing](https://github.com/zxing-js/library) (vendored locally in
+  `public/vendor/`, no CDN dependency at runtime) — no image is ever
+  uploaded anywhere. Needs camera permission and a secure context (HTTPS,
+  or `localhost`), same as the mic; the button hides automatically if the
+  browser doesn't support it.
+- **Product lookup** uses [Open Food Facts](https://world.openfoodfacts.org)
+  — a free, keyless public product database. If a barcode isn't found
+  there, you get a clear message and an empty review card to fill in
+  manually — nothing is guessed at random.
+- The scanned barcode number itself isn't stored — only the resulting item.
+
 ## API
 
 | Method | Path                     | Description                             |
@@ -96,11 +120,12 @@ saved, so nothing is written on a bad guess.
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
 | POST   | `/api/voice/parse`         | Parse a sentence into structured item(s) (read-only — doesn't write to the DB) |
+| GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
 
 ## Roadmap
 
 - [x] Voice entry ("add two cans of beans")
 - [x] Food categories + low-stock/expiring-first sorting within each category
 - [x] Expiration date capture (manual + voice/text phrases)
-- [ ] Barcode scanning
+- [x] Barcode scanning
 - [ ] Receipt scanning / OCR import
