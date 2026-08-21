@@ -35,10 +35,18 @@ const MIGRATIONS = [
   // pack_size: the original count a "pack" started at, for items you want
   // flagged low once they drop to 25% or less of that (e.g. 6 left of 24).
   ["ALTER TABLE items ADD COLUMN pack_size REAL", 'pack_size'],
-  // percent_full: how full a single container currently is (0-100), for
-  // items like a bottle you're tracking by fullness rather than count.
-  // Only meaningful when quantity is 1.
+  // percent_full: how full a single container currently is (0-100),
+  // DERIVED from fullness_amount / fullness_total below (never set
+  // directly) — kept as its own column since it's what the low-stock
+  // check reads. Only meaningful when quantity is 1.
   ["ALTER TABLE items ADD COLUMN percent_full REAL", 'percent_full'],
+  // fullness_unit/amount/total: the actual measurement (e.g. "10 oz left
+  // of a 16 oz bottle") a container's fullness is entered in, so nobody
+  // has to type an abstract percentage. percent_full is computed from
+  // amount/total whenever these change.
+  ["ALTER TABLE items ADD COLUMN fullness_unit TEXT", 'fullness_unit'],
+  ["ALTER TABLE items ADD COLUMN fullness_amount REAL", 'fullness_amount'],
+  ["ALTER TABLE items ADD COLUMN fullness_total REAL", 'fullness_total'],
 ];
 for (const [sql, column] of MIGRATIONS) {
   if (!existingColumns.has(column)) {

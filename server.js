@@ -39,13 +39,28 @@ function cleanPackSize(value) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// percentFull: how full a single container currently is (0-100). Clamped
-// into range; absent/blank/invalid clean to null.
-function cleanPercentFull(value) {
+// Fullness of a single container is entered as a real measurement (e.g.
+// "10 oz left of a 16 oz bottle"), not a typed-in percentage. percentFull
+// is always DERIVED from fullness_amount/fullness_total — never accepted
+// directly from a client.
+const FULLNESS_UNITS = new Set(['oz', 'fl oz', 'ml', 'L', 'g', 'kg', 'lb']);
+
+function cleanFullnessUnit(value) {
+  return typeof value === 'string' && FULLNESS_UNITS.has(value.trim()) ? value.trim() : null;
+}
+
+// A positive number (amount remaining / total size), or null if absent/blank/invalid.
+function cleanPositiveAmount(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  return Math.min(100, Math.max(0, n));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// Derive percent-full (0-100) from amount remaining out of total size.
+// Needs both to be meaningful; returns null otherwise.
+function computePercentFull(amount, total) {
+  if (amount == null || total == null || total <= 0) return null;
+  return Math.min(100, Math.max(0, (amount / total) * 100));
 }
 
 function serializeItem(row) {
@@ -59,6 +74,9 @@ function serializeItem(row) {
     expirationDate: row.expiration_date || null,
     packSize: row.pack_size ?? null,
     percentFull: row.percent_full ?? null,
+    fullnessUnit: row.fullness_unit ?? null,
+    fullnessAmount: row.fullness_amount ?? null,
+    fullnessTotal: row.fullness_total ?? null,
     updatedAt: row.updated_at,
   };
 }
@@ -92,7 +110,10 @@ app.get('/api/items', (req, res) => {
 // Create a new item, or if an item with the same name/unit/location already
 // exists, add to its quantity instead of creating a duplicate row.
 app.post('/api/items', (req, res) => {
-  const { name, quantity, unit, location, category, expirationDate, packSize, percentFull } = req.body || {};
+  const {
+    name, quantity, unit, location, category, expirationDate,
+    packSize, fullnessUnit, fullnessAmount, fullnessTotal,
+  } = req.body || {};
 
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Item name is required.' });
@@ -107,7 +128,9 @@ app.post('/api/items', (req, res) => {
   const cleanCategory = CATEGORY_IDS.has(category) ? category : guessCategory(cleanName);
   const cleanExpiration = cleanExpirationDate(expirationDate);
   const cleanPack = cleanPackSize(packSize);
-  const cleanPercent = cleanPercentFull(percentFull);
+  const cleanFullnessUnitVal = cleanFullnessUnit(fullnessUnit);
+  const cleanFullnessAmount = cleanPositiveAmount(fullnessAmount);
+  const cleanFullnessTotal = cleanPositiveAmount(fullnessTotal);
 
   const existing = db
     .prepare(
@@ -119,21 +142,33 @@ app.post('/api/items', (req, res) => {
   let row;
   if (existing) {
     const mergedExpiration = mergeExpirationDate(existing.expiration_date, cleanExpiration);
-    // Pack size / % full describe metadata about the item, not the
-    // quantity being added — keep the existing value unless this request
-    // explicitly supplies a new one.
+    // Pack size / fullness describe metadata about the item, not the
+    // quantity being added — keep the existing values unless this
+    // request explicitly supplies a new fullness reading (amount+total).
     const mergedPack = cleanPack !== null ? cleanPack : existing.pack_size;
-    const mergedPercent = cleanPercent !== null ? cleanPercent : existing.percent_full;
+    const hasNewFullness = cleanFullnessAmount !== null && cleanFullnessTotal !== null;
+    const mergedFullnessUnit = hasNewFullness ? cleanFullnessUnitVal : existing.fullness_unit;
+    const mergedFullnessAmount = hasNewFullness ? cleanFullnessAmount : existing.fullness_amount;
+    const mergedFullnessTotal = hasNewFullness ? cleanFullnessTotal : existing.fullness_total;
+    const mergedPercent = computePercentFull(mergedFullnessAmount, mergedFullnessTotal);
     db.prepare(
-      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, pack_size = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(qty, mergedExpiration, mergedPack, mergedPercent, existing.id);
+      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, pack_size = ?,
+         fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
+         updated_at = datetime('now') WHERE id = ?`
+    ).run(qty, mergedExpiration, mergedPack, mergedFullnessUnit, mergedFullnessAmount, mergedFullnessTotal, mergedPercent, existing.id);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id);
   } else {
+    const percent = computePercentFull(cleanFullnessAmount, cleanFullnessTotal);
     const info = db
       .prepare(
-        `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size, percent_full) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size,
+           fullness_unit, fullness_amount, fullness_total, percent_full)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack, cleanPercent);
+      .run(
+        cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack,
+        cleanFullnessUnitVal, cleanFullnessAmount, cleanFullnessTotal, percent
+      );
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -175,21 +210,33 @@ app.put('/api/items/:id', (req, res) => {
   const unit = typeof req.body.unit === 'string' ? req.body.unit.trim() : existing.unit;
   const location = VALID_LOCATIONS.has(req.body.location) ? req.body.location : existing.location;
   const category = CATEGORY_IDS.has(req.body.category) ? req.body.category : existing.category;
-  // expirationDate / packSize / percentFull: omit the field to leave it
-  // unchanged; send '' or null to clear it.
+  // expirationDate / packSize / fullness*: omit a field to leave it
+  // unchanged; send '' or null to clear it. percentFull is always
+  // recomputed from the resulting fullness amount/total, never set directly.
   const expirationDate = 'expirationDate' in req.body
     ? cleanExpirationDate(req.body.expirationDate)
     : existing.expiration_date;
   const packSize = 'packSize' in req.body ? cleanPackSize(req.body.packSize) : existing.pack_size;
-  const percentFull = 'percentFull' in req.body ? cleanPercentFull(req.body.percentFull) : existing.percent_full;
+  const fullnessUnit = 'fullnessUnit' in req.body
+    ? cleanFullnessUnit(req.body.fullnessUnit)
+    : existing.fullness_unit;
+  const fullnessAmount = 'fullnessAmount' in req.body
+    ? cleanPositiveAmount(req.body.fullnessAmount)
+    : existing.fullness_amount;
+  const fullnessTotal = 'fullnessTotal' in req.body
+    ? cleanPositiveAmount(req.body.fullnessTotal)
+    : existing.fullness_total;
+  const percentFull = computePercentFull(fullnessAmount, fullnessTotal);
   const qty = req.body.quantity !== undefined ? Number(req.body.quantity) : existing.quantity;
   if (!Number.isFinite(qty) || qty < 0) {
     return res.status(400).json({ error: 'Quantity must be a non-negative number.' });
   }
 
   db.prepare(
-    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?, pack_size = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(name, qty, unit, location, category, expirationDate, packSize, percentFull, id);
+    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?,
+       pack_size = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
+       updated_at = datetime('now') WHERE id = ?`
+  ).run(name, qty, unit, location, category, expirationDate, packSize, fullnessUnit, fullnessAmount, fullnessTotal, percentFull, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });

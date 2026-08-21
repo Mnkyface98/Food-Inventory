@@ -154,11 +154,16 @@ these rules, in order — the first one that applies wins:
 
 1. **Out of stock** — quantity is 0 (or, for a tracked single container,
    0% full) always shows "Out," overriding everything else below.
-2. **% full tracking** — if you've set a "% full" for the item (only
-   available while quantity is exactly 1, via the "Low-stock tracking"
-   section on the Add/Edit form), it's flagged low at **30% full or less**
-   (i.e. 70%+ used). Setting quantity to anything other than 1 clears this,
-   since "% full" stops making sense once there's more than one container.
+2. **Container fullness tracking** — instead of typing an abstract
+   percentage, you enter a real measurement: a unit (oz, fl oz, ml, L, g,
+   kg, or lb), how much is remaining, and the container's total size (e.g.
+   "10 remaining of a 16 oz total"). The app computes the percentage
+   itself and flags it low at **30% full or less** (i.e. 70%+ used) — the
+   item's card shows the reading itself (e.g. "10/16 oz") alongside the
+   badge. Only available while quantity is exactly 1 *and* no pack size is
+   set on the item (both shown/cleared automatically as those change),
+   since fullness stops meaning anything with 2+ containers or once
+   you're counting a pack instead.
 3. **Pack size tracking** — if you've set a "pack size" (the count it
    started at, e.g. 24), it's flagged low once the remaining quantity drops
    to **25% or less** of that (6 or fewer left of a 24-pack).
@@ -168,10 +173,10 @@ these rules, in order — the first one that applies wins:
    **4 or fewer** cans.
 6. **Everything else** — the flat fallback: low at **1 or fewer**.
 
-Pack size and % full are optional and per-item — set them once on an item
-you want tracked that way (tap its name to edit, or set them when adding
-it) and they stick until you change or clear them; every other item just
-uses whichever of rules 4-6 applies.
+Pack size and container fullness are optional and per-item — set them
+once on an item you want tracked that way (tap its name to edit, or set
+them when adding it) and they stick until you change or clear them; every
+other item just uses whichever of rules 4-6 applies.
 
 ## API
 

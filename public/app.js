@@ -10,8 +10,10 @@
   const categorySelect = document.getElementById('item-category');
   const expirationInput = document.getElementById('item-expiration');
   const packSizeInput = document.getElementById('item-pack-size');
-  const percentFullInput = document.getElementById('item-percent-full');
-  const percentFullWrap = document.getElementById('percent-full-wrap');
+  const fullnessWrap = document.getElementById('fullness-wrap');
+  const fullnessUnitInput = document.getElementById('item-fullness-unit');
+  const fullnessRemainingInput = document.getElementById('item-fullness-remaining');
+  const fullnessTotalInput = document.getElementById('item-fullness-total');
   const tabsEl = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -134,20 +136,26 @@
     return Number.isInteger(qty) ? String(qty) : String(Math.round(qty * 100) / 100);
   }
 
-  // "% full" only makes sense for exactly one container — hide it (and
-  // clear any value) whenever quantity isn't 1. Shared by the Add form
-  // and every inline edit form.
-  function wirePercentFullVisibility(qtyEl, wrapEl, percentEl) {
+  // Container fullness only makes sense for exactly one item that isn't
+  // itself being tracked as a multi-pack — hide it (and clear any values)
+  // whenever quantity isn't 1 or a pack size is set. Shared by the Add
+  // form and every inline edit form.
+  function wireFullnessVisibility(qtyEl, packEl, wrapEl, unitEl, remainingEl, totalEl) {
     function sync() {
-      const isSingle = Number(qtyEl.value) === 1;
-      wrapEl.classList.toggle('hidden', !isSingle);
-      if (!isSingle) percentEl.value = '';
+      const applies = Number(qtyEl.value) === 1 && !packEl.value;
+      wrapEl.classList.toggle('hidden', !applies);
+      if (!applies) {
+        unitEl.value = '';
+        remainingEl.value = '';
+        totalEl.value = '';
+      }
     }
     qtyEl.addEventListener('input', sync);
+    packEl.addEventListener('input', sync);
     sync();
   }
 
-  wirePercentFullVisibility(qtyInput, percentFullWrap, percentFullInput);
+  wireFullnessVisibility(qtyInput, packSizeInput, fullnessWrap, fullnessUnitInput, fullnessRemainingInput, fullnessTotalInput);
 
   function showToast(message) {
     toastEl.textContent = message;
@@ -245,6 +253,13 @@
       const unitSpan = document.createElement('span');
       unitSpan.textContent = item.unit;
       metaEl.appendChild(unitSpan);
+    }
+    if (item.fullnessAmount != null && item.fullnessTotal != null) {
+      const fullnessBadge = document.createElement('span');
+      fullnessBadge.className = 'fullness-badge';
+      const unitSuffix = item.fullnessUnit ? ` ${item.fullnessUnit}` : '';
+      fullnessBadge.textContent = `${formatQty(item.fullnessAmount)}/${formatQty(item.fullnessTotal)}${unitSuffix}`;
+      metaEl.appendChild(fullnessBadge);
     }
     const lowLabel = getLowStockBadge(item);
     if (lowLabel) {
@@ -378,10 +393,9 @@
     lowStockDetails.className = 'low-stock-details';
     const lowStockSummary = document.createElement('summary');
     lowStockSummary.textContent = 'Low-stock tracking (optional)';
-    const lowStockRow = document.createElement('div');
-    lowStockRow.className = 'field-row two-up';
 
-    const packWrap = document.createElement('div');
+    const packRow = document.createElement('div');
+    packRow.className = 'field-row';
     const packLabel = document.createElement('label');
     packLabel.className = 'field-label';
     packLabel.textContent = 'Pack size';
@@ -391,29 +405,55 @@
     packEl.step = 'any';
     packEl.placeholder = 'e.g. 24';
     if (item.packSize != null) packEl.value = item.packSize;
-    packWrap.appendChild(packLabel);
-    packWrap.appendChild(packEl);
+    packRow.appendChild(packLabel);
+    packRow.appendChild(packEl);
 
-    const percentWrap = document.createElement('div');
-    const percentLabel = document.createElement('label');
-    percentLabel.className = 'field-label';
-    percentLabel.textContent = '% full (single item)';
-    const percentEl = document.createElement('input');
-    percentEl.type = 'number';
-    percentEl.min = '0';
-    percentEl.max = '100';
-    percentEl.step = 'any';
-    percentEl.placeholder = 'e.g. 70';
-    if (item.percentFull != null) percentEl.value = item.percentFull;
-    percentWrap.appendChild(percentLabel);
-    percentWrap.appendChild(percentEl);
+    const fullnessWrapEl = document.createElement('div');
+    fullnessWrapEl.className = 'field-row';
+    const fullnessLabel = document.createElement('label');
+    fullnessLabel.className = 'field-label';
+    fullnessLabel.textContent = 'Container fullness (single item, no pack size)';
+    const fullnessRow = document.createElement('div');
+    fullnessRow.className = 'field-row three-up';
 
-    lowStockRow.appendChild(packWrap);
-    lowStockRow.appendChild(percentWrap);
+    const unitEl2 = document.createElement('select');
+    unitEl2.setAttribute('aria-label', 'Fullness unit');
+    [
+      ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['ml', 'ml'],
+      ['L', 'L'], ['g', 'g'], ['kg', 'kg'], ['lb', 'lb'],
+    ].forEach(([value, label]) => {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      if (value === (item.fullnessUnit || '')) opt.selected = true;
+      unitEl2.appendChild(opt);
+    });
+
+    const remainingEl = document.createElement('input');
+    remainingEl.type = 'number';
+    remainingEl.min = '0';
+    remainingEl.step = 'any';
+    remainingEl.placeholder = 'Remaining';
+    if (item.fullnessAmount != null) remainingEl.value = item.fullnessAmount;
+
+    const totalEl = document.createElement('input');
+    totalEl.type = 'number';
+    totalEl.min = '0';
+    totalEl.step = 'any';
+    totalEl.placeholder = 'Total size';
+    if (item.fullnessTotal != null) totalEl.value = item.fullnessTotal;
+
+    fullnessRow.appendChild(unitEl2);
+    fullnessRow.appendChild(remainingEl);
+    fullnessRow.appendChild(totalEl);
+    fullnessWrapEl.appendChild(fullnessLabel);
+    fullnessWrapEl.appendChild(fullnessRow);
+
     lowStockDetails.appendChild(lowStockSummary);
-    lowStockDetails.appendChild(lowStockRow);
+    lowStockDetails.appendChild(packRow);
+    lowStockDetails.appendChild(fullnessWrapEl);
     if (item.packSize != null || item.percentFull != null) lowStockDetails.open = true;
-    wirePercentFullVisibility(qtyEl, percentWrap, percentEl);
+    wireFullnessVisibility(qtyEl, packEl, fullnessWrapEl, unitEl2, remainingEl, totalEl);
 
     const note = document.createElement('p');
     note.className = 'review-note hidden';
@@ -462,7 +502,9 @@
             category: catEl.value,
             expirationDate: expEl.value || '',
             packSize: packEl.value || '',
-            percentFull: percentEl.value || '',
+            fullnessUnit: unitEl2.value || '',
+            fullnessAmount: remainingEl.value || '',
+            fullnessTotal: totalEl.value || '',
           }),
         });
         const idx = items.findIndex((i) => i.id === updated.id);
@@ -535,7 +577,9 @@
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
     const packSize = packSizeInput.value || undefined;
-    const percentFull = percentFullInput.value || undefined;
+    const fullnessUnit = fullnessUnitInput.value || undefined;
+    const fullnessAmount = fullnessRemainingInput.value || undefined;
+    const fullnessTotal = fullnessTotalInput.value || undefined;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -548,7 +592,10 @@
     try {
       const saved = await api('/api/items', {
         method: 'POST',
-        body: JSON.stringify({ name, quantity, unit, location, category, expirationDate, packSize, percentFull }),
+        body: JSON.stringify({
+          name, quantity, unit, location, category, expirationDate,
+          packSize, fullnessUnit, fullnessAmount, fullnessTotal,
+        }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
       if (idx === -1) items.push(saved);
@@ -561,8 +608,10 @@
       categorySelect.value = '';
       expirationInput.value = '';
       packSizeInput.value = '';
-      percentFullInput.value = '';
-      qtyInput.dispatchEvent(new Event('input')); // re-sync the % full field's visibility for qty=1
+      fullnessUnitInput.value = '';
+      fullnessRemainingInput.value = '';
+      fullnessTotalInput.value = '';
+      qtyInput.dispatchEvent(new Event('input')); // re-sync the fullness fields' visibility for qty=1
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
