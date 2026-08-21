@@ -315,12 +315,22 @@
     }
   });
 
+  function setActiveLocation(location) {
+    activeLocation = location;
+    [...tabsEl.children].forEach((c) => c.classList.toggle('active', c.dataset.location === location));
+    render();
+  }
+
   tabsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.tab');
     if (!btn) return;
-    activeLocation = btn.dataset.location;
-    [...tabsEl.children].forEach((c) => c.classList.toggle('active', c === btn));
-    render();
+    setActiveLocation(btn.dataset.location);
+  });
+
+  // Picking a location in the "Add an item" form also switches the list's
+  // filter tab to match, so you immediately see the shelf you're adding to.
+  locationSelect.addEventListener('change', () => {
+    setActiveLocation(locationSelect.value);
   });
 
   searchInput.addEventListener('input', () => {
