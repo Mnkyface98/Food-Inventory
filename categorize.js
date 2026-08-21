@@ -71,6 +71,76 @@ function guessCategory(name) {
   return 'other';
 }
 
+// Open Food Facts' own category taxonomy (its `categories_tags` field,
+// e.g. "en:hazelnut-spreads") is far more specific than a product's bare
+// name — a barcode scan for "Nutella" won't have "hazelnut" or "spread"
+// in its name, but OFF already knows it's a spread. When that data is
+// available (i.e. only from a barcode lookup), prefer it over guessing
+// from the name. Same longest-tag-wins approach as the name-based rules.
+const OFF_TAG_RULES = [
+  ['frozen', ['frozen-foods', 'ice-creams', 'ice-cream', 'sorbets', 'frozen-desserts']],
+  ['produce', [
+    'fresh-vegetables', 'fresh-fruits', 'vegetables', 'fruits', 'herbs', 'mushrooms',
+    'salads', 'fresh-produce',
+  ]],
+  ['dairy_eggs', [
+    'dairies', 'milks', 'cheeses', 'yogurts', 'yoghurts', 'eggs', 'butters', 'creams',
+    'fermented-milk-products',
+  ]],
+  ['meat_seafood', [
+    'meats', 'poultries', 'poultry', 'seafood', 'fishes', 'sausages', 'cold-cuts',
+    'charcuterie', 'shellfish',
+  ]],
+  ['bakery', ['breads', 'bakery-products', 'viennoiseries', 'cakes', 'pastries']],
+  ['grains_pasta', [
+    'cereals-and-potatoes', 'pastas', 'rices', 'breakfast-cereals', 'noodles', 'flours-and-grains',
+  ]],
+  ['canned_goods', [
+    'canned-foods', 'canned-vegetables', 'canned-fish', 'soups', 'legumes', 'beans',
+    'chickpeas', 'lentils', 'canned-plant-based-foods',
+  ]],
+  ['condiments_sauces', [
+    'sauces', 'condiments', 'spreads', 'dressings', 'vinegars', 'ketchups', 'mustards',
+    'mayonnaises', 'chocolate-spreads', 'nut-spreads', 'jams',
+  ]],
+  ['spices_baking', [
+    'spices', 'flours', 'sugars', 'baking-products', 'oils-and-fats', 'salts', 'vegetable-oils',
+    'herbs-and-spices',
+  ]],
+  ['snacks', [
+    'snacks', 'chips-and-fries', 'biscuits-and-cakes', 'sweet-snacks', 'salty-snacks',
+    'candies', 'chocolates', 'nuts', 'crackers',
+  ]],
+  ['beverages', [
+    'beverages', 'waters', 'juices', 'sodas', 'teas', 'coffees', 'alcoholic-beverages',
+    'plant-based-beverages', 'energy-drinks',
+  ]],
+];
+
+const OFF_FLAT_TAG_RULES = OFF_TAG_RULES.flatMap(([category, tags]) =>
+  tags.map((tag) => [tag, category])
+).sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * Guess a category from Open Food Facts' `categories_tags` array (e.g.
+ * ["en:spreads", "en:hazelnut-spreads"]). Returns null if none of the
+ * tags match anything, so the caller can fall back to name-based
+ * guessCategory() instead of defaulting straight to "other".
+ */
+function guessCategoryFromTags(categoriesTags) {
+  if (!Array.isArray(categoriesTags) || categoriesTags.length === 0) return null;
+  // Strip language prefixes ("en:", "fr:", ...) and join into one string
+  // to scan — order doesn't matter since we always take the longest,
+  // most-specific matching tag across all of them.
+  const joined = categoriesTags
+    .map((t) => String(t).toLowerCase().replace(/^[a-z]{2,3}:/, ''))
+    .join(' ');
+  for (const [tag, category] of OFF_FLAT_TAG_RULES) {
+    if (joined.includes(tag)) return category;
+  }
+  return null;
+}
+
 // Common items that hint at a default storage location when none is stated.
 const FRIDGE_HINTS = ['milk', 'egg', 'cheese', 'yogurt', 'butter', 'cream', 'juice', 'leftover'];
 const FREEZER_HINTS = ['ice cream', 'frozen', 'popsicle'];
@@ -86,4 +156,4 @@ function guessLocation(name) {
   return 'pantry';
 }
 
-module.exports = { CATEGORIES, CATEGORY_IDS, guessCategory, guessLocation };
+module.exports = { CATEGORIES, CATEGORY_IDS, guessCategory, guessCategoryFromTags, guessLocation };

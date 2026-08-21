@@ -2,7 +2,7 @@
 // (https://world.openfoodfacts.org), a public, community-maintained product
 // database. No API key or paid service involved.
 
-const { guessCategory } = require('./categorize');
+const { guessCategory, guessCategoryFromTags } = require('./categorize');
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product';
 
@@ -55,12 +55,17 @@ async function lookupBarcode(code, fetchImpl = fetch) {
   const product = data.product;
   const name = product.product_name.trim();
   const { quantity, unit } = parseQuantityString(product.quantity);
+  // Prefer Open Food Facts' own category data over guessing from the name
+  // — it knows "Nutella" is a hazelnut spread even though neither word
+  // appears in the product name. Fall back to the name-based guess (and
+  // ultimately "other") when OFF has no usable category tags.
+  const category = guessCategoryFromTags(product.categories_tags) || guessCategory(name);
 
   return {
     barcode: code,
     name,
     brand: (product.brands || '').split(',')[0].trim(),
-    category: guessCategory(name),
+    category,
     quantity,
     unit,
   };

@@ -110,6 +110,12 @@ stocking one.
   — a free, keyless public product database. If a barcode isn't found
   there, you get a clear message and an empty review card to fill in
   manually — nothing is guessed at random.
+- **Category** for a scanned item is taken from Open Food Facts' own
+  category data when available (more accurate for branded/unusual names —
+  e.g. "Nutella Hazelnut Spread" correctly lands in Condiments & Sauces
+  because OFF tags it as a spread, even though neither word is in the
+  keyword list), falling back to the same name-based guess as manual/voice
+  entry when OFF has no category data for that product.
 - The scanned barcode number itself isn't stored — only the resulting item.
 
 ## Receipt scanning
