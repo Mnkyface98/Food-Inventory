@@ -34,6 +34,9 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once
+- **Edit any item after adding it**: tap its name to open an inline edit
+  form for name, quantity, unit, location, category, and expiration date —
+  Save commits, Cancel discards
 - Delete items you no longer want to track
 - Filter by location and search by name
 - Responsive, large-tap-target layout designed for phone browsers

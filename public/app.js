@@ -35,6 +35,7 @@
   let activeLocation = 'all';
   let searchTerm = '';
   let toastTimer = null;
+  let editingId = null; // id of the item currently shown as an edit form, if any
 
   // An item at or below this quantity is flagged "Low" so it's easy to
   // spot at the top of its category group.
@@ -156,7 +157,7 @@
         heading.textContent = categoryLabels[item.category] || 'Other';
         listEl.appendChild(heading);
       }
-      listEl.appendChild(renderItem(item));
+      listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
     }
   }
 
@@ -168,9 +169,15 @@
     const info = document.createElement('div');
     info.className = 'item-info';
 
-    const nameEl = document.createElement('div');
-    nameEl.className = 'item-name';
+    const nameEl = document.createElement('button');
+    nameEl.type = 'button';
+    nameEl.className = 'item-name item-name-btn';
     nameEl.textContent = item.name;
+    nameEl.setAttribute('aria-label', `Edit ${item.name}`);
+    nameEl.addEventListener('click', () => {
+      editingId = item.id;
+      render();
+    });
 
     const metaEl = document.createElement('div');
     metaEl.className = 'item-meta';
@@ -235,6 +242,149 @@
     li.appendChild(info);
     li.appendChild(controls);
     li.appendChild(deleteBtn);
+    return li;
+  }
+
+  // Inline edit form shown in place of an item card when its name is
+  // tapped. Same fields as the Add form, pre-filled with the item's
+  // current values. Nothing is saved until Save is pressed.
+  function renderEditForm(item) {
+    const li = document.createElement('li');
+    li.className = 'item-card item-edit-card';
+    li.dataset.id = item.id;
+
+    const form = document.createElement('form');
+    form.className = 'edit-form';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'field-row';
+    const nameInputEl = document.createElement('input');
+    nameInputEl.type = 'text';
+    nameInputEl.value = item.name;
+    nameInputEl.required = true;
+    nameInputEl.setAttribute('aria-label', 'Item name');
+    nameRow.appendChild(nameInputEl);
+
+    const fieldsRow = document.createElement('div');
+    fieldsRow.className = 'field-row two-up';
+    const qtyEl = document.createElement('input');
+    qtyEl.type = 'number';
+    qtyEl.min = '0';
+    qtyEl.step = 'any';
+    qtyEl.value = item.quantity;
+    qtyEl.required = true;
+    qtyEl.setAttribute('aria-label', 'Quantity');
+    const unitEl = document.createElement('input');
+    unitEl.type = 'text';
+    unitEl.value = item.unit || '';
+    unitEl.placeholder = 'Unit';
+    unitEl.setAttribute('aria-label', 'Unit');
+    fieldsRow.appendChild(qtyEl);
+    fieldsRow.appendChild(unitEl);
+
+    const fieldsRow2 = document.createElement('div');
+    fieldsRow2.className = 'field-row two-up';
+    const locEl = document.createElement('select');
+    locEl.setAttribute('aria-label', 'Location');
+    ['pantry', 'fridge', 'freezer'].forEach((loc) => {
+      const opt = document.createElement('option');
+      opt.value = loc;
+      opt.textContent = loc[0].toUpperCase() + loc.slice(1);
+      if (loc === item.location) opt.selected = true;
+      locEl.appendChild(opt);
+    });
+    const catEl = document.createElement('select');
+    catEl.setAttribute('aria-label', 'Category');
+    categories.forEach((cat) => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.label;
+      if (cat.id === item.category) opt.selected = true;
+      catEl.appendChild(opt);
+    });
+    fieldsRow2.appendChild(locEl);
+    fieldsRow2.appendChild(catEl);
+
+    const expRow = document.createElement('div');
+    expRow.className = 'field-row';
+    const expLabel = document.createElement('label');
+    expLabel.className = 'field-label';
+    expLabel.textContent = 'Expiration date (optional)';
+    const expEl = document.createElement('input');
+    expEl.type = 'date';
+    expEl.setAttribute('aria-label', 'Expiration date');
+    if (item.expirationDate) expEl.value = item.expirationDate;
+    expRow.appendChild(expLabel);
+    expRow.appendChild(expEl);
+
+    const note = document.createElement('p');
+    note.className = 'review-note hidden';
+
+    const buttons = document.createElement('div');
+    buttons.className = 'review-card-buttons';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'submit';
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.textContent = 'Save';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+      editingId = null;
+      render();
+    });
+    buttons.appendChild(saveBtn);
+    buttons.appendChild(cancelBtn);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = nameInputEl.value.trim();
+      const quantity = Number(qtyEl.value);
+      if (!name) {
+        note.textContent = 'Item name is required.';
+        note.classList.remove('hidden');
+        return;
+      }
+      if (!Number.isFinite(quantity) || quantity < 0) {
+        note.textContent = 'Enter a valid quantity.';
+        note.classList.remove('hidden');
+        return;
+      }
+      saveBtn.disabled = true;
+      note.classList.add('hidden');
+      try {
+        const updated = await api(`/api/items/${item.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name,
+            quantity,
+            unit: unitEl.value.trim(),
+            location: locEl.value,
+            category: catEl.value,
+            expirationDate: expEl.value || '',
+          }),
+        });
+        const idx = items.findIndex((i) => i.id === updated.id);
+        if (idx !== -1) items[idx] = updated;
+        editingId = null;
+        render();
+        showToast(`Saved ${updated.name}`);
+      } catch (err) {
+        note.textContent = err.message;
+        note.classList.remove('hidden');
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    form.appendChild(nameRow);
+    form.appendChild(fieldsRow);
+    form.appendChild(fieldsRow2);
+    form.appendChild(expRow);
+    form.appendChild(note);
+    form.appendChild(buttons);
+    li.appendChild(form);
     return li;
   }
 
