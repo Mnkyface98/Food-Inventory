@@ -152,6 +152,12 @@ input:focus, select:focus, button:focus-visible {
   justify-content: center;
 }
 
+.voice-submit-btn {
+  flex: 0 0 auto;
+  padding: 0.7rem 0.9rem;
+  white-space: nowrap;
+}
+
 .mic-btn.listening {
   background: var(--danger);
   color: #fff;
