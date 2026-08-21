@@ -68,19 +68,21 @@ app.get('/api/categories', (req, res) => {
   res.json(CATEGORIES);
 });
 
-// List all items. Ordered by location, then category; within a category,
-// items with an expiration date sort first (soonest first), then items
-// without one sort by quantity ascending (low-stock first).
+// List all items. Ordered by category first (so all of a category's items
+// stay contiguous for grouping/filtering regardless of which location
+// they're in); within a category, items with an expiration date sort
+// first (soonest first), then items without one sort by quantity
+// ascending (low-stock first).
 app.get('/api/items', (req, res) => {
   const rows = db
     .prepare(
       `SELECT * FROM items
        ORDER BY
-         location,
          category,
          CASE WHEN expiration_date IS NOT NULL AND expiration_date != '' THEN 0 ELSE 1 END,
          expiration_date,
          quantity,
+         location,
          name COLLATE NOCASE`
     )
     .all();

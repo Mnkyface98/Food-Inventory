@@ -39,7 +39,9 @@ type and sorted so what's expiring soon or running low surfaces first.
   form for name, quantity, unit, location, category, and expiration date —
   Save commits, Cancel discards
 - Delete items you no longer want to track
-- Filter by location and search by name
+- Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
+  search by name; each item still shows its Pantry/Fridge/Freezer location
+  as a pill on its card
 - Responsive, large-tap-target layout designed for phone browsers
 - Persistent storage via SQLite (survives server restarts)
 
@@ -176,7 +178,7 @@ uses whichever of rules 4-6 applies.
 | Method | Path                     | Description                             |
 | ------ | ------------------------ | ---------------------------------------- |
 | GET    | `/api/categories`          | List valid food categories              |
-| GET    | `/api/items`              | List all items (grouped by location/category, low-stock first) |
+| GET    | `/api/items`              | List all items (grouped by category, low-stock/expiring first) |
 | POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted; expiration date kept as the sooner of the two on merge) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |

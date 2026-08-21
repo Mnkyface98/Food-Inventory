@@ -12,7 +12,7 @@
   const packSizeInput = document.getElementById('item-pack-size');
   const percentFullInput = document.getElementById('item-percent-full');
   const percentFullWrap = document.getElementById('percent-full-wrap');
-  const tabsEl = document.getElementById('location-tabs');
+  const tabsEl = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
 
@@ -35,7 +35,7 @@
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
   let categoryLabels = {};
-  let activeLocation = 'all';
+  let activeCategory = 'all';
   let searchTerm = '';
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
@@ -115,9 +115,16 @@
         opt.value = cat.id;
         opt.textContent = cat.label;
         categorySelect.appendChild(opt);
+
+        const tabBtn = document.createElement('button');
+        tabBtn.type = 'button';
+        tabBtn.className = 'tab';
+        tabBtn.dataset.category = cat.id;
+        tabBtn.textContent = cat.label;
+        tabsEl.appendChild(tabBtn);
       }
     } catch (err) {
-      // Non-fatal: category dropdowns just stay empty/"Auto" if this fails.
+      // Non-fatal: category dropdown/tabs just stay at "Auto"/"All" if this fails.
       console.error('Failed to load categories', err);
     }
   }
@@ -177,9 +184,9 @@
 
   function render() {
     const filtered = items.filter((item) => {
-      const matchesLocation = activeLocation === 'all' || item.location === activeLocation;
+      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm);
-      return matchesLocation && matchesSearch;
+      return matchesCategory && matchesSearch;
     });
 
     listEl.innerHTML = '';
@@ -194,10 +201,12 @@
     emptyStateEl.classList.add('hidden');
 
     // Group by category, preserving the server's ordering within each
-    // group (category, then quantity ascending — low stock first).
+    // group (category, then quantity ascending — low stock first). When a
+    // single category tab is already active, every item is that category,
+    // so the heading would just repeat the tab you clicked — skip it.
     let currentCategory = null;
     for (const item of filtered) {
-      if (item.category !== currentCategory) {
+      if (activeCategory === 'all' && item.category !== currentCategory) {
         currentCategory = item.category;
         const heading = document.createElement('li');
         heading.className = 'category-heading';
@@ -562,22 +571,23 @@
     }
   });
 
-  function setActiveLocation(location) {
-    activeLocation = location;
-    [...tabsEl.children].forEach((c) => c.classList.toggle('active', c.dataset.location === location));
+  function setActiveCategory(category) {
+    activeCategory = category;
+    [...tabsEl.children].forEach((c) => c.classList.toggle('active', c.dataset.category === category));
     render();
   }
 
   tabsEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.tab');
     if (!btn) return;
-    setActiveLocation(btn.dataset.location);
+    setActiveCategory(btn.dataset.category);
   });
 
-  // Picking a location in the "Add an item" form also switches the list's
-  // filter tab to match, so you immediately see the shelf you're adding to.
-  locationSelect.addEventListener('change', () => {
-    setActiveLocation(locationSelect.value);
+  // Picking a specific category in the "Add an item" form also switches
+  // the list's filter tab to match, so you immediately see where it
+  // landed. "Auto" has no single category to switch to, so it's a no-op.
+  categorySelect.addEventListener('change', () => {
+    if (categorySelect.value) setActiveCategory(categorySelect.value);
   });
 
   searchInput.addEventListener('input', () => {
