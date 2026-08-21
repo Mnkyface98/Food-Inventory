@@ -6,19 +6,37 @@ const { guessCategory, guessCategoryFromTags } = require('./categorize');
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product';
 
-// Open Food Facts' "quantity" field (e.g. "500 ml", "16 oz", "12 x 330 ml")
-// describes how much is IN one package — not how many packages you have.
-// Scanning a barcode always means you're adding exactly one of that
-// product, so this is used as a size descriptor for the item's `unit`
-// field (e.g. "1 × 500 ml"), never as the item's quantity. Falls back to
-// the raw string, or '' if there's nothing usable.
+// OFF spells units in various ways ("l", "liter", "litre"...) — map them
+// onto the fixed set the app's Container Fullness feature understands.
+// cl/dl convert into ml since we don't track those units directly.
+const UNIT_ALIASES = {
+  g: 'g', gram: 'g', grams: 'g',
+  kg: 'kg', kilogram: 'kg', kilograms: 'kg',
+  ml: 'ml', milliliter: 'ml', milliliters: 'ml', millilitre: 'ml', millilitres: 'ml',
+  l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  'fl oz': 'fl oz', floz: 'fl oz', 'fl. oz': 'fl oz', 'fluid ounce': 'fl oz', 'fluid ounces': 'fl oz',
+  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+};
+
+// Open Food Facts' "quantity" field (e.g. "500 ml", "16 oz") describes how
+// much is IN one package — not how many packages you have, and not a
+// generic unit label either. Scanning a barcode always means you're
+// adding exactly 1 of the product; this instead feeds the Container
+// Fullness fields (assumed full, since it's presumably a fresh one),
+// which is what actually uses a real amount for low-stock tracking.
+// Returns null when the string can't be parsed into a unit this app knows.
 function parsePackageSize(raw) {
-  if (typeof raw !== 'string' || !raw.trim()) return '';
-  const match = raw.match(/([\d.]+)\s*([a-zA-Z]+)/);
-  if (!match) return raw.trim();
-  const amount = parseFloat(match[1]);
-  if (!Number.isFinite(amount) || amount <= 0) return raw.trim();
-  return `${match[1]} ${match[2].toLowerCase()}`;
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const match = raw.match(/([\d.]+)\s*([a-zA-Z. ]+)/);
+  if (!match) return null;
+  let amount = parseFloat(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  let rawUnit = match[2].trim().toLowerCase().replace(/\.$/, '');
+  if (rawUnit === 'cl') { amount *= 10; rawUnit = 'ml'; }
+  else if (rawUnit === 'dl') { amount *= 100; rawUnit = 'ml'; }
+  const unit = UNIT_ALIASES[rawUnit];
+  return unit ? { amount, unit } : null;
 }
 
 /**
@@ -58,6 +76,7 @@ async function lookupBarcode(code, fetchImpl = fetch) {
   // appears in the product name. Fall back to the name-based guess (and
   // ultimately "other") when OFF has no usable category tags.
   const category = guessCategoryFromTags(product.categories_tags) || guessCategory(name);
+  const size = parsePackageSize(product.quantity);
 
   return {
     barcode: code,
@@ -65,7 +84,10 @@ async function lookupBarcode(code, fetchImpl = fetch) {
     brand: (product.brands || '').split(',')[0].trim(),
     category,
     quantity: 1, // scanning a barcode always means you're adding 1 of this product
-    unit: parsePackageSize(product.quantity), // e.g. "500 ml" — package size, not a count
+    unit: '', // a plain container word (e.g. "bottle") if you want to add one — not guessed
+    fullnessUnit: size ? size.unit : null,
+    fullnessAmount: size ? size.amount : null, // assumed full — it's presumably a fresh one
+    fullnessTotal: size ? size.amount : null,
   };
 }
 

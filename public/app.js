@@ -142,7 +142,7 @@
   // form and every inline edit form.
   function wireFullnessVisibility(qtyEl, packEl, wrapEl, unitEl, remainingEl, totalEl) {
     function sync() {
-      const applies = Number(qtyEl.value) === 1 && !packEl.value;
+      const applies = Number(qtyEl.value) === 1 && !(packEl && packEl.value);
       wrapEl.classList.toggle('hidden', !applies);
       if (!applies) {
         unitEl.value = '';
@@ -151,7 +151,7 @@
       }
     }
     qtyEl.addEventListener('input', sync);
-    packEl.addEventListener('input', sync);
+    if (packEl) packEl.addEventListener('input', sync);
     sync();
   }
 
@@ -763,6 +763,9 @@
           category: product.category,
           action: 'add',
           expirationDate: null,
+          fullnessUnit: product.fullnessUnit,
+          fullnessAmount: product.fullnessAmount,
+          fullnessTotal: product.fullnessTotal,
         },
       ]);
       showToast(`Found: ${product.name}`);
@@ -980,6 +983,57 @@
       expEl.addEventListener('input', () => (state.expirationDate = expEl.value || null));
       expRow.appendChild(expEl);
 
+      // Container fullness — collapsed by default (nothing to show for a
+      // typical voice/receipt item), auto-opened when a barcode scan
+      // already populated it. Only applies while quantity is 1.
+      const fullnessDetails = document.createElement('details');
+      fullnessDetails.className = 'low-stock-details';
+      const fullnessSummary = document.createElement('summary');
+      fullnessSummary.textContent = 'Container fullness (optional)';
+      const fullnessWrapEl2 = document.createElement('div');
+      fullnessWrapEl2.className = 'field-row';
+      const fullnessRow2 = document.createElement('div');
+      fullnessRow2.className = 'field-row three-up';
+
+      const fUnitEl = document.createElement('select');
+      fUnitEl.setAttribute('aria-label', 'Fullness unit');
+      [
+        ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['ml', 'ml'],
+        ['L', 'L'], ['g', 'g'], ['kg', 'kg'], ['lb', 'lb'],
+      ].forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        if (value === (state.fullnessUnit || '')) opt.selected = true;
+        fUnitEl.appendChild(opt);
+      });
+      fUnitEl.addEventListener('change', () => (state.fullnessUnit = fUnitEl.value || null));
+
+      const fRemainingEl = document.createElement('input');
+      fRemainingEl.type = 'number';
+      fRemainingEl.min = '0';
+      fRemainingEl.step = 'any';
+      fRemainingEl.placeholder = 'Remaining';
+      if (state.fullnessAmount != null) fRemainingEl.value = state.fullnessAmount;
+      fRemainingEl.addEventListener('input', () => (state.fullnessAmount = fRemainingEl.value || null));
+
+      const fTotalEl = document.createElement('input');
+      fTotalEl.type = 'number';
+      fTotalEl.min = '0';
+      fTotalEl.step = 'any';
+      fTotalEl.placeholder = 'Total size';
+      if (state.fullnessTotal != null) fTotalEl.value = state.fullnessTotal;
+      fTotalEl.addEventListener('input', () => (state.fullnessTotal = fTotalEl.value || null));
+
+      fullnessRow2.appendChild(fUnitEl);
+      fullnessRow2.appendChild(fRemainingEl);
+      fullnessRow2.appendChild(fTotalEl);
+      fullnessWrapEl2.appendChild(fullnessRow2);
+      fullnessDetails.appendChild(fullnessSummary);
+      fullnessDetails.appendChild(fullnessWrapEl2);
+      if (state.fullnessAmount != null) fullnessDetails.open = true;
+      wireFullnessVisibility(qtyEl, null, fullnessWrapEl2, fUnitEl, fRemainingEl, fTotalEl);
+
       const note = document.createElement('p');
       note.className = 'review-note hidden';
 
@@ -1028,6 +1082,9 @@
                 location: state.location,
                 category: state.category,
                 expirationDate: state.expirationDate,
+                fullnessUnit: state.fullnessUnit,
+                fullnessAmount: state.fullnessAmount,
+                fullnessTotal: state.fullnessTotal,
               }),
             });
             const i = items.findIndex((it) => it.id === saved.id);
@@ -1056,6 +1113,7 @@
       card.appendChild(catRow);
       card.appendChild(fieldsRow);
       card.appendChild(expRow);
+      card.appendChild(fullnessDetails);
       card.appendChild(note);
       card.appendChild(buttons);
       voiceReviewEl.appendChild(card);
