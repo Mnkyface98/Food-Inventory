@@ -27,7 +27,8 @@ type and sorted so what's expiring soon or running low surfaces first.
   today/tomorrow" and "Expired" badges
 - Within each category, items with no expiration date sort by
   **lowest quantity first** (with "Low"/"Out" badges) so what needs
-  restocking is easy to spot
+  restocking is easy to spot. What counts as "low" (see below) can be
+  tailored per item, not just one flat number for everything
 - **Barcode scanning**: tap 📷, point your phone's camera at a product
   barcode, and it's looked up automatically (name, category, package size)
   and dropped into the same review flow as voice entry
@@ -143,6 +144,32 @@ confirm.
   in-focus works best. A blurry or angled photo may miss items or misread
   names; nothing is guessed beyond what's on the page, and unrecognized
   photos say so rather than fabricating items.
+
+## What counts as "low stock"
+
+Rather than one flat number for every item, each item is checked against
+these rules, in order — the first one that applies wins:
+
+1. **Out of stock** — quantity is 0 (or, for a tracked single container,
+   0% full) always shows "Out," overriding everything else below.
+2. **% full tracking** — if you've set a "% full" for the item (only
+   available while quantity is exactly 1, via the "Low-stock tracking"
+   section on the Add/Edit form), it's flagged low at **30% full or less**
+   (i.e. 70%+ used). Setting quantity to anything other than 1 clears this,
+   since "% full" stops making sense once there's more than one container.
+3. **Pack size tracking** — if you've set a "pack size" (the count it
+   started at, e.g. 24), it's flagged low once the remaining quantity drops
+   to **25% or less** of that (6 or fewer left of a 24-pack).
+4. **Canned food** (unit "can"/"cans" + category Canned Goods) — low at
+   **2 or fewer** cans.
+5. **Canned beverages** (unit "can"/"cans" + category Beverages) — low at
+   **4 or fewer** cans.
+6. **Everything else** — the flat fallback: low at **1 or fewer**.
+
+Pack size and % full are optional and per-item — set them once on an item
+you want tracked that way (tap its name to edit, or set them when adding
+it) and they stick until you change or clear them; every other item just
+uses whichever of rules 4-6 applies.
 
 ## API
 

@@ -9,6 +9,9 @@
   const locationSelect = document.getElementById('item-location');
   const categorySelect = document.getElementById('item-category');
   const expirationInput = document.getElementById('item-expiration');
+  const packSizeInput = document.getElementById('item-pack-size');
+  const percentFullInput = document.getElementById('item-percent-full');
+  const percentFullWrap = document.getElementById('percent-full-wrap');
   const tabsEl = document.getElementById('location-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -37,11 +40,40 @@
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
 
-  // An item at or below this quantity is flagged "Low" so it's easy to
-  // spot at the top of its category group.
-  const LOW_STOCK_THRESHOLD = 1;
+  // Low-stock rules, checked in priority order by getLowStockBadge() below:
+  // an item's own pack-size/%-full tracking (if set) wins over the
+  // canned-food/beverage defaults, which win over the flat fallback.
+  const LOW_STOCK_THRESHOLD = 1; // fallback for anything not covered below
+  const PACK_LOW_FRACTION = 0.25; // pack-tracked items: low at <=25% of the original pack left
+  const BOTTLE_LOW_PERCENT = 30; // single-container items: low at <=30% full (i.e. 70%+ used)
+  const CANNED_FOOD_LOW_QTY = 2; // canned food: low at 2 or fewer cans
+  const CANNED_BEVERAGE_LOW_QTY = 4; // canned beverages: low at 4 or fewer cans
   // An item expiring within this many days gets the amber "soon" badge.
   const EXPIRING_SOON_DAYS = 3;
+
+  // Returns 'Out', 'Low', or null (not low) for an item's low-stock badge.
+  function getLowStockBadge(item) {
+    if (item.quantity <= 0) return 'Out';
+
+    // % full only applies while there's exactly one container to speak
+    // of — with 2+ bottles, "how full is THE bottle" stops making sense.
+    if (item.percentFull != null && item.quantity === 1) {
+      if (item.percentFull <= 0) return 'Out';
+      return item.percentFull <= BOTTLE_LOW_PERCENT ? 'Low' : null;
+    }
+
+    if (item.packSize != null && item.packSize > 0) {
+      return item.quantity <= item.packSize * PACK_LOW_FRACTION ? 'Low' : null;
+    }
+
+    const unit = (item.unit || '').trim().toLowerCase();
+    if (unit === 'can' || unit === 'cans') {
+      if (item.category === 'canned_goods') return item.quantity <= CANNED_FOOD_LOW_QTY ? 'Low' : null;
+      if (item.category === 'beverages') return item.quantity <= CANNED_BEVERAGE_LOW_QTY ? 'Low' : null;
+    }
+
+    return item.quantity <= LOW_STOCK_THRESHOLD ? 'Low' : null;
+  }
 
   function daysUntil(dateStr) {
     const today = new Date();
@@ -94,6 +126,21 @@
     // Trim trailing zeros for whole numbers but keep decimals like 1.5
     return Number.isInteger(qty) ? String(qty) : String(Math.round(qty * 100) / 100);
   }
+
+  // "% full" only makes sense for exactly one container — hide it (and
+  // clear any value) whenever quantity isn't 1. Shared by the Add form
+  // and every inline edit form.
+  function wirePercentFullVisibility(qtyEl, wrapEl, percentEl) {
+    function sync() {
+      const isSingle = Number(qtyEl.value) === 1;
+      wrapEl.classList.toggle('hidden', !isSingle);
+      if (!isSingle) percentEl.value = '';
+    }
+    qtyEl.addEventListener('input', sync);
+    sync();
+  }
+
+  wirePercentFullVisibility(qtyInput, percentFullWrap, percentFullInput);
 
   function showToast(message) {
     toastEl.textContent = message;
@@ -190,10 +237,11 @@
       unitSpan.textContent = item.unit;
       metaEl.appendChild(unitSpan);
     }
-    if (item.quantity <= LOW_STOCK_THRESHOLD) {
+    const lowLabel = getLowStockBadge(item);
+    if (lowLabel) {
       const lowBadge = document.createElement('span');
       lowBadge.className = 'low-stock-badge';
-      lowBadge.textContent = item.quantity <= 0 ? 'Out' : 'Low';
+      lowBadge.textContent = lowLabel;
       metaEl.appendChild(lowBadge);
     }
     if (item.expirationDate) {
@@ -317,6 +365,47 @@
     expRow.appendChild(expLabel);
     expRow.appendChild(expEl);
 
+    const lowStockDetails = document.createElement('details');
+    lowStockDetails.className = 'low-stock-details';
+    const lowStockSummary = document.createElement('summary');
+    lowStockSummary.textContent = 'Low-stock tracking (optional)';
+    const lowStockRow = document.createElement('div');
+    lowStockRow.className = 'field-row two-up';
+
+    const packWrap = document.createElement('div');
+    const packLabel = document.createElement('label');
+    packLabel.className = 'field-label';
+    packLabel.textContent = 'Pack size';
+    const packEl = document.createElement('input');
+    packEl.type = 'number';
+    packEl.min = '1';
+    packEl.step = 'any';
+    packEl.placeholder = 'e.g. 24';
+    if (item.packSize != null) packEl.value = item.packSize;
+    packWrap.appendChild(packLabel);
+    packWrap.appendChild(packEl);
+
+    const percentWrap = document.createElement('div');
+    const percentLabel = document.createElement('label');
+    percentLabel.className = 'field-label';
+    percentLabel.textContent = '% full (single item)';
+    const percentEl = document.createElement('input');
+    percentEl.type = 'number';
+    percentEl.min = '0';
+    percentEl.max = '100';
+    percentEl.step = 'any';
+    percentEl.placeholder = 'e.g. 70';
+    if (item.percentFull != null) percentEl.value = item.percentFull;
+    percentWrap.appendChild(percentLabel);
+    percentWrap.appendChild(percentEl);
+
+    lowStockRow.appendChild(packWrap);
+    lowStockRow.appendChild(percentWrap);
+    lowStockDetails.appendChild(lowStockSummary);
+    lowStockDetails.appendChild(lowStockRow);
+    if (item.packSize != null || item.percentFull != null) lowStockDetails.open = true;
+    wirePercentFullVisibility(qtyEl, percentWrap, percentEl);
+
     const note = document.createElement('p');
     note.className = 'review-note hidden';
 
@@ -363,6 +452,8 @@
             location: locEl.value,
             category: catEl.value,
             expirationDate: expEl.value || '',
+            packSize: packEl.value || '',
+            percentFull: percentEl.value || '',
           }),
         });
         const idx = items.findIndex((i) => i.id === updated.id);
@@ -382,6 +473,7 @@
     form.appendChild(fieldsRow);
     form.appendChild(fieldsRow2);
     form.appendChild(expRow);
+    form.appendChild(lowStockDetails);
     form.appendChild(note);
     form.appendChild(buttons);
     li.appendChild(form);
@@ -433,6 +525,8 @@
     const location = locationSelect.value;
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
+    const packSize = packSizeInput.value || undefined;
+    const percentFull = percentFullInput.value || undefined;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -445,7 +539,7 @@
     try {
       const saved = await api('/api/items', {
         method: 'POST',
-        body: JSON.stringify({ name, quantity, unit, location, category, expirationDate }),
+        body: JSON.stringify({ name, quantity, unit, location, category, expirationDate, packSize, percentFull }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
       if (idx === -1) items.push(saved);
@@ -457,6 +551,9 @@
       unitInput.value = '';
       categorySelect.value = '';
       expirationInput.value = '';
+      packSizeInput.value = '';
+      percentFullInput.value = '';
+      qtyInput.dispatchEvent(new Event('input')); // re-sync the % full field's visibility for qty=1
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);

@@ -72,6 +72,22 @@ main {
   gap: 0.5rem;
 }
 
+.low-stock-details {
+  margin-bottom: 0.6rem;
+}
+
+.low-stock-details summary {
+  font-size: 0.85rem;
+  color: var(--green-dark);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.low-stock-details[open] summary {
+  margin-bottom: 0.4rem;
+}
+
 .field-label {
   display: block;
   font-size: 0.8rem;

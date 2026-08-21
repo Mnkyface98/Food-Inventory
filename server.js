@@ -30,6 +30,24 @@ function mergeExpirationDate(existingDate, incomingDate) {
   return existingDate || incomingDate || null;
 }
 
+// packSize: the original count a "pack" started at (e.g. 24), used to
+// flag an item low once it drops to 25% or less remaining. Absent/blank/
+// invalid all clean to null (no pack-size tracking for this item).
+function cleanPackSize(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+// percentFull: how full a single container currently is (0-100). Clamped
+// into range; absent/blank/invalid clean to null.
+function cleanPercentFull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, n));
+}
+
 function serializeItem(row) {
   return {
     id: row.id,
@@ -39,6 +57,8 @@ function serializeItem(row) {
     location: row.location,
     category: row.category,
     expirationDate: row.expiration_date || null,
+    packSize: row.pack_size ?? null,
+    percentFull: row.percent_full ?? null,
     updatedAt: row.updated_at,
   };
 }
@@ -70,7 +90,7 @@ app.get('/api/items', (req, res) => {
 // Create a new item, or if an item with the same name/unit/location already
 // exists, add to its quantity instead of creating a duplicate row.
 app.post('/api/items', (req, res) => {
-  const { name, quantity, unit, location, category, expirationDate } = req.body || {};
+  const { name, quantity, unit, location, category, expirationDate, packSize, percentFull } = req.body || {};
 
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Item name is required.' });
@@ -84,6 +104,8 @@ app.post('/api/items', (req, res) => {
   const cleanName = name.trim();
   const cleanCategory = CATEGORY_IDS.has(category) ? category : guessCategory(cleanName);
   const cleanExpiration = cleanExpirationDate(expirationDate);
+  const cleanPack = cleanPackSize(packSize);
+  const cleanPercent = cleanPercentFull(percentFull);
 
   const existing = db
     .prepare(
@@ -95,16 +117,21 @@ app.post('/api/items', (req, res) => {
   let row;
   if (existing) {
     const mergedExpiration = mergeExpirationDate(existing.expiration_date, cleanExpiration);
+    // Pack size / % full describe metadata about the item, not the
+    // quantity being added — keep the existing value unless this request
+    // explicitly supplies a new one.
+    const mergedPack = cleanPack !== null ? cleanPack : existing.pack_size;
+    const mergedPercent = cleanPercent !== null ? cleanPercent : existing.percent_full;
     db.prepare(
-      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(qty, mergedExpiration, existing.id);
+      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, pack_size = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(qty, mergedExpiration, mergedPack, mergedPercent, existing.id);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id);
   } else {
     const info = db
       .prepare(
-        `INSERT INTO items (name, quantity, unit, location, category, expiration_date) VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size, percent_full) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration);
+      .run(cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack, cleanPercent);
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
   }
 
@@ -146,18 +173,21 @@ app.put('/api/items/:id', (req, res) => {
   const unit = typeof req.body.unit === 'string' ? req.body.unit.trim() : existing.unit;
   const location = VALID_LOCATIONS.has(req.body.location) ? req.body.location : existing.location;
   const category = CATEGORY_IDS.has(req.body.category) ? req.body.category : existing.category;
-  // expirationDate: omit the field to leave it unchanged; send '' or null to clear it.
+  // expirationDate / packSize / percentFull: omit the field to leave it
+  // unchanged; send '' or null to clear it.
   const expirationDate = 'expirationDate' in req.body
     ? cleanExpirationDate(req.body.expirationDate)
     : existing.expiration_date;
+  const packSize = 'packSize' in req.body ? cleanPackSize(req.body.packSize) : existing.pack_size;
+  const percentFull = 'percentFull' in req.body ? cleanPercentFull(req.body.percentFull) : existing.percent_full;
   const qty = req.body.quantity !== undefined ? Number(req.body.quantity) : existing.quantity;
   if (!Number.isFinite(qty) || qty < 0) {
     return res.status(400).json({ error: 'Quantity must be a non-negative number.' });
   }
 
   db.prepare(
-    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(name, qty, unit, location, category, expirationDate, id);
+    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?, pack_size = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(name, qty, unit, location, category, expirationDate, packSize, percentFull, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });

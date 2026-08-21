@@ -69,6 +69,19 @@
           <label for="item-expiration" class="field-label">Expiration date (optional)</label>
           <input id="item-expiration" type="date" />
         </div>
+        <details class="low-stock-details">
+          <summary>Low-stock tracking (optional)</summary>
+          <div class="field-row two-up">
+            <div>
+              <label for="item-pack-size" class="field-label">Pack size</label>
+              <input id="item-pack-size" type="number" min="1" step="any" placeholder="e.g. 24" />
+            </div>
+            <div id="percent-full-wrap">
+              <label for="item-percent-full" class="field-label">% full (single item)</label>
+              <input id="item-percent-full" type="number" min="0" max="100" step="any" placeholder="e.g. 70" />
+            </div>
+          </div>
+        </details>
         <datalist id="unit-options">
           <option value="pcs"></option>
           <option value="lbs"></option>

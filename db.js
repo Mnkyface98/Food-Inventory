@@ -32,6 +32,13 @@ const existingColumns = new Set(db.prepare('PRAGMA table_info(items)').all().map
 const MIGRATIONS = [
   ["ALTER TABLE items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'", 'category'],
   ["ALTER TABLE items ADD COLUMN expiration_date TEXT", 'expiration_date'],
+  // pack_size: the original count a "pack" started at, for items you want
+  // flagged low once they drop to 25% or less of that (e.g. 6 left of 24).
+  ["ALTER TABLE items ADD COLUMN pack_size REAL", 'pack_size'],
+  // percent_full: how full a single container currently is (0-100), for
+  // items like a bottle you're tracking by fullness rather than count.
+  // Only meaningful when quantity is 1.
+  ["ALTER TABLE items ADD COLUMN percent_full REAL", 'percent_full'],
 ];
 for (const [sql, column] of MIGRATIONS) {
   if (!existingColumns.has(column)) {
