@@ -30,8 +30,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   restocking is easy to spot. What counts as "low" (see below) can be
   tailored per item, not just one flat number for everything
 - **Barcode scanning**: tap 📷, point your phone's camera at a product
-  barcode, and it's looked up automatically (name, category, package size)
-  and dropped into the same review flow as voice entry
+  barcode, and it's looked up automatically (name, category) and dropped
+  into the same review flow as voice entry — quantity always starts at 1
+  (you scanned one item), with the package size (e.g. "500 ml") filled
+  into the unit field rather than mistaken for a count
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once

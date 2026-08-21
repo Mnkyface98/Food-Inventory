@@ -6,20 +6,19 @@ const { guessCategory, guessCategoryFromTags } = require('./categorize');
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product';
 
-// Best-effort parse of Open Food Facts' free-text "quantity" field, e.g.
-// "500 g", "1 L", "12 x 330 ml". Falls back to a plain count of 1 with no
-// unit when it can't make sense of the string.
-function parseQuantityString(raw) {
-  if (typeof raw !== 'string' || !raw.trim()) return { quantity: 1, unit: '' };
+// Open Food Facts' "quantity" field (e.g. "500 ml", "16 oz", "12 x 330 ml")
+// describes how much is IN one package — not how many packages you have.
+// Scanning a barcode always means you're adding exactly one of that
+// product, so this is used as a size descriptor for the item's `unit`
+// field (e.g. "1 × 500 ml"), never as the item's quantity. Falls back to
+// the raw string, or '' if there's nothing usable.
+function parsePackageSize(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return '';
   const match = raw.match(/([\d.]+)\s*([a-zA-Z]+)/);
-  if (match) {
-    const quantity = parseFloat(match[1]);
-    return {
-      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
-      unit: match[2].toLowerCase(),
-    };
-  }
-  return { quantity: 1, unit: '' };
+  if (!match) return raw.trim();
+  const amount = parseFloat(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return raw.trim();
+  return `${match[1]} ${match[2].toLowerCase()}`;
 }
 
 /**
@@ -54,7 +53,6 @@ async function lookupBarcode(code, fetchImpl = fetch) {
 
   const product = data.product;
   const name = product.product_name.trim();
-  const { quantity, unit } = parseQuantityString(product.quantity);
   // Prefer Open Food Facts' own category data over guessing from the name
   // — it knows "Nutella" is a hazelnut spread even though neither word
   // appears in the product name. Fall back to the name-based guess (and
@@ -66,9 +64,9 @@ async function lookupBarcode(code, fetchImpl = fetch) {
     name,
     brand: (product.brands || '').split(',')[0].trim(),
     category,
-    quantity,
-    unit,
+    quantity: 1, // scanning a barcode always means you're adding 1 of this product
+    unit: parsePackageSize(product.quantity), // e.g. "500 ml" — package size, not a count
   };
 }
 
-module.exports = { lookupBarcode, parseQuantityString };
+module.exports = { lookupBarcode, parsePackageSize };
