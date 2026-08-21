@@ -67,7 +67,7 @@ redeploy.
 
 ## Voice / quick-sentence entry
 
-Tap the 🎤 button and speak a sentence, or just type one and tap **Parse it**.
+Tap the 🎤 button and speak a sentence, or just type one and tap **Say it**.
 It's split into item(s) with a guessed name, quantity, unit, location, and
 whether you're adding or using it — you review and edit each one before it's
 saved, so nothing is written on a bad guess.
