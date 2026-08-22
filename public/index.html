@@ -43,6 +43,28 @@
       </label>
       <input id="receipt-input" type="file" accept="image/*" capture="environment" class="visually-hidden" />
       <p id="receipt-status" class="mic-hint hidden"></p>
+
+      <button type="button" id="recipe-btn" class="btn btn-secondary btn-full">
+        📋 Enter recipe ingredients
+      </button>
+      <div id="recipe-panel" class="recipe-panel hidden">
+        <div class="field-row">
+          <textarea
+            id="recipe-text"
+            rows="5"
+            placeholder="Paste or type ingredients, one per line, e.g.&#10;2 cups flour&#10;1 tsp salt&#10;3 eggs"
+          ></textarea>
+        </div>
+        <button type="button" id="recipe-parse-btn" class="btn btn-secondary btn-full">
+          Use these ingredients
+        </button>
+        <label for="recipe-image-input" class="btn btn-secondary btn-full receipt-label">
+          📷 Or upload a photo of the recipe
+        </label>
+        <input id="recipe-image-input" type="file" accept="image/*" capture="environment" class="visually-hidden" />
+        <p id="recipe-status" class="mic-hint hidden"></p>
+      </div>
+
       <div id="voice-review" class="voice-review hidden"></div>
     </section>
 

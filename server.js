@@ -5,6 +5,8 @@ const { parseTranscript } = require('./voiceParser');
 const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
 const { lookupBarcode } = require('./barcode');
 const { parseReceiptText } = require('./receiptParser');
+const { parseRecipeText } = require('./recipeParser');
+const { convert: convertUnit } = require('./unitConvert');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -196,6 +198,49 @@ app.post('/api/items/:id/adjust', (req, res) => {
   res.json(serializeItem(row));
 });
 
+// Deduct a used amount from an item — smarter than /adjust for a
+// measurement-based amount (e.g. from a recipe: "used 2 cups of flour").
+// If the item tracks container fullness and the given unit converts to
+// the item's fullness unit (same family — weight or volume; cups never
+// convert to oz, since that needs an ingredient-specific density), it
+// deducts from the tracked fullness instead of the whole-number
+// quantity. Otherwise (no fullness tracking, or an incompatible/absent
+// unit — e.g. "3" eggs) it falls back to a plain quantity decrement, same
+// as /adjust. You only ever say how much was USED; the app computes
+// what's left.
+app.post('/api/items/:id/use', (req, res) => {
+  const { id } = req.params;
+  const amount = Number(req.body && req.body.amount);
+  const unit = typeof req.body?.unit === 'string' ? req.body.unit.trim() : '';
+  if (!Number.isFinite(amount) || amount < 0) {
+    return res.status(400).json({ error: 'amount must be a non-negative number.' });
+  }
+
+  const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Item not found.' });
+  }
+
+  const hasFullness = existing.fullness_amount != null && existing.fullness_total != null && existing.fullness_unit;
+  const converted = hasFullness && unit ? convertUnit(amount, unit, existing.fullness_unit) : null;
+
+  if (converted != null) {
+    const newFullnessAmount = Math.max(0, existing.fullness_amount - converted);
+    const newPercent = computePercentFull(newFullnessAmount, existing.fullness_total);
+    db.prepare(
+      `UPDATE items SET fullness_amount = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(newFullnessAmount, newPercent, id);
+  } else {
+    const newQty = Math.max(0, existing.quantity - amount);
+    db.prepare(
+      `UPDATE items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(newQty, id);
+  }
+
+  const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+  res.json(serializeItem(row));
+});
+
 // Update an item's fields directly (rename, retype unit/location, set quantity).
 app.put('/api/items/:id', (req, res) => {
   const { id } = req.params;
@@ -319,6 +364,38 @@ app.post('/api/receipt/parse', (req, res) => {
   if (cleaned.length === 0) {
     return res.status(422).json({
       error: "Couldn't find any items on that receipt. Try a clearer photo, or add items manually.",
+    });
+  }
+  res.json({ items: cleaned });
+});
+
+// Parse a recipe's ingredient list (typed/pasted text, or OCR'd from a
+// photo) into candidate items to USE from inventory — a recipe consumes
+// ingredients, the opposite of a receipt. Read-only — the client
+// reviews/edits each item (including switching it to Add) before
+// anything is saved.
+app.post('/api/recipe/parse', (req, res) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!text.trim()) {
+    return res.status(400).json({ error: 'text is required.' });
+  }
+
+  const { items } = parseRecipeText(text);
+  const cleaned = items
+    .map((item) => ({
+      name: typeof item.name === 'string' ? item.name.trim() : '',
+      quantity: Number.isFinite(Number(item.quantity)) ? Math.max(0, Number(item.quantity)) : 1,
+      unit: typeof item.unit === 'string' ? item.unit.trim() : '',
+      location: VALID_LOCATIONS.has(item.location) ? item.location : 'pantry',
+      category: CATEGORY_IDS.has(item.category) ? item.category : guessCategory(item.name),
+      action: 'use',
+      expirationDate: null,
+    }))
+    .filter((item) => item.name);
+
+  if (cleaned.length === 0) {
+    return res.status(422).json({
+      error: "Couldn't find any ingredients in that. Try a clearer photo, or type them in instead.",
     });
   }
   res.json({ items: cleaned });

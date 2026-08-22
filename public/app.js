@@ -35,6 +35,13 @@
   const receiptInput = document.getElementById('receipt-input');
   const receiptStatus = document.getElementById('receipt-status');
 
+  const recipeBtn = document.getElementById('recipe-btn');
+  const recipePanel = document.getElementById('recipe-panel');
+  const recipeTextInput = document.getElementById('recipe-text');
+  const recipeParseBtn = document.getElementById('recipe-parse-btn');
+  const recipeImageInput = document.getElementById('recipe-image-input');
+  const recipeStatus = document.getElementById('recipe-status');
+
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
   let categoryLabels = {};
@@ -666,6 +673,7 @@
   useItemBtn.addEventListener('click', async () => {
     const name = nameInput.value.trim();
     const quantity = Number(qtyInput.value);
+    const unit = unitInput.value.trim();
     const location = locationSelect.value;
 
     if (!name) {
@@ -685,9 +693,12 @@
 
     useItemBtn.disabled = true;
     try {
-      const updated = await api(`/api/items/${match.id}/adjust`, {
+      // /use is unit-aware: if the matched item tracks container fullness
+      // (e.g. a bottle) and this unit converts to it (same family — weight
+      // or volume), it deducts from that instead of the whole-item count.
+      const updated = await api(`/api/items/${match.id}/use`, {
         method: 'POST',
-        body: JSON.stringify({ delta: -Math.abs(quantity) }),
+        body: JSON.stringify({ amount: quantity, unit }),
       });
       const idx = items.findIndex((i) => i.id === updated.id);
       if (idx !== -1) items[idx] = updated;
@@ -893,17 +904,15 @@
     receiptInput.disabled = true;
   }
 
-  receiptInput.addEventListener('change', async () => {
-    const file = receiptInput.files && receiptInput.files[0];
-    if (!file) return;
-
-    receiptStatus.classList.remove('hidden');
-    receiptStatus.textContent = 'Reading receipt… this can take a few seconds.';
-
+  // Shared by receipt scanning and recipe-photo entry: runs on-device OCR
+  // over an image file and returns the recognized text. `statusEl` gets
+  // live progress text; the caller is responsible for hiding it after.
+  async function runOcr(file, statusEl) {
+    if (!hasTesseract) throw new Error('Photo scanning is not available in this browser.');
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = 'Reading photo… this can take a few seconds.';
     let worker = null;
     try {
-      if (!hasTesseract) throw new Error('Receipt scanning is not available in this browser.');
-
       worker = await window.Tesseract.createWorker('eng', window.Tesseract.OEM.LSTM_ONLY, {
         workerPath: 'vendor/tesseract/worker.min.js',
         corePath: 'vendor/tesseract/tesseract-core-lstm.wasm.js',
@@ -911,23 +920,12 @@
         gzip: true,
         logger: (m) => {
           if (m.status && typeof m.progress === 'number') {
-            receiptStatus.textContent = `${m.status}… ${Math.round(m.progress * 100)}%`;
+            statusEl.textContent = `${m.status}… ${Math.round(m.progress * 100)}%`;
           }
         },
       });
       const { data } = await worker.recognize(file);
-
-      receiptStatus.textContent = 'Finding items…';
-      const result = await api('/api/receipt/parse', {
-        method: 'POST',
-        body: JSON.stringify({ text: data.text }),
-      });
-
-      voiceReviewEl.classList.remove('hidden');
-      renderReview(result.items);
-      showToast(`Found ${result.items.length} item${result.items.length === 1 ? '' : 's'} on the receipt`);
-    } catch (err) {
-      showToast(`Couldn't read that receipt: ${err.message}`);
+      return data.text;
     } finally {
       if (worker) {
         try {
@@ -936,8 +934,89 @@
           // ignore — worker may already be gone
         }
       }
+    }
+  }
+
+  receiptInput.addEventListener('change', async () => {
+    const file = receiptInput.files && receiptInput.files[0];
+    if (!file) return;
+
+    try {
+      const text = await runOcr(file, receiptStatus);
+      receiptStatus.textContent = 'Finding items…';
+      const result = await api('/api/receipt/parse', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      });
+
+      voiceReviewEl.classList.remove('hidden');
+      renderReview(result.items);
+      showToast(`Found ${result.items.length} item${result.items.length === 1 ? '' : 's'} on the receipt`);
+    } catch (err) {
+      showToast(`Couldn't read that receipt: ${err.message}`);
+    } finally {
       receiptStatus.classList.add('hidden');
       receiptInput.value = ''; // allow re-selecting the same file
+    }
+  });
+
+  // --- Recipe ingredient entry --------------------------------------------
+  //
+  // The opposite direction of receipt scanning: a recipe's ingredients get
+  // USED from inventory, not added. Same review-card flow either way (with
+  // the Add/Use toggle available per line, in case one should go the other
+  // way). Text can be typed/pasted directly, or read from a photo via the
+  // same on-device OCR as receipt scanning.
+
+  if (!hasTesseract) {
+    recipeImageInput.disabled = true;
+  }
+
+  recipeBtn.addEventListener('click', () => {
+    recipePanel.classList.toggle('hidden');
+    if (!recipePanel.classList.contains('hidden')) recipeTextInput.focus();
+  });
+
+  async function parseRecipeText(text) {
+    const result = await api('/api/recipe/parse', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+    voiceReviewEl.classList.remove('hidden');
+    renderReview(result.items);
+    showToast(`Found ${result.items.length} ingredient${result.items.length === 1 ? '' : 's'}`);
+  }
+
+  recipeParseBtn.addEventListener('click', async () => {
+    const text = recipeTextInput.value.trim();
+    if (!text) {
+      showToast('Type or paste some ingredients first.');
+      return;
+    }
+    recipeParseBtn.disabled = true;
+    try {
+      await parseRecipeText(text);
+      recipeTextInput.value = '';
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      recipeParseBtn.disabled = false;
+    }
+  });
+
+  recipeImageInput.addEventListener('change', async () => {
+    const file = recipeImageInput.files && recipeImageInput.files[0];
+    if (!file) return;
+
+    try {
+      const text = await runOcr(file, recipeStatus);
+      recipeStatus.textContent = 'Finding ingredients…';
+      await parseRecipeText(text);
+    } catch (err) {
+      showToast(`Couldn't read that photo: ${err.message}`);
+    } finally {
+      recipeStatus.classList.add('hidden');
+      recipeImageInput.value = ''; // allow re-selecting the same file
     }
   });
 
@@ -1156,9 +1235,14 @@
                 `No existing item named "${state.name}" to use. Switch to Add, or add it first.`
               );
             }
-            const updated = await api(`/api/items/${match.id}/adjust`, {
+            // /use is unit-aware: if the matched item tracks container
+            // fullness (e.g. a bottle) and this unit converts to it (same
+            // family — weight or volume), it deducts from that instead of
+            // the whole-item count. Otherwise it's a plain count decrement,
+            // same as before.
+            const updated = await api(`/api/items/${match.id}/use`, {
               method: 'POST',
-              body: JSON.stringify({ delta: -Math.abs(state.quantity) }),
+              body: JSON.stringify({ amount: state.quantity, unit: state.unit }),
             });
             const i = items.findIndex((it) => it.id === updated.id);
             if (i !== -1) items[i] = updated;

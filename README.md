@@ -43,6 +43,15 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once
+- **Recipe ingredients**: tap 📋, then either paste/type an ingredient list
+  or upload a photo of a recipe. Each ingredient is parsed and defaults to
+  **Use** instead of Add — a recipe consumes inventory, the opposite of a
+  receipt. Measurement-based ingredients (e.g. "200 g flour") deduct from a
+  matched item's tracked container fullness when available (converting
+  compatible units — weight ↔ weight, volume ↔ volume — never guessing a
+  cups-to-ounces conversion, which needs an ingredient-specific density);
+  whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
+  You only ever say how much was used — the app works out what's left
 - **Edit any item after adding it**: tap its name to open an inline edit
   form for name, quantity, unit, location, category, and expiration date —
   Save commits, Cancel discards
@@ -159,6 +168,37 @@ confirm.
   names; nothing is guessed beyond what's on the page, and unrecognized
   photos say so rather than fabricating items.
 
+## Recipe ingredients
+
+Tap **📋 Enter recipe ingredients** to reveal a text box (type or paste
+a list) and a photo-upload option (same on-device OCR as receipt
+scanning) — use either or both. Each recognized ingredient becomes a
+review card exactly like voice/barcode/receipt entry, except it defaults
+to **Use** instead of Add, since a recipe consumes what's in your
+inventory rather than restocking it. Switch any card to Add if one
+should go the other way.
+
+- **Line parsing** (`recipeParser.js`) understands whole numbers,
+  decimals, fractions ("1/2"), and mixed numbers ("1 1/2"), plus common
+  cooking units (cups, tbsp, tsp, oz, lb, g, kg, ml, L, pinch, dash,
+  clove, can, package, ...). It drops parenthetical asides ("(such as
+  Roma)"), prep notes after a comma ("diced", "melted"), section headers
+  ("Ingredients:"), and numbered instruction steps ("1. Preheat the
+  oven...") — keeping only plausible ingredient lines.
+- **Deducting**: you only ever say how much was used (e.g. "200 g
+  flour") — the app works out what's left, never asking you to enter a
+  remaining amount yourself. If the matched inventory item tracks
+  container fullness (see below) and the recipe's unit is compatible
+  (same family — weight ↔ weight, like oz/lb/g/kg, or volume ↔ volume,
+  like cups/tbsp/tsp/ml/L), it deducts from that container's tracked
+  amount. It deliberately never converts across families (e.g. cups to
+  ounces), since that needs an ingredient-specific density a free/local
+  app can't know — a cup of flour and a cup of butter don't weigh the
+  same. When there's no fullness tracking, or the unit doesn't apply
+  (e.g. "3 eggs", "2 cans of beans"), it falls back to decrementing the
+  item's whole-number count instead — the same behavior as any other
+  Use action in the app.
+
 ## What counts as "low stock"
 
 Rather than one flat number for every item, each item is checked against
@@ -198,11 +238,13 @@ other item just uses whichever of rules 4-6 applies.
 | GET    | `/api/items`              | List all items (grouped by category, low-stock/expiring first) |
 | POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted; expiration date kept as the sooner of the two on merge) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
+| POST   | `/api/items/:id/use`       | Deduct a used amount+unit — converts into the item's tracked container fullness when compatible, otherwise decrements quantity |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
 | POST   | `/api/voice/parse`         | Parse a sentence into structured item(s) (read-only — doesn't write to the DB) |
 | GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
 | POST   | `/api/receipt/parse`       | Parse OCR'd receipt text into candidate item(s) (read-only) |
+| POST   | `/api/recipe/parse`        | Parse typed/OCR'd recipe ingredients into candidate item(s) to use (read-only) |
 
 ## Roadmap
 
@@ -211,3 +253,4 @@ other item just uses whichever of rules 4-6 applies.
 - [x] Expiration date capture (manual + voice/text phrases)
 - [x] Barcode scanning
 - [x] Receipt scanning / OCR import
+- [x] Recipe ingredients (text or photo) deduct from inventory
