@@ -129,6 +129,15 @@ input:focus, select:focus, button:focus-visible {
   background: var(--green-dark);
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:active {
+  background: #8f3623;
+}
+
 .btn-full {
   width: 100%;
   margin-top: 0.3rem;
@@ -500,6 +509,18 @@ input:focus, select:focus, button:focus-visible {
   text-align: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.step-select {
+  width: auto;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
 }
 
 .delete-btn {

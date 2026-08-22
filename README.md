@@ -12,7 +12,13 @@ type and sorted so what's expiring soon or running low surfaces first.
 
 - Add items with a name, quantity, and unit (e.g. "Rice", 2, "bags")
 - Assign each item to Pantry, Fridge, or Freezer
-- Quick **+ / −** buttons to add or use one unit at a time
+- **"+ Add item" and "− Use item"** — equally prominent full-width
+  buttons on the same form: fill in a name/quantity and either add new
+  stock or subtract from an existing item by that name (an item that
+  doesn't exist yet says so instead of guessing)
+- Quick **+ / −** buttons on each item card for one-tap adjustments, with
+  a small **×1/×2/×5/×10** dropdown next to them to change the step size
+  per item (e.g. use 5 at once instead of tapping five times)
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
   the milk"* — it's parsed into structured item(s) that you review and edit

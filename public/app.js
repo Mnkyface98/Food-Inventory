@@ -14,6 +14,7 @@
   const fullnessUnitInput = document.getElementById('item-fullness-unit');
   const fullnessRemainingInput = document.getElementById('item-fullness-remaining');
   const fullnessTotalInput = document.getElementById('item-fullness-total');
+  const useItemBtn = document.getElementById('use-item-btn');
   const tabsEl = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -41,6 +42,8 @@
   let searchTerm = '';
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
+  const stepByItemId = {}; // itemId -> how much the -/+ buttons adjust by (default 1)
+  const STEP_OPTIONS = [1, 2, 5, 10];
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
@@ -282,12 +285,14 @@
     const controls = document.createElement('div');
     controls.className = 'qty-controls';
 
+    const step = stepByItemId[item.id] || 1;
+
     const useBtn = document.createElement('button');
     useBtn.type = 'button';
     useBtn.className = 'qty-btn use';
-    useBtn.setAttribute('aria-label', `Use one ${item.name}`);
+    useBtn.setAttribute('aria-label', `Use ${step} ${item.name}`);
     useBtn.textContent = '−'; // minus sign
-    useBtn.addEventListener('click', () => adjustItem(item.id, -1));
+    useBtn.addEventListener('click', () => adjustItem(item.id, -(stepByItemId[item.id] || 1)));
 
     const qtyEl = document.createElement('span');
     qtyEl.className = 'qty-value' + (item.quantity <= 0 ? ' item-qty zero' : ' item-qty');
@@ -296,13 +301,30 @@
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'qty-btn';
-    addBtn.setAttribute('aria-label', `Add one ${item.name}`);
+    addBtn.setAttribute('aria-label', `Add ${step} ${item.name}`);
     addBtn.textContent = '+';
-    addBtn.addEventListener('click', () => adjustItem(item.id, 1));
+    addBtn.addEventListener('click', () => adjustItem(item.id, stepByItemId[item.id] || 1));
+
+    const stepSelect = document.createElement('select');
+    stepSelect.className = 'step-select';
+    stepSelect.setAttribute('aria-label', `Amount to add or use at once for ${item.name}`);
+    STEP_OPTIONS.forEach((n) => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = `×${n}`;
+      if (n === step) opt.selected = true;
+      stepSelect.appendChild(opt);
+    });
+    stepSelect.addEventListener('change', () => {
+      stepByItemId[item.id] = Number(stepSelect.value);
+      useBtn.setAttribute('aria-label', `Use ${stepSelect.value} ${item.name}`);
+      addBtn.setAttribute('aria-label', `Add ${stepSelect.value} ${item.name}`);
+    });
 
     controls.appendChild(useBtn);
     controls.appendChild(qtyEl);
     controls.appendChild(addBtn);
+    controls.appendChild(stepSelect);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -617,6 +639,58 @@
       showToast(`Couldn't add item: ${err.message}`);
     } finally {
       submitBtn.disabled = false;
+    }
+  });
+
+  // "Use item" mirrors "+ Add item" — same name/qty/location fields, but
+  // subtracts from an existing item instead of creating/adding to one.
+  // Matches the existing voice-review "Use" flow: if nothing matches, it
+  // says so rather than guessing or silently creating a phantom item.
+  useItemBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    const quantity = Number(qtyInput.value);
+    const location = locationSelect.value;
+
+    if (!name) {
+      showToast('Enter an item name.');
+      return;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      showToast('Enter a valid quantity to use.');
+      return;
+    }
+
+    const match = findMatchingItem(name, location);
+    if (!match) {
+      showToast(`No existing item named "${name}" to use. Add it first.`);
+      return;
+    }
+
+    useItemBtn.disabled = true;
+    try {
+      const updated = await api(`/api/items/${match.id}/adjust`, {
+        method: 'POST',
+        body: JSON.stringify({ delta: -Math.abs(quantity) }),
+      });
+      const idx = items.findIndex((i) => i.id === updated.id);
+      if (idx !== -1) items[idx] = updated;
+      render();
+      showToast(`Used ${formatQty(quantity)} ${match.name}`);
+      nameInput.value = '';
+      qtyInput.value = '1';
+      unitInput.value = '';
+      categorySelect.value = '';
+      expirationInput.value = '';
+      packSizeInput.value = '';
+      fullnessUnitInput.value = '';
+      fullnessRemainingInput.value = '';
+      fullnessTotalInput.value = '';
+      qtyInput.dispatchEvent(new Event('input'));
+      nameInput.focus();
+    } catch (err) {
+      showToast(`Couldn't use item: ${err.message}`);
+    } finally {
+      useItemBtn.disabled = false;
     }
   });
 
