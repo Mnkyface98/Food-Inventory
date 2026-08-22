@@ -6,6 +6,7 @@
   const modeAddBtn = document.getElementById('mode-add-btn');
   const modeUseBtn = document.getElementById('mode-use-btn');
   const quickInputPanel = document.getElementById('quick-input-panel');
+  const manualEntryToggle = document.getElementById('manual-entry-toggle');
   const addForm = document.getElementById('add-form');
   const entryFormTitle = document.getElementById('entry-form-title');
   const entryCancelBtn = document.getElementById('entry-cancel-btn');
@@ -222,17 +223,24 @@
   }
   qtyInput.addEventListener('input', syncWeightVolumeVisibility);
 
+  const MANUAL_ENTRY_CLOSED_LABEL = '✏️ Enter item manually';
+  const MANUAL_ENTRY_OPEN_LABEL = '▲ Hide manual entry';
+
   // The quick-input methods (voice/text, barcode, receipt, recipe) stay
   // out of the way with everything else until a mode is picked, same as
   // the manual fields — Add reveals text/mic/submit, barcode, and
   // receipt; Use reveals all of those plus recipe ingredients, since a
-  // recipe's ingredients are meant to be used up.
+  // recipe's ingredients are meant to be used up. The manual fields
+  // themselves stay collapsed behind their own toggle even then — so a
+  // barcode/voice/receipt scan's review card is the only card on screen,
+  // not stacked underneath a second, redundant "+ Add item" form.
   function openEntryForm(mode) {
     entryMode = mode;
     const isAdd = mode === 'add';
     entryModeButtons.classList.add('hidden');
     quickInputPanel.classList.remove('hidden');
-    addForm.classList.remove('hidden');
+    addForm.classList.add('hidden');
+    manualEntryToggle.textContent = MANUAL_ENTRY_CLOSED_LABEL;
     recipeBtn.classList.toggle('hidden', isAdd);
     if (isAdd) recipePanel.classList.add('hidden'); // close it if it was left open from Use mode
     entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
@@ -240,20 +248,32 @@
     entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
     amountUsedWrap.classList.toggle('hidden', isAdd);
     syncWeightVolumeVisibility();
-    nameInput.focus();
+    voiceTextInput.focus();
   }
 
   function closeEntryForm() {
     entryMode = null;
     quickInputPanel.classList.add('hidden');
     addForm.classList.add('hidden');
+    manualEntryToggle.textContent = MANUAL_ENTRY_CLOSED_LABEL;
     entryModeButtons.classList.remove('hidden');
     resetEntryForm();
+  }
+
+  function toggleManualEntry() {
+    const opening = addForm.classList.contains('hidden');
+    addForm.classList.toggle('hidden', !opening);
+    manualEntryToggle.textContent = opening ? MANUAL_ENTRY_OPEN_LABEL : MANUAL_ENTRY_CLOSED_LABEL;
+    if (opening) {
+      syncWeightVolumeVisibility();
+      nameInput.focus();
+    }
   }
 
   modeAddBtn.addEventListener('click', () => openEntryForm('add'));
   modeUseBtn.addEventListener('click', () => openEntryForm('use'));
   entryCancelBtn.addEventListener('click', closeEntryForm);
+  manualEntryToggle.addEventListener('click', toggleManualEntry);
 
   function showToast(message) {
     toastEl.textContent = message;

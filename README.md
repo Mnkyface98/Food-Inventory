@@ -17,14 +17,19 @@ type and sorted so what's expiring soon or running low surfaces first.
   method — typed/spoken quick-add, barcode scan, receipt scan, the
   manual fields — stays out of the way until then, so there's nothing to
   puzzle over up front. Tapping **+ Add item** reveals quick text/mic
-  entry, barcode scanning, and receipt scanning, plus the manual fields
-  below; **− Use item** reveals all of those *and* recipe ingredients too
-  (since a recipe is naturally something you use up, not add). ✕ closes
-  it all back down to just the two buttons — nothing typed into the
-  quick-entry fields is lost, it's just hidden until you reopen the same
-  mode. Either way, fill in a name/quantity and either add new stock or
-  subtract from an existing item by that name (an item that doesn't
-  exist yet says so instead of guessing)
+  entry, barcode scanning, and receipt scanning; **− Use item** reveals
+  all of that *and* recipe ingredients too (since a recipe is naturally
+  something you use up, not add). ✕ closes it all back down to just the
+  two buttons — nothing typed into the quick-entry fields is lost, it's
+  just hidden until you reopen the same mode. The full manual fields
+  stay tucked behind their own **✏️ Enter item manually** toggle even
+  then, so scanning/speaking an item shows just its one review card, not
+  a second, redundant form stacked underneath it — tap the toggle
+  whenever you actually want to type an item by hand, and it stays open
+  (fields clearing after each Add/Use) so you can add several in a row
+  without reopening it each time. Either way, fill in a name/quantity
+  and either add new stock or subtract from an existing item by that
+  name (an item that doesn't exist yet says so instead of guessing)
 - **One consistent card, however an item gets entered**: typed by hand,
   spoken, scanned, or parsed from a receipt/recipe photo all land on the
   same fields in the same order (Qty/Unit, Location/Category, Expiration

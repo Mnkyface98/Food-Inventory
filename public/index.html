@@ -20,6 +20,11 @@
       </div>
 
       <div id="quick-input-panel" class="hidden">
+        <div class="entry-form-header">
+          <span id="entry-form-title" class="entry-form-title">+ Add item</span>
+          <button type="button" id="entry-cancel-btn" class="entry-cancel-btn" aria-label="Cancel">✕</button>
+        </div>
+
         <form id="voice-form" autocomplete="off">
           <div class="field-row voice-row">
             <input
@@ -78,14 +83,13 @@
         </div>
 
         <div id="voice-review" class="voice-review hidden"></div>
+
+        <button type="button" id="manual-entry-toggle" class="btn btn-secondary btn-full">
+          ✏️ Enter item manually
+        </button>
       </div>
 
       <form id="add-form" class="entry-form hidden" autocomplete="off">
-        <div class="entry-form-header">
-          <span id="entry-form-title" class="entry-form-title">+ Add item</span>
-          <button type="button" id="entry-cancel-btn" class="entry-cancel-btn" aria-label="Cancel">✕</button>
-        </div>
-
         <div class="field-row">
           <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" list="item-name-options" required />
           <datalist id="item-name-options"></datalist>
