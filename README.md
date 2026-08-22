@@ -165,11 +165,20 @@ stocking one.
 
 ## Receipt scanning
 
-Tap **🧾 Scan a receipt** to take (or choose) a photo of a paper receipt.
-Each recognized product line becomes an editable review card — same flow as
+Tap **🧾 Scan a receipt** to take (or choose) a photo of a paper receipt, or
+**📸 Use this device's camera** for a live in-browser capture instead. Each
+recognized product line becomes an editable review card — same flow as
 voice and barcode entry, add-vs-use toggle included, nothing saved until you
 confirm.
 
+- **Two ways to get a photo in.** "Scan a receipt" is the device's native
+  camera/photo picker — on a phone this opens the camera directly; on a
+  desktop browser (no camera picker to fall back to) it's just a file
+  browser. "Use this device's camera" opens a live camera preview right
+  in the page — a real "take a picture" option on a desktop with a
+  webcam, and it works on phones too. It only appears when your browser
+  actually supports camera access (`getUserMedia`); recipe photos get
+  the same pair of options.
 - **OCR runs entirely on-device** via [Tesseract.js](https://github.com/naptha/tesseract.js)
   — engine *and* the English language model are fully vendored locally in
   `public/vendor/tesseract/` (~7 MB total), so it works offline after the
@@ -190,9 +199,10 @@ confirm.
 
 Tap **− Use item** to reveal **📋 Enter recipe ingredients** (it's Use-only —
 a recipe consumes inventory, so it doesn't show up under + Add item), then
-tap it to reveal a text box (type or paste a list) and a photo-upload
-option (same on-device OCR as receipt scanning) — use either or both.
-Each recognized ingredient becomes a
+tap it to reveal a text box (type or paste a list) and a photo option —
+upload a photo or use the same live in-browser camera capture as receipt
+scanning (same on-device OCR either way) — use any of them. Each
+recognized ingredient becomes a
 review card exactly like voice/barcode/receipt entry, except it defaults
 to **Use** instead of Add, since a recipe consumes what's in your
 inventory rather than restocking it. Switch any card to Add if one

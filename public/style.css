@@ -619,7 +619,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   gap: 0.8rem;
 }
 
-#barcode-video {
+#barcode-video,
+#photo-capture-video {
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;

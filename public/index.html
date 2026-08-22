@@ -48,6 +48,9 @@
           🧾 Scan a receipt
         </label>
         <input id="receipt-input" type="file" accept="image/*" capture="environment" class="visually-hidden" />
+        <button type="button" id="receipt-camera-btn" class="btn btn-secondary btn-full hidden">
+          📸 Use this device's camera
+        </button>
         <p id="receipt-status" class="mic-hint hidden"></p>
 
         <button type="button" id="recipe-btn" class="btn btn-secondary btn-full hidden">
@@ -68,6 +71,9 @@
             📷 Or upload a photo of the recipe
           </label>
           <input id="recipe-image-input" type="file" accept="image/*" capture="environment" class="visually-hidden" />
+          <button type="button" id="recipe-camera-btn" class="btn btn-secondary btn-full hidden">
+            📸 Or use this device's camera
+          </button>
           <p id="recipe-status" class="mic-hint hidden"></p>
         </div>
 
@@ -160,6 +166,16 @@
       <video id="barcode-video" playsinline muted></video>
       <p id="barcode-status" class="barcode-status">Point your camera at a barcode…</p>
       <button type="button" id="barcode-cancel" class="btn btn-secondary btn-full">Cancel</button>
+    </div>
+  </div>
+
+  <div id="photo-capture-modal" class="barcode-modal hidden" role="dialog" aria-label="Take a photo">
+    <div class="barcode-modal-inner">
+      <video id="photo-capture-video" playsinline muted></video>
+      <canvas id="photo-capture-canvas" class="visually-hidden"></canvas>
+      <p id="photo-capture-status" class="barcode-status">Line up the page, then tap Capture</p>
+      <button type="button" id="photo-capture-btn" class="btn btn-primary btn-full">📸 Capture</button>
+      <button type="button" id="photo-capture-cancel" class="btn btn-secondary btn-full">Cancel</button>
     </div>
   </div>
 

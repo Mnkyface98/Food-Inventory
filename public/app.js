@@ -44,6 +44,7 @@
   const barcodeCancelBtn = document.getElementById('barcode-cancel');
 
   const receiptInput = document.getElementById('receipt-input');
+  const receiptCameraBtn = document.getElementById('receipt-camera-btn');
   const receiptStatus = document.getElementById('receipt-status');
 
   const recipeBtn = document.getElementById('recipe-btn');
@@ -51,7 +52,15 @@
   const recipeTextInput = document.getElementById('recipe-text');
   const recipeParseBtn = document.getElementById('recipe-parse-btn');
   const recipeImageInput = document.getElementById('recipe-image-input');
+  const recipeCameraBtn = document.getElementById('recipe-camera-btn');
   const recipeStatus = document.getElementById('recipe-status');
+
+  const photoCaptureModal = document.getElementById('photo-capture-modal');
+  const photoCaptureVideo = document.getElementById('photo-capture-video');
+  const photoCaptureCanvas = document.getElementById('photo-capture-canvas');
+  const photoCaptureStatus = document.getElementById('photo-capture-status');
+  const photoCaptureBtn = document.getElementById('photo-capture-btn');
+  const photoCaptureCancelBtn = document.getElementById('photo-capture-cancel');
 
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
@@ -980,14 +989,16 @@
 
   // --- Receipt scanning ---------------------------------------------------
   //
-  // Uses the device's native camera/photo picker (a plain file input —
-  // simpler and more reliable than a live video overlay for capturing a
-  // single high-res still) then runs OCR entirely on-device via
-  // Tesseract.js, fully vendored locally (engine + English language data)
-  // so it works offline after the page has loaded and nothing is uploaded
-  // anywhere. The recognized text is sent to the server for free,
-  // rule-based line parsing, then goes through the same review-card flow
-  // as voice and barcode entry.
+  // Two ways to get a photo in: the device's native camera/photo picker
+  // (a plain file input — on a phone, this opens the camera directly; on
+  // desktop it's just a file browser with no camera option), or a live
+  // in-browser camera capture (below) for devices — desktops with a
+  // webcam, mainly — where the native picker doesn't offer one. Either
+  // way, OCR runs entirely on-device via Tesseract.js, fully vendored
+  // locally (engine + English language data) so it works offline after
+  // the page has loaded and nothing is uploaded anywhere. The recognized
+  // text is sent to the server for free, rule-based line parsing, then
+  // goes through the same review-card flow as voice and barcode entry.
 
   const hasTesseract = typeof window.Tesseract !== 'undefined';
   if (!hasTesseract) {
@@ -1027,10 +1038,61 @@
     }
   }
 
-  receiptInput.addEventListener('change', async () => {
-    const file = receiptInput.files && receiptInput.files[0];
-    if (!file) return;
+  // Live in-browser camera capture, shared by receipt and recipe photo
+  // entry — an alternative to the native camera/file picker for whenever
+  // that doesn't offer a live camera option at all (chiefly desktop
+  // browsers with a webcam; also works on mobile). Resolves with a
+  // captured JPEG Blob, or null if the user cancels or the camera fails.
+  function captureFromCamera(statusText) {
+    return new Promise((resolve) => {
+      let stream = null;
+      let settled = false;
 
+      function onCapture() {
+        const { videoWidth, videoHeight } = photoCaptureVideo;
+        photoCaptureCanvas.width = videoWidth;
+        photoCaptureCanvas.height = videoHeight;
+        photoCaptureCanvas.getContext('2d').drawImage(photoCaptureVideo, 0, 0, videoWidth, videoHeight);
+        photoCaptureCanvas.toBlob((blob) => finish(blob), 'image/jpeg', 0.92);
+      }
+
+      function onCancel() {
+        finish(null);
+      }
+
+      function finish(result) {
+        if (settled) return;
+        settled = true;
+        if (stream) stream.getTracks().forEach((t) => t.stop());
+        photoCaptureVideo.srcObject = null;
+        photoCaptureModal.classList.add('hidden');
+        photoCaptureBtn.removeEventListener('click', onCapture);
+        photoCaptureCancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+
+      photoCaptureBtn.addEventListener('click', onCapture);
+      photoCaptureCancelBtn.addEventListener('click', onCancel);
+
+      photoCaptureModal.classList.remove('hidden');
+      photoCaptureStatus.textContent = statusText;
+
+      navigator.mediaDevices
+        .getUserMedia({ video: { facingMode: 'environment' } })
+        .then((s) => {
+          stream = s;
+          photoCaptureVideo.srcObject = stream;
+          return photoCaptureVideo.play();
+        })
+        .catch((err) => {
+          showToast(`Camera error: ${err.message}`);
+          finish(null);
+        });
+    });
+  }
+
+  async function processReceiptFile(file) {
+    if (!file) return;
     try {
       const text = await runOcr(file, receiptStatus);
       receiptStatus.textContent = 'Finding items…';
@@ -1046,8 +1108,22 @@
       showToast(`Couldn't read that receipt: ${err.message}`);
     } finally {
       receiptStatus.classList.add('hidden');
-      receiptInput.value = ''; // allow re-selecting the same file
     }
+  }
+
+  receiptInput.addEventListener('change', async () => {
+    const file = receiptInput.files && receiptInput.files[0];
+    if (!file) return;
+    await processReceiptFile(file);
+    receiptInput.value = ''; // allow re-selecting the same file
+  });
+
+  if (hasCamera && hasTesseract) {
+    receiptCameraBtn.classList.remove('hidden');
+  }
+  receiptCameraBtn.addEventListener('click', async () => {
+    const blob = await captureFromCamera('Line up the receipt, then tap Capture');
+    if (blob) await processReceiptFile(blob);
   });
 
   // --- Recipe ingredient entry --------------------------------------------
@@ -1094,10 +1170,8 @@
     }
   });
 
-  recipeImageInput.addEventListener('change', async () => {
-    const file = recipeImageInput.files && recipeImageInput.files[0];
+  async function processRecipeImageFile(file) {
     if (!file) return;
-
     try {
       const text = await runOcr(file, recipeStatus);
       recipeStatus.textContent = 'Finding ingredients…';
@@ -1106,8 +1180,22 @@
       showToast(`Couldn't read that photo: ${err.message}`);
     } finally {
       recipeStatus.classList.add('hidden');
-      recipeImageInput.value = ''; // allow re-selecting the same file
     }
+  }
+
+  recipeImageInput.addEventListener('change', async () => {
+    const file = recipeImageInput.files && recipeImageInput.files[0];
+    if (!file) return;
+    await processRecipeImageFile(file);
+    recipeImageInput.value = ''; // allow re-selecting the same file
+  });
+
+  if (hasCamera && hasTesseract) {
+    recipeCameraBtn.classList.remove('hidden');
+  }
+  recipeCameraBtn.addEventListener('click', async () => {
+    const blob = await captureFromCamera('Line up the recipe, then tap Capture');
+    if (blob) await processRecipeImageFile(blob);
   });
 
   voiceForm.addEventListener('submit', (e) => {
