@@ -17,12 +17,16 @@
   const locationSelect = document.getElementById('item-location');
   const categorySelect = document.getElementById('item-category');
   const expirationInput = document.getElementById('item-expiration');
-  const packSizeInput = document.getElementById('item-pack-size');
+  // "Weight/volume" — Add-only. Describes the size of a single item
+  // (e.g. a 16 oz bottle); a newly (re)stocked item is assumed to start
+  // full, so this doubles as both the total size and the current amount
+  // — see submitAdd(). Only applies while quantity is 1.
+  const weightVolumeWrap = document.getElementById('weight-volume-wrap');
+  const weightVolumeInput = document.getElementById('item-weight-volume');
+  const weightVolumeUnitInput = document.getElementById('item-weight-volume-unit');
   // "Amount used" — Use-only. Drives the deduction; the running total
-  // it deducts from is never shown here (see the README). Everything
-  // added is assumed new and full, so Add never asks for a size at
-  // all — a container's fullness is only ever established by a
-  // barcode scan or a review card (see renderReview()) picking one up.
+  // it deducts from (the weight/volume set above, whenever an item has
+  // one) is never shown here — see the README.
   const amountUsedWrap = document.getElementById('amount-used-wrap');
   const amountUsedInput = document.getElementById('item-amount-used');
   const amountUsedUnitInput = document.getElementById('item-amount-used-unit');
@@ -200,10 +204,23 @@
     unitInput.value = '';
     categorySelect.value = '';
     expirationInput.value = '';
-    packSizeInput.value = '';
+    weightVolumeInput.value = '';
+    weightVolumeUnitInput.value = '';
     amountUsedInput.value = '';
     amountUsedUnitInput.value = '';
   }
+
+  // Weight/volume only makes sense in Add mode, for exactly one item —
+  // hide it (and clear any value) otherwise.
+  function syncWeightVolumeVisibility() {
+    const applies = entryMode === 'add' && Number(qtyInput.value) === 1;
+    weightVolumeWrap.classList.toggle('hidden', !applies);
+    if (!applies) {
+      weightVolumeInput.value = '';
+      weightVolumeUnitInput.value = '';
+    }
+  }
+  qtyInput.addEventListener('input', syncWeightVolumeVisibility);
 
   // The quick-input methods (voice/text, barcode, receipt, recipe) stay
   // out of the way with everything else until a mode is picked, same as
@@ -222,6 +239,7 @@
     entrySubmitBtn.textContent = isAdd ? '+ Add item' : '− Use item';
     entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
     amountUsedWrap.classList.toggle('hidden', isAdd);
+    syncWeightVolumeVisibility();
     nameInput.focus();
   }
 
@@ -712,7 +730,15 @@
     const location = locationSelect.value;
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
-    const packSize = packSizeInput.value || undefined;
+    // Weight/volume describes a single item's size (e.g. "16 oz") — a
+    // newly (re)stocked item is assumed to start full, so the same value
+    // is sent as both the total size and the current amount. Leaving it
+    // blank sends nothing, so the server keeps whatever weight/volume
+    // that item already has on file untouched.
+    const sizeAmount = weightVolumeInput.value || undefined;
+    const fullnessUnit = sizeAmount ? (weightVolumeUnitInput.value || undefined) : undefined;
+    const fullnessAmount = sizeAmount;
+    const fullnessTotal = sizeAmount;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -722,14 +748,11 @@
 
     entrySubmitBtn.disabled = true;
     try {
-      // Everything added here is assumed new and full, so no fullness
-      // reading is sent — the server keeps whatever fullness an already-
-      // tracked item has on file untouched. A container's fullness is
-      // only ever established by a barcode scan or a review card.
       const saved = await api('/api/items', {
         method: 'POST',
         body: JSON.stringify({
-          name, quantity, unit, location, category, expirationDate, packSize,
+          name, quantity, unit, location, category, expirationDate,
+          fullnessUnit, fullnessAmount, fullnessTotal,
         }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
@@ -1259,6 +1282,10 @@
       function refreshToggle() {
         addToggleBtn.classList.toggle('active', state.action === 'add');
         useToggleBtn.classList.toggle('active', state.action === 'use');
+        // Weight/volume (a new item's size) only makes sense on Add,
+        // same as the + Add item card — declared further down, but this
+        // function isn't actually called until after it exists.
+        weightVolRow.classList.toggle('hidden', state.action !== 'add');
       }
       addToggleBtn.addEventListener('click', () => {
         state.action = 'add';
@@ -1268,7 +1295,6 @@
         state.action = 'use';
         refreshToggle();
       });
-      refreshToggle();
       toggle.appendChild(addToggleBtn);
       toggle.appendChild(useToggleBtn);
 
@@ -1290,12 +1316,30 @@
       qtyEl.setAttribute('aria-label', 'Quantity');
       qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
 
-      const unitEl = document.createElement('input');
-      unitEl.type = 'text';
-      unitEl.value = state.unit;
-      unitEl.placeholder = 'Unit (e.g. cups, lbs)';
+      const unitEl = document.createElement('select');
       unitEl.setAttribute('aria-label', 'Unit');
-      unitEl.addEventListener('input', () => (state.unit = unitEl.value));
+      [
+        ['', 'Unit'], ['bottle', 'Bottle'], ['box', 'Box'], ['piece', 'Piece'],
+        ['can', 'Can'], ['bag', 'Bag'], ['jar', 'Jar'], ['package', 'Package'],
+        ['carton', 'Carton'], ['stick', 'Stick'], ['bunch', 'Bunch'],
+      ].forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        // A parsed unit that isn't one of these (e.g. "cans" from a
+        // receipt) still shows up as its own selected option, rather
+        // than silently reverting to blank.
+        if (value === state.unit) opt.selected = true;
+        unitEl.appendChild(opt);
+      });
+      if (state.unit && ![...unitEl.options].some((o) => o.value === state.unit)) {
+        const opt = document.createElement('option');
+        opt.value = state.unit;
+        opt.textContent = state.unit;
+        opt.selected = true;
+        unitEl.appendChild(opt);
+      }
+      unitEl.addEventListener('change', () => (state.unit = unitEl.value));
 
       qtyRow.appendChild(qtyEl);
       qtyRow.appendChild(unitEl);
@@ -1345,28 +1389,53 @@
       expRow.appendChild(expLabel);
       expRow.appendChild(expEl);
 
-      const packRow = document.createElement('div');
-      packRow.className = 'field-row';
-      const packLabel = document.createElement('label');
-      packLabel.className = 'field-label';
-      packLabel.textContent = 'Pack size (optional)';
-      const packEl = document.createElement('input');
-      packEl.type = 'number';
-      packEl.min = '1';
-      packEl.step = 'any';
-      packEl.placeholder = 'e.g. 24';
-      packEl.setAttribute('aria-label', 'Pack size');
-      if (state.packSize != null) packEl.value = state.packSize;
-      packEl.addEventListener('input', () => (state.packSize = packEl.value || null));
-      packRow.appendChild(packLabel);
-      packRow.appendChild(packEl);
+      // Weight/volume — Add-only, same as the + Add item card, and for
+      // the same reason: a scanned/parsed item is assumed new and full,
+      // so this is its size, not a "remaining" amount. A barcode's
+      // package size pre-fills it (state.fullnessUnit/Total, set by
+      // handleBarcodeResult()); either way it's editable before Confirm.
+      const weightVolRow = document.createElement('div');
+      weightVolRow.className = 'field-row';
+      const weightVolLabel = document.createElement('label');
+      weightVolLabel.className = 'field-label';
+      weightVolLabel.textContent = 'Weight/volume (optional)';
+      const weightVolInner = document.createElement('div');
+      weightVolInner.className = 'field-row two-up';
 
-      // No visible container-fullness fields here — a scanned item is
-      // assumed new and full just like any other add, so a barcode's
-      // package size (state.fullnessUnit/Amount/Total, set by
-      // handleBarcodeResult()) rides along silently and is sent as-is on
-      // Confirm below. Nothing to show or edit; fix it later on the item
-      // itself if it's ever wrong.
+      const wvAmountEl = document.createElement('input');
+      wvAmountEl.type = 'number';
+      wvAmountEl.min = '0';
+      wvAmountEl.step = 'any';
+      wvAmountEl.placeholder = 'Amount';
+      wvAmountEl.setAttribute('aria-label', 'Weight/volume amount');
+      if (state.fullnessTotal != null) wvAmountEl.value = state.fullnessTotal;
+      wvAmountEl.addEventListener('input', () => {
+        // A single item is assumed full, so the same value doubles as
+        // both the total size and the current amount — same as Add.
+        const val = wvAmountEl.value || null;
+        state.fullnessTotal = val;
+        state.fullnessAmount = val;
+      });
+
+      const wvUnitEl = document.createElement('select');
+      wvUnitEl.setAttribute('aria-label', 'Weight/volume unit');
+      [
+        ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['lb', 'lb'], ['kg', 'kg'],
+        ['g', 'g'], ['ml', 'ml'], ['L', 'L'], ['cup', 'cup'], ['tbsp', 'tbsp'], ['tsp', 'tsp'],
+      ].forEach(([value, label]) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        if (value === (state.fullnessUnit || '')) opt.selected = true;
+        wvUnitEl.appendChild(opt);
+      });
+      wvUnitEl.addEventListener('change', () => (state.fullnessUnit = wvUnitEl.value || null));
+
+      weightVolInner.appendChild(wvAmountEl);
+      weightVolInner.appendChild(wvUnitEl);
+      weightVolRow.appendChild(weightVolLabel);
+      weightVolRow.appendChild(weightVolInner);
+      refreshToggle(); // now that weightVolRow exists, set its initial visibility too
 
       const note = document.createElement('p');
       note.className = 'review-note hidden';
@@ -1421,7 +1490,6 @@
                 location: state.location,
                 category: state.category,
                 expirationDate: state.expirationDate,
-                packSize: state.packSize,
                 fullnessUnit: state.fullnessUnit,
                 fullnessAmount: state.fullnessAmount,
                 fullnessTotal: state.fullnessTotal,
@@ -1453,7 +1521,7 @@
       card.appendChild(qtyRow);
       card.appendChild(locCatRow);
       card.appendChild(expRow);
-      card.appendChild(packRow);
+      card.appendChild(weightVolRow);
       card.appendChild(note);
       card.appendChild(buttons);
       voiceReviewEl.appendChild(card);

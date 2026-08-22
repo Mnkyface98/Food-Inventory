@@ -92,7 +92,19 @@
         </div>
         <div class="field-row two-up">
           <input id="item-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="1" required />
-          <input id="item-unit" type="text" placeholder="Unit (e.g. cups, lbs)" list="unit-options" />
+          <select id="item-unit" aria-label="Unit">
+            <option value="">Unit</option>
+            <option value="bottle">Bottle</option>
+            <option value="box">Box</option>
+            <option value="piece">Piece</option>
+            <option value="can">Can</option>
+            <option value="bag">Bag</option>
+            <option value="jar">Jar</option>
+            <option value="package">Package</option>
+            <option value="carton">Carton</option>
+            <option value="stick">Stick</option>
+            <option value="bunch">Bunch</option>
+          </select>
         </div>
         <div class="field-row two-up">
           <select id="item-location" aria-label="Location">
@@ -108,9 +120,25 @@
           <label for="item-expiration" class="field-label">Expiration date (optional)</label>
           <input id="item-expiration" type="date" />
         </div>
-        <div class="field-row">
-          <label for="item-pack-size" class="field-label">Pack size (optional)</label>
-          <input id="item-pack-size" type="number" min="1" step="any" placeholder="e.g. 24" />
+
+        <div id="weight-volume-wrap" class="field-row">
+          <label class="field-label">Weight/volume (optional)</label>
+          <div class="field-row two-up">
+            <input id="item-weight-volume" type="number" min="0" step="any" placeholder="Amount" />
+            <select id="item-weight-volume-unit" aria-label="Weight/volume unit">
+              <option value="">Unit</option>
+              <option value="oz">oz</option>
+              <option value="fl oz">fl oz</option>
+              <option value="lb">lb</option>
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="ml">ml</option>
+              <option value="L">L</option>
+              <option value="cup">cup</option>
+              <option value="tbsp">tbsp</option>
+              <option value="tsp">tsp</option>
+            </select>
+          </div>
         </div>
 
         <div id="amount-used-wrap" class="field-row hidden">
@@ -130,17 +158,6 @@
           </div>
         </div>
 
-        <datalist id="unit-options">
-          <option value="pcs"></option>
-          <option value="lbs"></option>
-          <option value="oz"></option>
-          <option value="cups"></option>
-          <option value="bags"></option>
-          <option value="cans"></option>
-          <option value="boxes"></option>
-          <option value="jars"></option>
-          <option value="bottles"></option>
-        </datalist>
         <button type="submit" id="entry-submit-btn" class="btn btn-primary btn-full">+ Add item</button>
       </form>
     </section>

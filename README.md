@@ -28,8 +28,11 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **One consistent card, however an item gets entered**: typed by hand,
   spoken, scanned, or parsed from a receipt/recipe photo all land on the
   same fields in the same order (Qty/Unit, Location/Category, Expiration
-  date, Pack size) — nothing about reviewing an item looks different
-  depending on how it got there
+  date, Weight/volume) — nothing about reviewing an item looks different
+  depending on how it got there. **Unit** is a dropdown of common
+  packaging (bottle, box, piece, can, bag, jar, package, carton, stick,
+  bunch); **Weight/volume** is a separate amount + unit (oz, fl oz, lb,
+  kg, g, ml, L, cup, tbsp, tsp) describing the size of a single item
 - **Name autocomplete**: the item-name field suggests matching names from
   your current inventory as you type a few letters, so picking one from
   the list — rather than retyping it slightly differently each time —
@@ -55,9 +58,8 @@ type and sorted so what's expiring soon or running low surfaces first.
   barcode, and it's looked up automatically (name, category) and dropped
   into the same review flow as voice entry — quantity always starts at 1
   (you scanned one item, not "500" of it); the package size (e.g. "500 ml")
-  quietly feeds container-fullness tracking behind the scenes instead of
-  sitting as inert label text — there's no field for it to fill in, it
-  just works
+  pre-fills the review card's Weight/volume field automatically instead
+  of sitting as inert label text, still editable before you confirm
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once
@@ -65,7 +67,7 @@ type and sorted so what's expiring soon or running low surfaces first.
   or upload a photo of a recipe. Each ingredient is parsed and defaults to
   **Use** instead of Add — a recipe consumes inventory, the opposite of a
   receipt. Measurement-based ingredients (e.g. "200 g flour") deduct from a
-  matched item's tracked container fullness when available (converting
+  matched item's tracked weight/volume when available (converting
   compatible units — weight ↔ weight, volume ↔ volume — never guessing a
   cups-to-ounces conversion, which needs an ingredient-specific density);
   whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
@@ -227,7 +229,7 @@ should go the other way.
 - **Deducting**: you only ever say how much was used (e.g. "200 g
   flour") — the app works out what's left, never asking you to enter a
   remaining amount yourself. If the matched inventory item tracks
-  container fullness (see below) and the recipe's unit is compatible
+  weight/volume (see below) and the recipe's unit is compatible
   (same family — weight ↔ weight, like oz/lb/g/kg, or volume ↔ volume,
   like cups/tbsp/tsp/ml/L), it deducts from that container's tracked
   amount. It deliberately never converts across families (e.g. cups to
@@ -245,43 +247,42 @@ these rules, in order — the first one that applies wins:
 
 1. **Out of stock** — quantity is 0 (or, for a tracked single container,
    0% full) always shows "Out," overriding everything else below.
-2. **Container fullness tracking** — instead of typing an abstract
-   percentage, you work with a real measurement: a unit (oz, fl oz, ml,
-   L, g, kg, or lb) and how much of a single container is left. The
-   **+ Add item** card never asks for this — everything you add is
-   assumed new and full, so there's nothing to fill in there. A
-   container's size only gets established by something that actually
-   knows it: a **barcode scan** (its package size, e.g. "500 ml," feeds
-   this in automatically) or its own review card (voice/receipt/recipe
-   entries can optionally set it), and it can always be set or corrected
-   afterward by tapping the item's name to edit it. Once a container has
-   a size on file, using some of it is just "Amount used": on the
-   **− Use item** card, type how much you used and its unit, and the app
-   deducts it from that container's running total on its own — you only
-   ever say how much was used, never how much is left, and the running
-   total itself is never shown back to you, just the result. The app
-   computes the percentage remaining and flags it low at **50% full or
-   less** (half or more used) — the item's card shows the current
-   reading (e.g. "8/16 oz") alongside the badge. Only applies while
-   quantity is exactly 1 *and* no pack size is set on the item, since
-   fullness stops meaning anything with 2+ containers or once you're
-   counting a pack instead.
+2. **Weight/volume tracking** — instead of typing an abstract
+   percentage, you work with a real measurement: a unit (oz, fl oz, lb,
+   kg, g, ml, L, cup, tbsp, or tsp) and the size of a single item, set on
+   the **+ Add item** card's "Weight/volume" field (e.g. "16 oz" for one
+   bottle) — leave it blank for items you don't need this level of
+   tracking for. A newly (re)stocked item is assumed to start full, so
+   that's all there is to set; a **barcode scan** fills it in
+   automatically from the product's package size (e.g. "500 ml"), still
+   editable before you confirm. From there, using some of it is just
+   "Amount used": on the **− Use item** card, type how much you used and
+   its unit, and the app deducts it from that item's running total on
+   its own — you only ever say how much was used, never how much is
+   left, and the running total itself is never shown back to you, just
+   the result. The app computes the percentage remaining and flags it
+   low at **50% full or less** (half or more used) — the item's card
+   shows the current reading (e.g. "8/16 oz") alongside the badge.
+   Restocking an already-tracked item through **+ Add item** without
+   typing a new weight/volume leaves its existing reading untouched;
+   typing one always means "this is now a full item of that size."
+   Only applies while quantity is exactly 1 *and* no pack size is set on
+   the item, since it stops meaning anything with 2+ items or once
+   you're counting a pack instead.
 3. **Pack size tracking** — if you've set a "pack size" (the count it
-   started at, e.g. 24), it's flagged low once the remaining quantity drops
-   to **25% or less** of that (6 or fewer left of a 24-pack).
+   started at, e.g. 24) by editing an item, it's flagged low once the
+   remaining quantity drops to **25% or less** of that (6 or fewer left
+   of a 24-pack). There's no pack-size field on + Add item / − Use item —
+   it's a one-time setup you do by tapping an item's name to edit it.
 4. **Canned food** (unit "can"/"cans" + category Canned Goods) — low at
    **2 or fewer** cans.
 5. **Canned beverages** (unit "can"/"cans" + category Beverages) — low at
    **4 or fewer** cans.
 6. **Everything else** — the flat fallback: low at **1 or fewer**.
 
-Pack size and container fullness are optional and per-item — set them
-once on an item you want tracked that way (tap its name to edit, or let a
-barcode scan set it automatically) and they stick until you change or
+Pack size and weight/volume are optional and per-item — set them once on
+an item you want tracked that way and they stick until you change or
 clear them; every other item just uses whichever of rules 4-6 applies.
-Restocking an already-tracked item through **+ Add item** leaves its
-existing fullness reading untouched, since Add never touches it at all —
-only editing the item, or scanning a fresh barcode for it, resets it back
 to full.
 
 ## API
@@ -292,7 +293,7 @@ to full.
 | GET    | `/api/items`              | List all items (grouped by category, low-stock/expiring first) |
 | POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted; expiration date kept as the sooner of the two on merge) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
-| POST   | `/api/items/:id/use`       | Deduct a used amount+unit — converts into the item's tracked container fullness when compatible, otherwise decrements quantity |
+| POST   | `/api/items/:id/use`       | Deduct a used amount+unit — converts into the item's tracked weight/volume when compatible, otherwise decrements quantity |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
 | POST   | `/api/voice/parse`         | Parse a sentence into structured item(s) (read-only — doesn't write to the DB) |
