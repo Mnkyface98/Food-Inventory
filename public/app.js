@@ -1177,37 +1177,33 @@
       header.appendChild(nameInputEl);
       header.appendChild(toggle);
 
-      const catRow = document.createElement('div');
-      catRow.className = 'field-row';
-      const catEl = document.createElement('select');
-      catEl.setAttribute('aria-label', 'Category');
-      categories.forEach((cat) => {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = cat.label;
-        if (cat.id === state.category) opt.selected = true;
-        catEl.appendChild(opt);
-      });
-      catEl.addEventListener('change', () => (state.category = catEl.value));
-      catRow.appendChild(catEl);
-
-      const fieldsRow = document.createElement('div');
-      fieldsRow.className = 'field-row three-up';
+      // Same field set, same order, as the + Add item / − Use item card
+      // below — however an item got here (typed, spoken, scanned, or
+      // parsed from a receipt/recipe), reviewing it looks identical.
+      const qtyRow = document.createElement('div');
+      qtyRow.className = 'field-row two-up';
 
       const qtyEl = document.createElement('input');
       qtyEl.type = 'number';
       qtyEl.min = '0';
       qtyEl.step = 'any';
       qtyEl.value = state.quantity;
+      qtyEl.placeholder = 'Qty';
       qtyEl.setAttribute('aria-label', 'Quantity');
       qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
 
       const unitEl = document.createElement('input');
       unitEl.type = 'text';
       unitEl.value = state.unit;
-      unitEl.placeholder = 'Unit';
+      unitEl.placeholder = 'Unit (e.g. cups, lbs)';
       unitEl.setAttribute('aria-label', 'Unit');
       unitEl.addEventListener('input', () => (state.unit = unitEl.value));
+
+      qtyRow.appendChild(qtyEl);
+      qtyRow.appendChild(unitEl);
+
+      const locCatRow = document.createElement('div');
+      locCatRow.className = 'field-row two-up';
 
       const locEl = document.createElement('select');
       locEl.setAttribute('aria-label', 'Location');
@@ -1220,69 +1216,59 @@
       });
       locEl.addEventListener('change', () => (state.location = locEl.value));
 
-      fieldsRow.appendChild(qtyEl);
-      fieldsRow.appendChild(unitEl);
-      fieldsRow.appendChild(locEl);
+      const catEl = document.createElement('select');
+      catEl.setAttribute('aria-label', 'Category');
+      const autoOpt = document.createElement('option');
+      autoOpt.value = '';
+      autoOpt.textContent = 'Category: Auto';
+      catEl.appendChild(autoOpt);
+      categories.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.label;
+        if (cat.id === state.category) opt.selected = true;
+        catEl.appendChild(opt);
+      });
+      catEl.addEventListener('change', () => (state.category = catEl.value));
+
+      locCatRow.appendChild(locEl);
+      locCatRow.appendChild(catEl);
 
       const expRow = document.createElement('div');
       expRow.className = 'field-row';
+      const expLabel = document.createElement('label');
+      expLabel.className = 'field-label';
+      expLabel.textContent = 'Expiration date (optional)';
       const expEl = document.createElement('input');
       expEl.type = 'date';
       expEl.setAttribute('aria-label', 'Expiration date');
       if (state.expirationDate) expEl.value = state.expirationDate;
       expEl.addEventListener('input', () => (state.expirationDate = expEl.value || null));
+      expRow.appendChild(expLabel);
       expRow.appendChild(expEl);
 
-      // Container fullness — collapsed by default (nothing to show for a
-      // typical voice/receipt item), auto-opened when a barcode scan
-      // already populated it. Only applies while quantity is 1.
-      const fullnessDetails = document.createElement('details');
-      fullnessDetails.className = 'low-stock-details';
-      const fullnessSummary = document.createElement('summary');
-      fullnessSummary.textContent = 'Container fullness (optional)';
-      const fullnessWrapEl2 = document.createElement('div');
-      fullnessWrapEl2.className = 'field-row';
-      const fullnessRow2 = document.createElement('div');
-      fullnessRow2.className = 'field-row three-up';
+      const packRow = document.createElement('div');
+      packRow.className = 'field-row';
+      const packLabel = document.createElement('label');
+      packLabel.className = 'field-label';
+      packLabel.textContent = 'Pack size (optional)';
+      const packEl = document.createElement('input');
+      packEl.type = 'number';
+      packEl.min = '1';
+      packEl.step = 'any';
+      packEl.placeholder = 'e.g. 24';
+      packEl.setAttribute('aria-label', 'Pack size');
+      if (state.packSize != null) packEl.value = state.packSize;
+      packEl.addEventListener('input', () => (state.packSize = packEl.value || null));
+      packRow.appendChild(packLabel);
+      packRow.appendChild(packEl);
 
-      const fUnitEl = document.createElement('select');
-      fUnitEl.setAttribute('aria-label', 'Fullness unit');
-      [
-        ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['ml', 'ml'],
-        ['L', 'L'], ['g', 'g'], ['kg', 'kg'], ['lb', 'lb'],
-      ].forEach(([value, label]) => {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = label;
-        if (value === (state.fullnessUnit || '')) opt.selected = true;
-        fUnitEl.appendChild(opt);
-      });
-      fUnitEl.addEventListener('change', () => (state.fullnessUnit = fUnitEl.value || null));
-
-      const fRemainingEl = document.createElement('input');
-      fRemainingEl.type = 'number';
-      fRemainingEl.min = '0';
-      fRemainingEl.step = 'any';
-      fRemainingEl.placeholder = 'Remaining';
-      if (state.fullnessAmount != null) fRemainingEl.value = state.fullnessAmount;
-      fRemainingEl.addEventListener('input', () => (state.fullnessAmount = fRemainingEl.value || null));
-
-      const fTotalEl = document.createElement('input');
-      fTotalEl.type = 'number';
-      fTotalEl.min = '0';
-      fTotalEl.step = 'any';
-      fTotalEl.placeholder = 'Total size';
-      if (state.fullnessTotal != null) fTotalEl.value = state.fullnessTotal;
-      fTotalEl.addEventListener('input', () => (state.fullnessTotal = fTotalEl.value || null));
-
-      fullnessRow2.appendChild(fUnitEl);
-      fullnessRow2.appendChild(fRemainingEl);
-      fullnessRow2.appendChild(fTotalEl);
-      fullnessWrapEl2.appendChild(fullnessRow2);
-      fullnessDetails.appendChild(fullnessSummary);
-      fullnessDetails.appendChild(fullnessWrapEl2);
-      if (state.fullnessAmount != null) fullnessDetails.open = true;
-      wireFullnessVisibility(qtyEl, null, fullnessWrapEl2, fUnitEl, fRemainingEl, fTotalEl);
+      // No visible container-fullness fields here — a scanned item is
+      // assumed new and full just like any other add, so a barcode's
+      // package size (state.fullnessUnit/Amount/Total, set by
+      // handleBarcodeResult()) rides along silently and is sent as-is on
+      // Confirm below. Nothing to show or edit; fix it later on the item
+      // itself if it's ever wrong.
 
       const note = document.createElement('p');
       note.className = 'review-note hidden';
@@ -1337,6 +1323,7 @@
                 location: state.location,
                 category: state.category,
                 expirationDate: state.expirationDate,
+                packSize: state.packSize,
                 fullnessUnit: state.fullnessUnit,
                 fullnessAmount: state.fullnessAmount,
                 fullnessTotal: state.fullnessTotal,
@@ -1365,10 +1352,10 @@
       buttons.appendChild(dismissBtn);
 
       card.appendChild(header);
-      card.appendChild(catRow);
-      card.appendChild(fieldsRow);
+      card.appendChild(qtyRow);
+      card.appendChild(locCatRow);
       card.appendChild(expRow);
-      card.appendChild(fullnessDetails);
+      card.appendChild(packRow);
       card.appendChild(note);
       card.appendChild(buttons);
       voiceReviewEl.appendChild(card);

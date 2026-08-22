@@ -18,6 +18,11 @@ type and sorted so what's expiring soon or running low surfaces first.
   down to just the two buttons). Fill in a name/quantity and either add
   new stock or subtract from an existing item by that name (an item
   that doesn't exist yet says so instead of guessing)
+- **One consistent card, however an item gets entered**: typed by hand,
+  spoken, scanned, or parsed from a receipt/recipe photo all land on the
+  same fields in the same order (Qty/Unit, Location/Category, Expiration
+  date, Pack size) — nothing about reviewing an item looks different
+  depending on how it got there
 - **Name autocomplete**: the item-name field suggests matching names from
   your current inventory as you type a few letters, so picking one from
   the list — rather than retyping it slightly differently each time —
@@ -43,9 +48,9 @@ type and sorted so what's expiring soon or running low surfaces first.
   barcode, and it's looked up automatically (name, category) and dropped
   into the same review flow as voice entry — quantity always starts at 1
   (you scanned one item, not "500" of it); the package size (e.g. "500 ml")
-  instead pre-fills Container fullness (assumed full, since it's presumably
-  a fresh one), so it actually feeds low-stock tracking instead of sitting
-  as inert label text
+  quietly feeds container-fullness tracking behind the scenes instead of
+  sitting as inert label text — there's no field for it to fill in, it
+  just works
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once
