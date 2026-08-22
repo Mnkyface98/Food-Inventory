@@ -5,6 +5,7 @@
   const entryModeButtons = document.getElementById('entry-mode-buttons');
   const modeAddBtn = document.getElementById('mode-add-btn');
   const modeUseBtn = document.getElementById('mode-use-btn');
+  const quickInputPanel = document.getElementById('quick-input-panel');
   const addForm = document.getElementById('add-form');
   const entryFormTitle = document.getElementById('entry-form-title');
   const entryCancelBtn = document.getElementById('entry-cancel-btn');
@@ -195,11 +196,19 @@
     amountUsedUnitInput.value = '';
   }
 
+  // The quick-input methods (voice/text, barcode, receipt, recipe) stay
+  // out of the way with everything else until a mode is picked, same as
+  // the manual fields — Add reveals text/mic/submit, barcode, and
+  // receipt; Use reveals all of those plus recipe ingredients, since a
+  // recipe's ingredients are meant to be used up.
   function openEntryForm(mode) {
     entryMode = mode;
     const isAdd = mode === 'add';
     entryModeButtons.classList.add('hidden');
+    quickInputPanel.classList.remove('hidden');
     addForm.classList.remove('hidden');
+    recipeBtn.classList.toggle('hidden', isAdd);
+    if (isAdd) recipePanel.classList.add('hidden'); // close it if it was left open from Use mode
     entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
     entrySubmitBtn.textContent = isAdd ? '+ Add item' : '− Use item';
     entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
@@ -209,6 +218,7 @@
 
   function closeEntryForm() {
     entryMode = null;
+    quickInputPanel.classList.add('hidden');
     addForm.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
     resetEntryForm();

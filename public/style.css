@@ -99,6 +99,18 @@ main {
   margin-top: 0.5rem;
 }
 
+#quick-input-panel {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+#quick-input-panel + #add-form {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
 .entry-form-header {
   display: flex;
   align-items: center;
@@ -192,10 +204,6 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
 
 .btn-secondary:active {
   background: #e2e6da;
-}
-
-.voice-card {
-  border-color: #d8e6dc;
 }
 
 .voice-row {

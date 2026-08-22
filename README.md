@@ -13,11 +13,18 @@ type and sorted so what's expiring soon or running low surfaces first.
 - Add items with a name, quantity, and unit (e.g. "Rice", 2, "bags")
 - Assign each item to Pantry, Fridge, or Freezer
 - **"+ Add item" and "− Use item"** — equally prominent full-width
-  buttons; the entry fields stay out of the way until you tap one, then
-  a form opens labeled and colored for that action (✕ closes it back
-  down to just the two buttons). Fill in a name/quantity and either add
-  new stock or subtract from an existing item by that name (an item
-  that doesn't exist yet says so instead of guessing)
+  buttons, and the only thing on the page until you tap one. Every entry
+  method — typed/spoken quick-add, barcode scan, receipt scan, the
+  manual fields — stays out of the way until then, so there's nothing to
+  puzzle over up front. Tapping **+ Add item** reveals quick text/mic
+  entry, barcode scanning, and receipt scanning, plus the manual fields
+  below; **− Use item** reveals all of those *and* recipe ingredients too
+  (since a recipe is naturally something you use up, not add). ✕ closes
+  it all back down to just the two buttons — nothing typed into the
+  quick-entry fields is lost, it's just hidden until you reopen the same
+  mode. Either way, fill in a name/quantity and either add new stock or
+  subtract from an existing item by that name (an item that doesn't
+  exist yet says so instead of guessing)
 - **One consistent card, however an item gets entered**: typed by hand,
   spoken, scanned, or parsed from a receipt/recipe photo all land on the
   same fields in the same order (Qty/Unit, Location/Category, Expiration
@@ -181,9 +188,11 @@ confirm.
 
 ## Recipe ingredients
 
-Tap **📋 Enter recipe ingredients** to reveal a text box (type or paste
-a list) and a photo-upload option (same on-device OCR as receipt
-scanning) — use either or both. Each recognized ingredient becomes a
+Tap **− Use item** to reveal **📋 Enter recipe ingredients** (it's Use-only —
+a recipe consumes inventory, so it doesn't show up under + Add item), then
+tap it to reveal a text box (type or paste a list) and a photo-upload
+option (same on-device OCR as receipt scanning) — use either or both.
+Each recognized ingredient becomes a
 review card exactly like voice/barcode/receipt entry, except it defaults
 to **Use** instead of Add, since a recipe consumes what's in your
 inventory rather than restocking it. Switch any card to Add if one
