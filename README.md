@@ -243,6 +243,18 @@ once on an item you want tracked that way (tap its name to edit, or set
 them when adding it) and they stick until you change or clear them; every
 other item just uses whichever of rules 4-6 applies.
 
+**Logging usage against a tracked container**: type the name of an item
+that already has container fullness tracking (e.g. one you set up above)
+into the item-name field, and the "Low-stock tracking" section switches
+modes automatically — **Total size** fills in on its own from that item's
+existing record (no need to retype a bottle's capacity every time you use
+some of it), and **Remaining** becomes **Amount used**. Type how much you
+used, tap **− Use item**, and the app works out what's left and updates
+the reading itself — you never have to do that math or enter a remaining
+amount yourself. Adding more stock of that same item without touching
+these fields (e.g. bought a duplicate you're not tracking separately)
+leaves its existing fullness reading untouched.
+
 ## API
 
 | Method | Path                     | Description                             |

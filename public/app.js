@@ -51,6 +51,9 @@
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
   const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
+  // True when the top form's name+location currently match an existing
+  // item that already tracks container fullness — see syncTopFullness().
+  let fullnessUsedMode = false;
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
@@ -161,7 +164,9 @@
       if (!applies) {
         unitEl.value = '';
         remainingEl.value = '';
+        remainingEl.placeholder = 'Remaining';
         totalEl.value = '';
+        totalEl.readOnly = false;
       }
     }
     qtyEl.addEventListener('input', sync);
@@ -170,6 +175,29 @@
   }
 
   wireFullnessVisibility(qtyInput, packSizeInput, fullnessWrap, fullnessUnitInput, fullnessRemainingInput, fullnessTotalInput);
+
+  // Once the typed name+location match an item that already tracks
+  // container fullness, its total size is already known — no need to
+  // retype it every time. Auto-fill and lock Total size, pre-select its
+  // unit, and switch the "Remaining" field over to "Amount used": from
+  // here you only ever say how much you used, same as everywhere else
+  // in the app, and the app works out what's left on its own.
+  function syncTopFullness() {
+    const match = findMatchingItem(nameInput.value.trim(), locationSelect.value);
+    const hasFullness = !!(match && match.fullnessTotal != null);
+    fullnessUsedMode = hasFullness;
+    if (hasFullness) {
+      fullnessTotalInput.value = match.fullnessTotal;
+      fullnessTotalInput.readOnly = true;
+      if (!fullnessUnitInput.value) fullnessUnitInput.value = match.fullnessUnit || '';
+      fullnessRemainingInput.placeholder = 'Amount used';
+    } else {
+      fullnessTotalInput.readOnly = false;
+      fullnessRemainingInput.placeholder = 'Remaining';
+    }
+  }
+  nameInput.addEventListener('input', syncTopFullness);
+  locationSelect.addEventListener('change', syncTopFullness);
 
   function showToast(message) {
     toastEl.textContent = message;
@@ -648,9 +676,14 @@
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
     const packSize = packSizeInput.value || undefined;
-    const fullnessUnit = fullnessUnitInput.value || undefined;
-    const fullnessAmount = fullnessRemainingInput.value || undefined;
-    const fullnessTotal = fullnessTotalInput.value || undefined;
+    // In "amount used" mode the Remaining field means how much was just
+    // used, not the container's current fullness — never send it as a
+    // fullness reading here, or it'd overwrite the item's real remaining
+    // amount. Leaving both unset makes the server keep whatever fullness
+    // that item already has on file.
+    const fullnessUnit = fullnessUsedMode ? undefined : (fullnessUnitInput.value || undefined);
+    const fullnessAmount = fullnessUsedMode ? undefined : (fullnessRemainingInput.value || undefined);
+    const fullnessTotal = fullnessUsedMode ? undefined : (fullnessTotalInput.value || undefined);
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -683,6 +716,7 @@
       fullnessRemainingInput.value = '';
       fullnessTotalInput.value = '';
       qtyInput.dispatchEvent(new Event('input')); // re-sync the fullness fields' visibility for qty=1
+      syncTopFullness(); // name is now blank — back to the default "Remaining" / editable Total state
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
@@ -716,6 +750,22 @@
       return;
     }
 
+    // Once Total size auto-fills from a tracked container, "Remaining"
+    // becomes "Amount used" — if it's filled in, that's the deduction to
+    // make (in that field's unit), taking priority over the plain
+    // Qty/Unit fields above.
+    let effectiveAmount = quantity;
+    let effectiveUnit = unit;
+    if (fullnessUsedMode && fullnessRemainingInput.value.trim()) {
+      const usedAmount = Number(fullnessRemainingInput.value);
+      if (!Number.isFinite(usedAmount) || usedAmount < 0) {
+        showToast('Enter a valid amount used.');
+        return;
+      }
+      effectiveAmount = usedAmount;
+      effectiveUnit = fullnessUnitInput.value || unit;
+    }
+
     useItemBtn.disabled = true;
     try {
       // /use is unit-aware: if the matched item tracks container fullness
@@ -723,12 +773,12 @@
       // or volume), it deducts from that instead of the whole-item count.
       const updated = await api(`/api/items/${match.id}/use`, {
         method: 'POST',
-        body: JSON.stringify({ amount: quantity, unit }),
+        body: JSON.stringify({ amount: effectiveAmount, unit: effectiveUnit }),
       });
       const idx = items.findIndex((i) => i.id === updated.id);
       if (idx !== -1) items[idx] = updated;
       render();
-      showToast(`Used ${formatQty(quantity)} ${match.name}`);
+      showToast(`Used ${formatQty(effectiveAmount)}${effectiveUnit ? ' ' + effectiveUnit : ''} ${match.name}`.trim());
       nameInput.value = '';
       qtyInput.value = '1';
       unitInput.value = '';
@@ -739,6 +789,7 @@
       fullnessRemainingInput.value = '';
       fullnessTotalInput.value = '';
       qtyInput.dispatchEvent(new Event('input'));
+      syncTopFullness(); // name is now blank — back to the default "Remaining" / editable Total state
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't use item: ${err.message}`);

@@ -101,6 +101,7 @@
           <div id="fullness-wrap" class="field-row">
             <label class="field-label">Container fullness (single item, no pack size)</label>
             <div class="field-row three-up">
+              <input id="item-fullness-remaining" type="number" min="0" step="any" placeholder="Remaining" />
               <select id="item-fullness-unit" aria-label="Fullness unit">
                 <option value="">Unit</option>
                 <option value="oz">oz</option>
@@ -111,7 +112,6 @@
                 <option value="kg">kg</option>
                 <option value="lb">lb</option>
               </select>
-              <input id="item-fullness-remaining" type="number" min="0" step="any" placeholder="Remaining" />
               <input id="item-fullness-total" type="number" min="0" step="any" placeholder="Total size" />
             </div>
           </div>
