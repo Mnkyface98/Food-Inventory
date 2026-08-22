@@ -42,9 +42,7 @@
   let searchTerm = '';
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
-  const stepByItemId = {}; // itemId -> how much the -/+ buttons adjust by (default 1)
   const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
-  const STEP_OPTIONS = [1, 2, 5, 10];
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
@@ -319,14 +317,12 @@
     const controls = document.createElement('div');
     controls.className = 'qty-controls';
 
-    const step = stepByItemId[item.id] || 1;
-
     const useBtn = document.createElement('button');
     useBtn.type = 'button';
     useBtn.className = 'qty-btn use';
-    useBtn.setAttribute('aria-label', `Use ${step} ${item.name}`);
+    useBtn.setAttribute('aria-label', `Use one ${item.name}`);
     useBtn.textContent = '−'; // minus sign
-    useBtn.addEventListener('click', () => adjustItem(item.id, -(stepByItemId[item.id] || 1)));
+    useBtn.addEventListener('click', () => adjustItem(item.id, -1));
 
     const qtyEl = document.createElement('span');
     qtyEl.className = 'qty-value' + (item.quantity <= 0 ? ' item-qty zero' : ' item-qty');
@@ -335,30 +331,13 @@
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'qty-btn';
-    addBtn.setAttribute('aria-label', `Add ${step} ${item.name}`);
+    addBtn.setAttribute('aria-label', `Add one ${item.name}`);
     addBtn.textContent = '+';
-    addBtn.addEventListener('click', () => adjustItem(item.id, stepByItemId[item.id] || 1));
-
-    const stepSelect = document.createElement('select');
-    stepSelect.className = 'step-select';
-    stepSelect.setAttribute('aria-label', `Amount to add or use at once for ${item.name}`);
-    STEP_OPTIONS.forEach((n) => {
-      const opt = document.createElement('option');
-      opt.value = n;
-      opt.textContent = `×${n}`;
-      if (n === step) opt.selected = true;
-      stepSelect.appendChild(opt);
-    });
-    stepSelect.addEventListener('change', () => {
-      stepByItemId[item.id] = Number(stepSelect.value);
-      useBtn.setAttribute('aria-label', `Use ${stepSelect.value} ${item.name}`);
-      addBtn.setAttribute('aria-label', `Add ${stepSelect.value} ${item.name}`);
-    });
+    addBtn.addEventListener('click', () => adjustItem(item.id, 1));
 
     controls.appendChild(useBtn);
     controls.appendChild(qtyEl);
     controls.appendChild(addBtn);
-    controls.appendChild(stepSelect);
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
