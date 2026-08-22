@@ -340,16 +340,35 @@ input:focus, select:focus, button:focus-visible {
 }
 
 .category-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--muted);
   margin: 1.1rem 0 0.4rem;
-  padding: 0 0.1rem;
+  padding: 0.2rem 0.1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.category-heading:first-child {
+.category-heading:active {
+  color: var(--green-dark);
+}
+
+.category-heading-arrow {
+  font-size: 0.7rem;
+  width: 0.9rem;
+  display: inline-block;
+}
+
+.category-heading-row:first-child .category-heading {
   margin-top: 0.2rem;
 }
 

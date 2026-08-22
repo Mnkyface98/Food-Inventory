@@ -43,6 +43,7 @@
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
   const stepByItemId = {}; // itemId -> how much the -/+ buttons adjust by (default 1)
+  const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
   const STEP_OPTIONS = [1, 2, 5, 10];
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
@@ -211,20 +212,53 @@
     }
     emptyStateEl.classList.add('hidden');
 
-    // Group by category, preserving the server's ordering within each
-    // group (category, then quantity ascending — low stock first). When a
-    // single category tab is already active, every item is that category,
-    // so the heading would just repeat the tab you clicked — skip it.
-    let currentCategory = null;
-    for (const item of filtered) {
-      if (activeCategory === 'all' && item.category !== currentCategory) {
-        currentCategory = item.category;
-        const heading = document.createElement('li');
-        heading.className = 'category-heading';
-        heading.textContent = categoryLabels[item.category] || 'Other';
-        listEl.appendChild(heading);
+    // When a single category tab is already active, every item is that
+    // category, so a heading would just repeat the tab you clicked —
+    // render the flat list with no grouping/collapsing.
+    if (activeCategory !== 'all') {
+      for (const item of filtered) {
+        listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
       }
-      listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
+      return;
+    }
+
+    // "All" view: group by category (preserving the server's ordering
+    // within each group — expiration/low-stock first), with a clickable,
+    // collapsible heading per group so a long category list can be
+    // tucked away without leaving the "All" view.
+    const groups = new Map();
+    for (const item of filtered) {
+      if (!groups.has(item.category)) groups.set(item.category, []);
+      groups.get(item.category).push(item);
+    }
+
+    for (const [category, groupItems] of groups) {
+      const collapsed = !!collapsedCategories[category];
+
+      const headingLi = document.createElement('li');
+      headingLi.className = 'category-heading-row';
+      const headingBtn = document.createElement('button');
+      headingBtn.type = 'button';
+      headingBtn.className = 'category-heading';
+      const arrow = document.createElement('span');
+      arrow.className = 'category-heading-arrow';
+      arrow.textContent = collapsed ? '▸' : '▾';
+      const label = document.createElement('span');
+      label.textContent = `${categoryLabels[category] || 'Other'} (${groupItems.length})`;
+      headingBtn.appendChild(arrow);
+      headingBtn.appendChild(label);
+      headingBtn.addEventListener('click', () => {
+        collapsedCategories[category] = !collapsed;
+        render();
+      });
+      headingLi.appendChild(headingBtn);
+      listEl.appendChild(headingLi);
+
+      if (!collapsed) {
+        for (const item of groupItems) {
+          listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
+        }
+      }
     }
   }
 
