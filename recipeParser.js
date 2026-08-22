@@ -28,6 +28,74 @@ const NUMBERED_STEP_RE = /^\d+[.)]\s+\S/;
 
 const WORD_QUANTITIES = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, few: 3, several: 4, couple: 2 };
 
+// A quantity token — whatever an ingredient line is expected to start
+// with. Shared by the "is this a new ingredient?" checks below. Order
+// matters: mixed numbers and fractions must be tried before a bare
+// number, or "1 1/2" would be cut between "1" and "1/2".
+const QUANTITY_TOKEN = '(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+(?:\\.\\d+)?|a|an|one|two|three|four|few|several|couple)';
+const LEADING_QUANTITY_RE = new RegExp('^' + QUANTITY_TOKEN + '\\b', 'i');
+const QUANTITY_BOUNDARY_RE = new RegExp('\\b(' + QUANTITY_TOKEN + ')\\b(?=\\s)', 'gi');
+
+// Ingredients can be typed one per line, comma-separated on one line, or
+// just space-separated on one line with no punctuation at all — so a
+// single line of raw text may hold several ingredients. These two
+// helpers split a line into individual ingredient candidates before
+// parseIngredientLine ever sees them.
+
+// Splits a line on commas, but only treats a piece as the START of a new
+// ingredient if it itself begins with a quantity ("1 tsp salt"). A piece
+// that doesn't ("diced", "room temperature") is glued back onto the
+// previous ingredient as a prep note, same as before commas were used as
+// a delimiter at all.
+function splitCommaGroups(line) {
+  const pieces = line.split(',').map((p) => p.trim()).filter(Boolean);
+  if (pieces.length <= 1) return [line];
+  const groups = [pieces[0]];
+  for (let i = 1; i < pieces.length; i++) {
+    if (LEADING_QUANTITY_RE.test(pieces[i])) {
+      groups.push(pieces[i]);
+    } else {
+      groups[groups.length - 1] += ', ' + pieces[i];
+    }
+  }
+  return groups;
+}
+
+// Splits text with no commas at all into multiple ingredients by looking
+// for repeated quantity tokens ("2 cups flour 1 tsp salt 3 eggs"). If
+// fewer than two quantity tokens show up, the text is left as one
+// candidate — most single ingredients only have one number in them.
+function splitOnQuantityBoundaries(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  const indices = [];
+  let m;
+  QUANTITY_BOUNDARY_RE.lastIndex = 0;
+  while ((m = QUANTITY_BOUNDARY_RE.exec(trimmed))) {
+    indices.push(m.index);
+  }
+  if (indices.length <= 1) return [trimmed];
+  const segments = [];
+  if (indices[0] > 0) segments.push(trimmed.slice(0, indices[0]).trim());
+  for (let i = 0; i < indices.length; i++) {
+    const start = indices[i];
+    const end = i + 1 < indices.length ? indices[i + 1] : trimmed.length;
+    segments.push(trimmed.slice(start, end).trim());
+  }
+  return segments.filter(Boolean);
+}
+
+// Splits one raw line of text into every ingredient candidate it holds,
+// however they were separated (line break, commas, or just spaces).
+function splitLineIntoCandidates(line) {
+  const commaGroups = splitCommaGroups(line);
+  const candidates = [];
+  for (const group of commaGroups) {
+    candidates.push(...splitOnQuantityBoundaries(group));
+  }
+  return candidates;
+}
+
 function parseLeadingQuantity(text) {
   // Mixed number: "1 1/2"
   let m = text.match(/^(\d+)\s+(\d+)\/(\d+)\s+(.*)$/);
@@ -119,16 +187,27 @@ function parseIngredientLine(rawLine) {
 
 /**
  * Parse raw recipe-ingredient text (typed, pasted, or OCR'd from a photo)
- * into candidate items to use from inventory, one per plausible
- * ingredient line. Non-ingredient lines (section headers, numbered
- * instruction steps) are dropped.
+ * into candidate items to use from inventory. Ingredients can be entered
+ * one per line, comma-separated on a single line, or just space-separated
+ * on a single line with no punctuation — any mix of the three is fine.
+ * Non-ingredient lines (section headers, numbered instruction steps) are
+ * dropped.
  *
  * @param {string} rawText
  * @returns {{items: Array<object>}}
  */
 function parseRecipeText(rawText) {
   const lines = String(rawText || '').split(/\r?\n/);
-  const items = lines.map(parseIngredientLine).filter(Boolean);
+  const candidates = lines.flatMap((line) => {
+    const trimmed = line.trim();
+    // Skip headers/steps before splitting so "1. Preheat the oven" isn't
+    // mistaken for a quantity boundary and torn apart.
+    if (!trimmed || SKIP_LINE_RE.test(trimmed) || NUMBERED_STEP_RE.test(trimmed)) {
+      return [trimmed];
+    }
+    return splitLineIntoCandidates(trimmed);
+  });
+  const items = candidates.map(parseIngredientLine).filter(Boolean);
   return { items };
 }
 

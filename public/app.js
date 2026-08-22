@@ -4,6 +4,7 @@
   const statusLineEl = document.getElementById('status-line');
   const addForm = document.getElementById('add-form');
   const nameInput = document.getElementById('item-name');
+  const nameOptionsEl = document.getElementById('item-name-options');
   const qtyInput = document.getElementById('item-qty');
   const unitInput = document.getElementById('item-unit');
   const locationSelect = document.getElementById('item-location');
@@ -203,7 +204,31 @@
     }
   }
 
+  // Keeps the item-name field's suggestion list in sync with what's
+  // actually in inventory, so typing a few letters of "S. Pellegrino"
+  // offers the exact stored name to pick — avoiding the mismatched-name
+  // errors that come from retyping it slightly differently (punctuation,
+  // spacing, a typo) each time you go to use it.
+  function updateItemNameOptions() {
+    const seen = new Set();
+    const names = [];
+    for (const item of items) {
+      const key = item.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(item.name);
+    }
+    names.sort((a, b) => a.localeCompare(b));
+    nameOptionsEl.textContent = '';
+    for (const n of names) {
+      const option = document.createElement('option');
+      option.value = n;
+      nameOptionsEl.appendChild(option);
+    }
+  }
+
   function render() {
+    updateItemNameOptions();
     const filtered = items.filter((item) => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm);

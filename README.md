@@ -16,6 +16,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   buttons on the same form: fill in a name/quantity and either add new
   stock or subtract from an existing item by that name (an item that
   doesn't exist yet says so instead of guessing)
+- **Name autocomplete**: the item-name field suggests matching names from
+  your current inventory as you type a few letters, so picking one from
+  the list — rather than retyping it slightly differently each time —
+  keeps "Use item" matching the item you actually mean
 - Quick **+ / −** buttons on each item card to add or use one unit at a time
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
@@ -185,6 +189,15 @@ should go the other way.
   Roma)"), prep notes after a comma ("diced", "melted"), section headers
   ("Ingredients:"), and numbered instruction steps ("1. Preheat the
   oven...") — keeping only plausible ingredient lines.
+- **Flexible entry**: ingredients can go one per line, comma-separated
+  on a single line ("2 cups flour, 1 tsp salt, 3 eggs"), or just spaced
+  out on a single line with no punctuation at all ("2 cups flour 1 tsp
+  salt 3 eggs") — any mix of the three in the same box works too. Each
+  new quantity (a number, a fraction, or a word like "a"/"few") is
+  treated as the start of the next ingredient; a comma-separated bit
+  with no quantity of its own ("diced", "room temperature") is kept
+  attached to the ingredient before it as a prep note, not split out as
+  its own item.
 - **Deducting**: you only ever say how much was used (e.g. "200 g
   flour") — the app works out what's left, never asking you to enter a
   remaining amount yourself. If the matched inventory item tracks

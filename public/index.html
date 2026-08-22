@@ -52,7 +52,7 @@
           <textarea
             id="recipe-text"
             rows="5"
-            placeholder="Paste or type ingredients, one per line, e.g.&#10;2 cups flour&#10;1 tsp salt&#10;3 eggs"
+            placeholder="Type or paste ingredients — one per line, comma-separated, or just spaced out. e.g.&#10;2 cups flour, 1 tsp salt&#10;3 eggs"
           ></textarea>
         </div>
         <button type="button" id="recipe-parse-btn" class="btn btn-secondary btn-full">
@@ -71,7 +71,8 @@
     <section class="add-card" aria-label="Add an item">
       <form id="add-form" autocomplete="off">
         <div class="field-row">
-          <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" required />
+          <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" list="item-name-options" required />
+          <datalist id="item-name-options"></datalist>
         </div>
         <div class="field-row two-up">
           <input id="item-qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qty" value="1" required />
