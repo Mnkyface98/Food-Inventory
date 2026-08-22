@@ -17,14 +17,11 @@
   const categorySelect = document.getElementById('item-category');
   const expirationInput = document.getElementById('item-expiration');
   const packSizeInput = document.getElementById('item-pack-size');
-  // "Weight/volume of a single item" — Add-only. Describes a fresh
-  // container's size; a new item always starts full, so there's no
-  // separate "remaining" input here.
-  const itemSizeWrap = document.getElementById('item-size-wrap');
-  const fullnessUnitInput = document.getElementById('item-fullness-unit');
-  const fullnessTotalInput = document.getElementById('item-fullness-total');
   // "Amount used" — Use-only. Drives the deduction; the running total
-  // it deducts from is never shown here (see the README).
+  // it deducts from is never shown here (see the README). Everything
+  // added is assumed new and full, so Add never asks for a size at
+  // all — a container's fullness is only ever established by a
+  // barcode scan or a review card (see renderReview()) picking one up.
   const amountUsedWrap = document.getElementById('amount-used-wrap');
   const amountUsedInput = document.getElementById('item-amount-used');
   const amountUsedUnitInput = document.getElementById('item-amount-used-unit');
@@ -184,21 +181,6 @@
     sync();
   }
 
-  // "Weight/volume of a single item" only makes sense in Add mode, for
-  // exactly one item that isn't itself being tracked as a multi-pack —
-  // hide it (and clear any value) whenever quantity isn't 1, a pack size
-  // is set, or we're in Use mode instead.
-  function syncItemSizeVisibility() {
-    const applies = entryMode === 'add' && Number(qtyInput.value) === 1 && !packSizeInput.value;
-    itemSizeWrap.classList.toggle('hidden', !applies);
-    if (!applies) {
-      fullnessUnitInput.value = '';
-      fullnessTotalInput.value = '';
-    }
-  }
-  qtyInput.addEventListener('input', syncItemSizeVisibility);
-  packSizeInput.addEventListener('input', syncItemSizeVisibility);
-
   // The fields are hidden until you pick + Add or − Use; picking one
   // reveals the same shared form, styled and labeled for that action,
   // with only the Add- or Use-specific fields showing.
@@ -209,8 +191,6 @@
     categorySelect.value = '';
     expirationInput.value = '';
     packSizeInput.value = '';
-    fullnessUnitInput.value = '';
-    fullnessTotalInput.value = '';
     amountUsedInput.value = '';
     amountUsedUnitInput.value = '';
   }
@@ -224,7 +204,6 @@
     entrySubmitBtn.textContent = isAdd ? '+ Add item' : '− Use item';
     entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
     amountUsedWrap.classList.toggle('hidden', isAdd);
-    syncItemSizeVisibility();
     nameInput.focus();
   }
 
@@ -715,15 +694,6 @@
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
     const packSize = packSizeInput.value || undefined;
-    // "Weight/volume of a single item" describes a fresh container's
-    // size — a newly (re)stocked item always starts full, so the same
-    // value is sent as both the total size and the current amount.
-    // Leaving it blank sends nothing, so the server keeps whatever
-    // fullness that item already has on file untouched.
-    const sizeAmount = fullnessTotalInput.value || undefined;
-    const fullnessUnit = sizeAmount ? (fullnessUnitInput.value || undefined) : undefined;
-    const fullnessAmount = sizeAmount;
-    const fullnessTotal = sizeAmount;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -733,11 +703,14 @@
 
     entrySubmitBtn.disabled = true;
     try {
+      // Everything added here is assumed new and full, so no fullness
+      // reading is sent — the server keeps whatever fullness an already-
+      // tracked item has on file untouched. A container's fullness is
+      // only ever established by a barcode scan or a review card.
       const saved = await api('/api/items', {
         method: 'POST',
         body: JSON.stringify({
-          name, quantity, unit, location, category, expirationDate,
-          packSize, fullnessUnit, fullnessAmount, fullnessTotal,
+          name, quantity, unit, location, category, expirationDate, packSize,
         }),
       });
       const idx = items.findIndex((i) => i.id === saved.id);
@@ -746,7 +719,6 @@
       render();
       showToast(`Added ${name}`);
       resetEntryForm();
-      syncItemSizeVisibility();
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
