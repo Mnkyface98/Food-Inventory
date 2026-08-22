@@ -13,9 +13,11 @@ type and sorted so what's expiring soon or running low surfaces first.
 - Add items with a name, quantity, and unit (e.g. "Rice", 2, "bags")
 - Assign each item to Pantry, Fridge, or Freezer
 - **"+ Add item" and "− Use item"** — equally prominent full-width
-  buttons on the same form: fill in a name/quantity and either add new
-  stock or subtract from an existing item by that name (an item that
-  doesn't exist yet says so instead of guessing)
+  buttons; the entry fields stay out of the way until you tap one, then
+  a form opens labeled and colored for that action (✕ closes it back
+  down to just the two buttons). Fill in a name/quantity and either add
+  new stock or subtract from an existing item by that name (an item
+  that doesn't exist yet says so instead of guessing)
 - **Name autocomplete**: the item-name field suggests matching names from
   your current inventory as you type a few letters, so picking one from
   the list — rather than retyping it slightly differently each time —
@@ -220,15 +222,22 @@ these rules, in order — the first one that applies wins:
 1. **Out of stock** — quantity is 0 (or, for a tracked single container,
    0% full) always shows "Out," overriding everything else below.
 2. **Container fullness tracking** — instead of typing an abstract
-   percentage, you enter a real measurement: a unit (oz, fl oz, ml, L, g,
-   kg, or lb), how much is remaining, and the container's total size (e.g.
-   "10 remaining of a 16 oz total"). The app computes the percentage
-   itself and flags it low at **30% full or less** (i.e. 70%+ used) — the
-   item's card shows the reading itself (e.g. "10/16 oz") alongside the
-   badge. Only available while quantity is exactly 1 *and* no pack size is
-   set on the item (both shown/cleared automatically as those change),
-   since fullness stops meaning anything with 2+ containers or once
-   you're counting a pack instead.
+   percentage, you work with a real measurement. On the **+ Add item**
+   card, "Weight/volume of a single item" is a unit (oz, fl oz, ml, L, g,
+   kg, or lb) and an amount describing a fresh container's size (e.g. "16
+   oz") — a newly (re)stocked item is assumed to start full, so there's
+   nothing else to fill in. From then on, using some of it is just
+   "Amount used": on the **− Use item** card, type how much you used and
+   its unit, and the app deducts it from that container's running total
+   on its own — you only ever say how much was used, never how much is
+   left, and the running total itself is never shown back to you, just
+   the result. The app computes the percentage remaining and flags it low
+   at **50% full or less** (half or more used) — the item's card shows
+   the current reading (e.g. "8/16 oz") alongside the badge. Only applies
+   while quantity is exactly 1 *and* no pack size is set on the item
+   (both fields hide themselves automatically as those change), since
+   fullness stops meaning anything with 2+ containers or once you're
+   counting a pack instead.
 3. **Pack size tracking** — if you've set a "pack size" (the count it
    started at, e.g. 24), it's flagged low once the remaining quantity drops
    to **25% or less** of that (6 or fewer left of a 24-pack).
@@ -240,20 +249,12 @@ these rules, in order — the first one that applies wins:
 
 Pack size and container fullness are optional and per-item — set them
 once on an item you want tracked that way (tap its name to edit, or set
-them when adding it) and they stick until you change or clear them; every
-other item just uses whichever of rules 4-6 applies.
-
-**Logging usage against a tracked container**: type the name of an item
-that already has container fullness tracking (e.g. one you set up above)
-into the item-name field, and the "Low-stock tracking" section switches
-modes automatically — **Total size** fills in on its own from that item's
-existing record (no need to retype a bottle's capacity every time you use
-some of it), and **Remaining** becomes **Amount used**. Type how much you
-used, tap **− Use item**, and the app works out what's left and updates
-the reading itself — you never have to do that math or enter a remaining
-amount yourself. Adding more stock of that same item without touching
-these fields (e.g. bought a duplicate you're not tracking separately)
-leaves its existing fullness reading untouched.
+its size when adding it) and they stick until you change or clear them;
+every other item just uses whichever of rules 4-6 applies. Restocking an
+already-tracked item through **+ Add item** without touching its size
+field (e.g. adding a duplicate you're not tracking separately) leaves its
+existing fullness reading untouched — only typing a new size resets it
+back to full.
 
 ## API
 

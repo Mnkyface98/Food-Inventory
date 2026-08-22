@@ -2,7 +2,13 @@
   const listEl = document.getElementById('item-list');
   const emptyStateEl = document.getElementById('empty-state');
   const statusLineEl = document.getElementById('status-line');
+  const entryModeButtons = document.getElementById('entry-mode-buttons');
+  const modeAddBtn = document.getElementById('mode-add-btn');
+  const modeUseBtn = document.getElementById('mode-use-btn');
   const addForm = document.getElementById('add-form');
+  const entryFormTitle = document.getElementById('entry-form-title');
+  const entryCancelBtn = document.getElementById('entry-cancel-btn');
+  const entrySubmitBtn = document.getElementById('entry-submit-btn');
   const nameInput = document.getElementById('item-name');
   const nameOptionsEl = document.getElementById('item-name-options');
   const qtyInput = document.getElementById('item-qty');
@@ -11,11 +17,17 @@
   const categorySelect = document.getElementById('item-category');
   const expirationInput = document.getElementById('item-expiration');
   const packSizeInput = document.getElementById('item-pack-size');
-  const fullnessWrap = document.getElementById('fullness-wrap');
+  // "Weight/volume of a single item" — Add-only. Describes a fresh
+  // container's size; a new item always starts full, so there's no
+  // separate "remaining" input here.
+  const itemSizeWrap = document.getElementById('item-size-wrap');
   const fullnessUnitInput = document.getElementById('item-fullness-unit');
-  const fullnessRemainingInput = document.getElementById('item-fullness-remaining');
   const fullnessTotalInput = document.getElementById('item-fullness-total');
-  const useItemBtn = document.getElementById('use-item-btn');
+  // "Amount used" — Use-only. Drives the deduction; the running total
+  // it deducts from is never shown here (see the README).
+  const amountUsedWrap = document.getElementById('amount-used-wrap');
+  const amountUsedInput = document.getElementById('item-amount-used');
+  const amountUsedUnitInput = document.getElementById('item-amount-used-unit');
   const tabsEl = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -51,16 +63,14 @@
   let toastTimer = null;
   let editingId = null; // id of the item currently shown as an edit form, if any
   const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
-  // True when the top form's name+location currently match an existing
-  // item that already tracks container fullness — see syncTopFullness().
-  let fullnessUsedMode = false;
+  let entryMode = null; // 'add' | 'use' | null (fields hidden until one is chosen)
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
   // canned-food/beverage defaults, which win over the flat fallback.
   const LOW_STOCK_THRESHOLD = 1; // fallback for anything not covered below
   const PACK_LOW_FRACTION = 0.25; // pack-tracked items: low at <=25% of the original pack left
-  const BOTTLE_LOW_PERCENT = 30; // single-container items: low at <=30% full (i.e. 70%+ used)
+  const BOTTLE_LOW_PERCENT = 50; // single-container items: low at <=50% full (i.e. half or more used)
   const CANNED_FOOD_LOW_QTY = 2; // canned food: low at 2 or fewer cans
   const CANNED_BEVERAGE_LOW_QTY = 4; // canned beverages: low at 4 or fewer cans
   // An item expiring within this many days gets the amber "soon" badge.
@@ -174,30 +184,60 @@
     sync();
   }
 
-  wireFullnessVisibility(qtyInput, packSizeInput, fullnessWrap, fullnessUnitInput, fullnessRemainingInput, fullnessTotalInput);
-
-  // Once the typed name+location match an item that already tracks
-  // container fullness, its total size is already known — no need to
-  // retype it every time. Auto-fill and lock Total size, pre-select its
-  // unit, and switch the "Remaining" field over to "Amount used": from
-  // here you only ever say how much you used, same as everywhere else
-  // in the app, and the app works out what's left on its own.
-  function syncTopFullness() {
-    const match = findMatchingItem(nameInput.value.trim(), locationSelect.value);
-    const hasFullness = !!(match && match.fullnessTotal != null);
-    fullnessUsedMode = hasFullness;
-    if (hasFullness) {
-      fullnessTotalInput.value = match.fullnessTotal;
-      fullnessTotalInput.readOnly = true;
-      if (!fullnessUnitInput.value) fullnessUnitInput.value = match.fullnessUnit || '';
-      fullnessRemainingInput.placeholder = 'Amount used';
-    } else {
-      fullnessTotalInput.readOnly = false;
-      fullnessRemainingInput.placeholder = 'Remaining';
+  // "Weight/volume of a single item" only makes sense in Add mode, for
+  // exactly one item that isn't itself being tracked as a multi-pack —
+  // hide it (and clear any value) whenever quantity isn't 1, a pack size
+  // is set, or we're in Use mode instead.
+  function syncItemSizeVisibility() {
+    const applies = entryMode === 'add' && Number(qtyInput.value) === 1 && !packSizeInput.value;
+    itemSizeWrap.classList.toggle('hidden', !applies);
+    if (!applies) {
+      fullnessUnitInput.value = '';
+      fullnessTotalInput.value = '';
     }
   }
-  nameInput.addEventListener('input', syncTopFullness);
-  locationSelect.addEventListener('change', syncTopFullness);
+  qtyInput.addEventListener('input', syncItemSizeVisibility);
+  packSizeInput.addEventListener('input', syncItemSizeVisibility);
+
+  // The fields are hidden until you pick + Add or − Use; picking one
+  // reveals the same shared form, styled and labeled for that action,
+  // with only the Add- or Use-specific fields showing.
+  function resetEntryForm() {
+    nameInput.value = '';
+    qtyInput.value = '1';
+    unitInput.value = '';
+    categorySelect.value = '';
+    expirationInput.value = '';
+    packSizeInput.value = '';
+    fullnessUnitInput.value = '';
+    fullnessTotalInput.value = '';
+    amountUsedInput.value = '';
+    amountUsedUnitInput.value = '';
+  }
+
+  function openEntryForm(mode) {
+    entryMode = mode;
+    const isAdd = mode === 'add';
+    entryModeButtons.classList.add('hidden');
+    addForm.classList.remove('hidden');
+    entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
+    entrySubmitBtn.textContent = isAdd ? '+ Add item' : '− Use item';
+    entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
+    amountUsedWrap.classList.toggle('hidden', isAdd);
+    syncItemSizeVisibility();
+    nameInput.focus();
+  }
+
+  function closeEntryForm() {
+    entryMode = null;
+    addForm.classList.add('hidden');
+    entryModeButtons.classList.remove('hidden');
+    resetEntryForm();
+  }
+
+  modeAddBtn.addEventListener('click', () => openEntryForm('add'));
+  modeUseBtn.addEventListener('click', () => openEntryForm('use'));
+  entryCancelBtn.addEventListener('click', closeEntryForm);
 
   function showToast(message) {
     toastEl.textContent = message;
@@ -667,8 +707,7 @@
     }
   }
 
-  addForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  async function submitAdd() {
     const name = nameInput.value.trim();
     const quantity = Number(qtyInput.value);
     const unit = unitInput.value.trim();
@@ -676,14 +715,15 @@
     const category = categorySelect.value || undefined; // empty = let server guess
     const expirationDate = expirationInput.value || undefined;
     const packSize = packSizeInput.value || undefined;
-    // In "amount used" mode the Remaining field means how much was just
-    // used, not the container's current fullness — never send it as a
-    // fullness reading here, or it'd overwrite the item's real remaining
-    // amount. Leaving both unset makes the server keep whatever fullness
-    // that item already has on file.
-    const fullnessUnit = fullnessUsedMode ? undefined : (fullnessUnitInput.value || undefined);
-    const fullnessAmount = fullnessUsedMode ? undefined : (fullnessRemainingInput.value || undefined);
-    const fullnessTotal = fullnessUsedMode ? undefined : (fullnessTotalInput.value || undefined);
+    // "Weight/volume of a single item" describes a fresh container's
+    // size — a newly (re)stocked item always starts full, so the same
+    // value is sent as both the total size and the current amount.
+    // Leaving it blank sends nothing, so the server keeps whatever
+    // fullness that item already has on file untouched.
+    const sizeAmount = fullnessTotalInput.value || undefined;
+    const fullnessUnit = sizeAmount ? (fullnessUnitInput.value || undefined) : undefined;
+    const fullnessAmount = sizeAmount;
+    const fullnessTotal = sizeAmount;
 
     if (!name) return;
     if (!Number.isFinite(quantity) || quantity < 0) {
@@ -691,8 +731,7 @@
       return;
     }
 
-    const submitBtn = addForm.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
+    entrySubmitBtn.disabled = true;
     try {
       const saved = await api('/api/items', {
         method: 'POST',
@@ -706,30 +745,21 @@
       else items[idx] = saved;
       render();
       showToast(`Added ${name}`);
-      nameInput.value = '';
-      qtyInput.value = '1';
-      unitInput.value = '';
-      categorySelect.value = '';
-      expirationInput.value = '';
-      packSizeInput.value = '';
-      fullnessUnitInput.value = '';
-      fullnessRemainingInput.value = '';
-      fullnessTotalInput.value = '';
-      qtyInput.dispatchEvent(new Event('input')); // re-sync the fullness fields' visibility for qty=1
-      syncTopFullness(); // name is now blank — back to the default "Remaining" / editable Total state
+      resetEntryForm();
+      syncItemSizeVisibility();
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't add item: ${err.message}`);
     } finally {
-      submitBtn.disabled = false;
+      entrySubmitBtn.disabled = false;
     }
-  });
+  }
 
   // "Use item" mirrors "+ Add item" — same name/qty/location fields, but
   // subtracts from an existing item instead of creating/adding to one.
   // Matches the existing voice-review "Use" flow: if nothing matches, it
   // says so rather than guessing or silently creating a phantom item.
-  useItemBtn.addEventListener('click', async () => {
+  async function submitUse() {
     const name = nameInput.value.trim();
     const quantity = Number(qtyInput.value);
     const unit = unitInput.value.trim();
@@ -750,27 +780,29 @@
       return;
     }
 
-    // Once Total size auto-fills from a tracked container, "Remaining"
-    // becomes "Amount used" — if it's filled in, that's the deduction to
-    // make (in that field's unit), taking priority over the plain
-    // Qty/Unit fields above.
+    // "Amount used", when filled in, is the deduction to make (in that
+    // field's unit) — it takes priority over the plain Qty/Unit fields
+    // above, which stay the fallback for whole-count items (e.g. "3
+    // eggs") that don't track a measured fullness at all.
     let effectiveAmount = quantity;
     let effectiveUnit = unit;
-    if (fullnessUsedMode && fullnessRemainingInput.value.trim()) {
-      const usedAmount = Number(fullnessRemainingInput.value);
+    if (amountUsedInput.value.trim()) {
+      const usedAmount = Number(amountUsedInput.value);
       if (!Number.isFinite(usedAmount) || usedAmount < 0) {
         showToast('Enter a valid amount used.');
         return;
       }
       effectiveAmount = usedAmount;
-      effectiveUnit = fullnessUnitInput.value || unit;
+      effectiveUnit = amountUsedUnitInput.value || unit;
     }
 
-    useItemBtn.disabled = true;
+    entrySubmitBtn.disabled = true;
     try {
       // /use is unit-aware: if the matched item tracks container fullness
       // (e.g. a bottle) and this unit converts to it (same family — weight
       // or volume), it deducts from that instead of the whole-item count.
+      // Whichever way it lands, the server works out what's left — this
+      // form never asks for a remaining amount, only how much was used.
       const updated = await api(`/api/items/${match.id}/use`, {
         method: 'POST',
         body: JSON.stringify({ amount: effectiveAmount, unit: effectiveUnit }),
@@ -778,24 +810,24 @@
       const idx = items.findIndex((i) => i.id === updated.id);
       if (idx !== -1) items[idx] = updated;
       render();
-      showToast(`Used ${formatQty(effectiveAmount)}${effectiveUnit ? ' ' + effectiveUnit : ''} ${match.name}`.trim());
-      nameInput.value = '';
-      qtyInput.value = '1';
-      unitInput.value = '';
-      categorySelect.value = '';
-      expirationInput.value = '';
-      packSizeInput.value = '';
-      fullnessUnitInput.value = '';
-      fullnessRemainingInput.value = '';
-      fullnessTotalInput.value = '';
-      qtyInput.dispatchEvent(new Event('input'));
-      syncTopFullness(); // name is now blank — back to the default "Remaining" / editable Total state
+      const usedText = `Used ${formatQty(effectiveAmount)}${effectiveUnit ? ' ' + effectiveUnit : ''} ${match.name}`.trim();
+      const leftText = updated.fullnessAmount != null && updated.fullnessTotal != null
+        ? ` — ${formatQty(updated.fullnessAmount)}/${formatQty(updated.fullnessTotal)}${updated.fullnessUnit ? ' ' + updated.fullnessUnit : ''} left`
+        : ` — ${formatQty(updated.quantity)} left`;
+      showToast(usedText + leftText);
+      resetEntryForm();
       nameInput.focus();
     } catch (err) {
       showToast(`Couldn't use item: ${err.message}`);
     } finally {
-      useItemBtn.disabled = false;
+      entrySubmitBtn.disabled = false;
     }
+  }
+
+  addForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (entryMode === 'use') submitUse();
+    else submitAdd();
   });
 
   function setActiveCategory(category) {

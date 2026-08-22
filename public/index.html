@@ -68,8 +68,18 @@
       <div id="voice-review" class="voice-review hidden"></div>
     </section>
 
-    <section class="add-card" aria-label="Add an item">
-      <form id="add-form" autocomplete="off">
+    <section class="add-card" aria-label="Add or use an item">
+      <div id="entry-mode-buttons" class="entry-mode-buttons">
+        <button type="button" id="mode-add-btn" class="btn btn-primary btn-full">+ Add item</button>
+        <button type="button" id="mode-use-btn" class="btn btn-danger btn-full">− Use item</button>
+      </div>
+
+      <form id="add-form" class="entry-form hidden" autocomplete="off">
+        <div class="entry-form-header">
+          <span id="entry-form-title" class="entry-form-title">+ Add item</span>
+          <button type="button" id="entry-cancel-btn" class="entry-cancel-btn" aria-label="Cancel">✕</button>
+        </div>
+
         <div class="field-row">
           <input id="item-name" type="text" placeholder="Item name (e.g. Rice)" list="item-name-options" required />
           <datalist id="item-name-options"></datalist>
@@ -92,30 +102,45 @@
           <label for="item-expiration" class="field-label">Expiration date (optional)</label>
           <input id="item-expiration" type="date" />
         </div>
-        <details class="low-stock-details">
-          <summary>Low-stock tracking (optional)</summary>
-          <div class="field-row">
-            <label for="item-pack-size" class="field-label">Pack size</label>
-            <input id="item-pack-size" type="number" min="1" step="any" placeholder="e.g. 24" />
+        <div class="field-row">
+          <label for="item-pack-size" class="field-label">Pack size (optional)</label>
+          <input id="item-pack-size" type="number" min="1" step="any" placeholder="e.g. 24" />
+        </div>
+
+        <div id="item-size-wrap" class="field-row">
+          <label class="field-label">Weight/volume of a single item (optional)</label>
+          <div class="field-row two-up">
+            <input id="item-fullness-total" type="number" min="0" step="any" placeholder="Amount" />
+            <select id="item-fullness-unit" aria-label="Size unit">
+              <option value="">Unit</option>
+              <option value="oz">oz</option>
+              <option value="fl oz">fl oz</option>
+              <option value="ml">ml</option>
+              <option value="L">L</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="lb">lb</option>
+            </select>
           </div>
-          <div id="fullness-wrap" class="field-row">
-            <label class="field-label">Container fullness (single item, no pack size)</label>
-            <div class="field-row three-up">
-              <input id="item-fullness-remaining" type="number" min="0" step="any" placeholder="Remaining" />
-              <select id="item-fullness-unit" aria-label="Fullness unit">
-                <option value="">Unit</option>
-                <option value="oz">oz</option>
-                <option value="fl oz">fl oz</option>
-                <option value="ml">ml</option>
-                <option value="L">L</option>
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="lb">lb</option>
-              </select>
-              <input id="item-fullness-total" type="number" min="0" step="any" placeholder="Total size" />
-            </div>
+        </div>
+
+        <div id="amount-used-wrap" class="field-row hidden">
+          <label class="field-label">Amount used</label>
+          <div class="field-row two-up">
+            <input id="item-amount-used" type="number" min="0" step="any" placeholder="Amount used" />
+            <select id="item-amount-used-unit" aria-label="Amount used unit">
+              <option value="">Unit</option>
+              <option value="oz">oz</option>
+              <option value="fl oz">fl oz</option>
+              <option value="ml">ml</option>
+              <option value="L">L</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="lb">lb</option>
+            </select>
           </div>
-        </details>
+        </div>
+
         <datalist id="unit-options">
           <option value="pcs"></option>
           <option value="lbs"></option>
@@ -127,8 +152,7 @@
           <option value="jars"></option>
           <option value="bottles"></option>
         </datalist>
-        <button type="submit" class="btn btn-primary btn-full">+ Add item</button>
-        <button type="button" id="use-item-btn" class="btn btn-danger btn-full">− Use item</button>
+        <button type="submit" id="entry-submit-btn" class="btn btn-primary btn-full">+ Add item</button>
       </form>
     </section>
 

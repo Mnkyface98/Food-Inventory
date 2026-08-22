@@ -95,6 +95,33 @@ main {
   margin-bottom: 0.3rem;
 }
 
+.entry-mode-buttons .btn + .btn {
+  margin-top: 0.5rem;
+}
+
+.entry-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.entry-form-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.entry-cancel-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.3rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 input, select, textarea {
   width: 100%;
   font-size: 1rem;
