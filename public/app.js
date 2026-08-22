@@ -126,6 +126,10 @@
         tabBtn.dataset.category = cat.id;
         tabBtn.textContent = cat.label;
         tabsEl.appendChild(tabBtn);
+
+        // Category sections in the "All" view start collapsed; tapping a
+        // heading expands it.
+        collapsedCategories[cat.id] = true;
       }
     } catch (err) {
       // Non-fatal: category dropdown/tabs just stay at "Auto"/"All" if this fails.

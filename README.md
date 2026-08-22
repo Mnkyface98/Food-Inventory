@@ -50,10 +50,10 @@ type and sorted so what's expiring soon or running low surfaces first.
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
   search by name; each item still shows its Pantry/Fridge/Freezer location
   as a pill on its card
-- In the **All** view, tap any category heading (e.g. "Dairy & Eggs (2)")
-  to collapse or expand that section — handy once you've got a lot of
-  categories in play. Collapsed sections stay collapsed as you use the
-  app, just not across a page reload
+- In the **All** view, category sections start **collapsed** by default
+  (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
+  collapse. Handy once you've got a lot of categories in play; expanded
+  sections reset back to collapsed on a page reload
 - Responsive, large-tap-target layout designed for phone browsers
 - Persistent storage via SQLite (survives server restarts)
 
