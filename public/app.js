@@ -1215,11 +1215,12 @@
         const isAdd = state.action === 'add';
         weightVolLabel.textContent = isAdd ? 'Weight/volume (optional)' : 'Weight/volume used (optional)';
         wvAmountEl.placeholder = isAdd ? 'Amount' : 'Amount used';
-        // On Use, the unit is already known — pulled from the matched
-        // item (see syncFieldsFromMatch) — so there's no dropdown to
-        // show for something you're not redefining, just using.
+        // On Use, the plain Qty unit (bottle/box/piece) is already known
+        // from the matched item — nothing to redefine there. But the
+        // weight/volume unit stays selectable on Use too: you might track
+        // an item in fl oz total yet want to log "used 1 cup" — the /use
+        // endpoint converts within the same family (weight or volume).
         unitEl.classList.toggle('hidden', !isAdd);
-        wvUnitEl.classList.toggle('hidden', !isAdd);
         const val = wvAmountEl.value || null;
         if (isAdd) {
           state.fullnessTotal = val;

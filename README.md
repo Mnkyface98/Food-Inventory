@@ -51,10 +51,14 @@ type and sorted so what's expiring soon or running low surfaces first.
   full, so it doubles as both total and current amount); switch to
   **Use** and it relabels to "Weight/volume used," where typing an
   amount deducts that much from the matched item's tracked total
-  instead of decrementing its whole-number count. On **Use**, the
-  Unit and Weight/volume-unit dropdowns disappear entirely — with the
-  matched item already telling the card what they are, there's nothing
-  left to redefine, just an amount to type. The card's item-name
+  instead of decrementing its whole-number count. On **Use**, the plain
+  **Unit** dropdown (bottle, box, piece, etc.) disappears — the matched
+  item already tells the card what that is, nothing left to redefine —
+  but the **Weight/volume unit** dropdown stays selectable, since the
+  unit you're logging a use in doesn't have to match how the item's
+  stored: track a bottle in fl oz but log "used 1 cup" and it converts
+  automatically (weight ↔ weight, volume ↔ volume) before deducting.
+  The card's item-name
   field also suggests matching names from your current inventory as
   you type a few letters, so picking one from the list — rather than
   retyping it slightly differently each time — keeps "Use" matching
