@@ -16,12 +16,15 @@ type and sorted so what's expiring soon or running low surfaces first.
   buttons, and the only thing on the page until you tap one. Every entry
   method stays out of the way until then, so there's nothing to puzzle
   over up front. Tapping **+ Add item** reveals quick text/mic entry,
-  barcode scanning, and receipt scanning; **− Use item** reveals all of
-  that *and* recipe ingredients too (since a recipe is naturally
-  something you use up, not add). ✕ closes it all back down to just the
-  two buttons — nothing typed is lost, it's just hidden until you
-  reopen the same mode. There's no separate manual-entry form to open —
-  the text box (type or speak a sentence, e.g. *"add 2 bottles of olive
+  barcode scanning, and receipt scanning — all ways of bringing a new
+  product into inventory. **− Use item** reveals text/mic entry and
+  recipe ingredients, but not barcode/receipt scanning — a scan only
+  ever describes a product you're adding, never one you're using up;
+  finding what to use is what the item-name suggestion list is for
+  instead (see below). ✕ closes it all back down to just the two
+  buttons — nothing typed is lost, it's just hidden until you reopen
+  the same mode. There's no separate manual-entry form to open — the
+  text box (type or speak a sentence, e.g. *"add 2 bottles of olive
   oil"* or just a bare item name) produces the same fully editable
   review card as scanning does, so it doubles as manual entry: type as
   little or as much as you want, then adjust any field before
@@ -45,7 +48,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   full, so it doubles as both total and current amount); switch to
   **Use** and it relabels to "Weight/volume used," where typing an
   amount deducts that much from the matched item's tracked total
-  instead of decrementing its whole-number count. The card's item-name
+  instead of decrementing its whole-number count. On **Use**, the
+  Unit and Weight/volume-unit dropdowns disappear entirely — with the
+  matched item already telling the card what they are, there's nothing
+  left to redefine, just an amount to type. The card's item-name
   field also suggests matching names from your current inventory as
   you type a few letters, so picking one from the list — rather than
   retyping it slightly differently each time — keeps "Use" matching
@@ -167,11 +173,12 @@ saved, so nothing is written on a bad guess.
 
 ## Barcode scanning
 
-Tap **📷 Scan a barcode**, point your camera at a product's barcode, and hold
-steady for a second. The result goes through the same editable review card
-as voice entry — nothing saves until you confirm — with the "Add"/"Use"
-toggle available too, so scanning works for using up an item as well as
-stocking one.
+Tap **+ Add item** to reveal **📷 Scan a barcode**, point your camera at a
+product's barcode, and hold steady for a second. The result goes through the
+same editable review card as voice entry — nothing saves until you confirm —
+with the "Add"/"Use" toggle available on the card itself, so a scan can still
+log using up an item, not just stocking one, even though the scan button
+lives under + Add item.
 
 - **Camera decoding** runs entirely on-device via
   [ZXing](https://github.com/zxing-js/library) (vendored locally in
@@ -193,11 +200,11 @@ stocking one.
 
 ## Receipt scanning
 
-Tap **🧾 Scan a receipt** to take (or choose) a photo of a paper receipt, or
-**📸 Use this device's camera** for a live in-browser capture instead. Each
-recognized product line becomes an editable review card — same flow as
-voice and barcode entry, add-vs-use toggle included, nothing saved until you
-confirm.
+Tap **+ Add item** to reveal **🧾 Scan a receipt**, which takes (or chooses) a
+photo of a paper receipt, or **📸 Use this device's camera** for a live
+in-browser capture instead. Each recognized product line becomes an editable
+review card — same flow as voice and barcode entry, add-vs-use toggle
+included, nothing saved until you confirm.
 
 - **Two ways to get a photo in.** "Scan a receipt" is the device's native
   camera/photo picker — on a phone this opens the camera directly; on a

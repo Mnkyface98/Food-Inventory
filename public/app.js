@@ -27,6 +27,7 @@
   const barcodeCancelBtn = document.getElementById('barcode-cancel');
 
   const receiptInput = document.getElementById('receipt-input');
+  const receiptLabel = document.getElementById('receipt-label');
   const receiptCameraBtn = document.getElementById('receipt-camera-btn');
   const receiptStatus = document.getElementById('receipt-status');
 
@@ -225,12 +226,15 @@
     sync();
   }
 
-  // The quick-input methods (voice/text, barcode, receipt, recipe) stay
-  // out of the way until a mode is picked — Add reveals text/mic/submit,
-  // barcode, and receipt; Use reveals all of those plus recipe
-  // ingredients, since a recipe's ingredients are meant to be used up.
-  // Every one of them funnels into the same editable review card, which
-  // is the only "entry form" in the app — see renderReview().
+  // The quick-input methods stay out of the way until a mode is picked.
+  // Add reveals text/mic/submit, barcode scanning, and receipt scanning
+  // — all ways of bringing a new product into inventory. Use reveals
+  // just text/mic/submit and recipe ingredients: finding an item to use
+  // is what the item-name suggestion list (see updateItemNameOptions())
+  // is for, not a fresh scan — scanning a barcode or receipt would only
+  // ever describe a product you're adding, never one you're using up.
+  // Every method funnels into the same editable review card, which is
+  // the only "entry form" in the app — see renderReview().
   function openEntryForm(mode) {
     entryMode = mode;
     const isAdd = mode === 'add';
@@ -238,6 +242,10 @@
     quickInputPanel.classList.remove('hidden');
     recipeBtn.classList.toggle('hidden', isAdd);
     if (isAdd) recipePanel.classList.add('hidden'); // close it if it was left open from Use mode
+    barcodeBtn.classList.toggle('hidden', !isAdd || !hasCamera || !hasZXing);
+    barcodeHint.classList.toggle('hidden', !isAdd || (hasCamera && hasZXing));
+    receiptLabel.classList.toggle('hidden', !isAdd);
+    receiptCameraBtn.classList.toggle('hidden', !isAdd || !hasCamera || !hasTesseract);
     entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
     voiceTextInput.focus();
   }
@@ -1200,6 +1208,11 @@
         const isAdd = state.action === 'add';
         weightVolLabel.textContent = isAdd ? 'Weight/volume (optional)' : 'Weight/volume used (optional)';
         wvAmountEl.placeholder = isAdd ? 'Amount' : 'Amount used';
+        // On Use, the unit is already known — pulled from the matched
+        // item (see syncFieldsFromMatch) — so there's no dropdown to
+        // show for something you're not redefining, just using.
+        unitEl.classList.toggle('hidden', !isAdd);
+        wvUnitEl.classList.toggle('hidden', !isAdd);
         const val = wvAmountEl.value || null;
         if (isAdd) {
           state.fullnessTotal = val;
