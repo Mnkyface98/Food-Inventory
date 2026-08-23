@@ -382,17 +382,30 @@
       catPill.textContent = categoryLabels[item.category] || item.category;
       metaEl.appendChild(catPill);
     }
-    if (item.unit) {
-      const unitSpan = document.createElement('span');
-      unitSpan.textContent = item.unit;
-      metaEl.appendChild(unitSpan);
-    }
     if (item.fullnessAmount != null && item.fullnessTotal != null) {
+      // Two distinct facts here: how many containers (unit), and how
+      // full the tracked one currently is (the reading itself already
+      // says "how much is left" — 10/16 oz).
+      if (item.unit) {
+        const unitSpan = document.createElement('span');
+        unitSpan.textContent = item.unit;
+        metaEl.appendChild(unitSpan);
+      }
       const fullnessBadge = document.createElement('span');
       fullnessBadge.className = 'fullness-badge';
       const unitSuffix = item.fullnessUnit ? ` ${item.fullnessUnit}` : '';
       fullnessBadge.textContent = `${formatQty(item.fullnessAmount)}/${formatQty(item.fullnessTotal)}${unitSuffix}`;
       metaEl.appendChild(fullnessBadge);
+    } else {
+      // No weight/volume tracking — fold quantity and unit into one
+      // explicit "amount left" reading (e.g. "1 bottle left") instead
+      // of a bare unit off on its own with the count only in the +/−
+      // controls below.
+      const amountBadge = document.createElement('span');
+      amountBadge.className = 'fullness-badge';
+      const unitSuffix = item.unit ? ` ${item.unit}` : '';
+      amountBadge.textContent = `${formatQty(item.quantity)}${unitSuffix} left`;
+      metaEl.appendChild(amountBadge);
     }
     const lowLabel = getLowStockBadge(item);
     if (lowLabel) {

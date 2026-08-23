@@ -90,9 +90,11 @@ type and sorted so what's expiring soon or running low surfaces first.
 - Delete items you no longer want to track
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
   search by name; each item card shows its own Pantry/Fridge/Freezer
-  location and category as pills, plus its unit and weight/volume
-  reading (e.g. "300/500 ml") when it's tracked — everything you'd
-  otherwise have to open the item to see
+  location and category as pills, plus how much of it is left —
+  weight/volume-tracked items show the precise reading (e.g. "500/500
+  ml") next to their unit, and everything else shows its quantity and
+  unit together as a plain "amount left" reading (e.g. "1 bottle
+  left") — everything you'd otherwise have to open the item to see
 - In the **All** view, category sections start **collapsed** by default
   (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
   collapse. Handy once you've got a lot of categories in play; expanded
