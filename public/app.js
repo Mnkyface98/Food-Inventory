@@ -1072,12 +1072,97 @@
     }
   }
 
+  // Lowercases, replaces anything that isn't a letter/digit with a space,
+  // and collapses runs of whitespace — "S.PELLEGRINO Sparkling..." and
+  // "s pellegrino sparkling..." normalize to the same tokens.
+  function normalizeForMatch(str) {
+    return str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  // Standard edit-distance: how many single-character insertions,
+  // deletions, or substitutions turn `a` into `b`.
+  function levenshtein(a, b) {
+    const rows = a.length + 1;
+    const cols = b.length + 1;
+    const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+    for (let i = 0; i < rows; i++) dp[i][0] = i;
+    for (let j = 0; j < cols; j++) dp[0][j] = j;
+    for (let i = 1; i < rows; i++) {
+      for (let j = 1; j < cols; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    return dp[a.length][b.length];
+  }
+
+  // Two words count as "close" if they're identical, or a typo's worth
+  // of edits apart relative to their length (roughly one edit per 4
+  // characters, minimum 1) — "pelligrino" vs "pellegrino" (1 edit)
+  // passes; unrelated words don't. Single-character words are excluded
+  // since they're too short to fuzzy-match reliably (any word starting
+  // with that letter would otherwise "match").
+  function wordsAreClose(a, b) {
+    if (a === b) return true;
+    if (a.length < 2 || b.length < 2) return false;
+    const threshold = Math.max(1, Math.floor(Math.max(a.length, b.length) / 4));
+    return levenshtein(a, b) <= threshold;
+  }
+
+  // How well a typed name matches an item's name, from 0 to 1. Each
+  // typed word looks for a close counterpart among the item's words;
+  // the score is the fraction of typed *characters* (not word count)
+  // covered by matched words, so a short common word like "san" barely
+  // moves the score while a long distinctive word like "pelligrino"
+  // matching "pellegrino" carries it — close spellings of the name that
+  // actually identifies the item find it, without a filler word failing
+  // to match sinking an otherwise-clear match.
+  function fuzzyMatchScore(typedName, itemName) {
+    const typedWords = normalizeForMatch(typedName).split(' ').filter(Boolean);
+    const itemWords = normalizeForMatch(itemName).split(' ').filter(Boolean);
+    if (!typedWords.length) return 0;
+    let matched = 0;
+    let total = 0;
+    for (const word of typedWords) {
+      total += word.length;
+      if (itemWords.some((iw) => wordsAreClose(word, iw))) matched += word.length;
+    }
+    return total ? matched / total : 0;
+  }
+
+  const FUZZY_MATCH_THRESHOLD = 0.6;
+
+  // Exact (normalized) match wins first, same as before; a typo'd or
+  // partial name (e.g. "san pelligrino" for "S.Pellegrino...") falls
+  // back to the closest fuzzy match, if any clears the threshold —
+  // preferring the current location, then highest score, same
+  // tie-breaking priority as the exact-match path always had.
   function findMatchingItem(name, location) {
-    const lower = name.trim().toLowerCase();
-    return (
-      items.find((i) => i.name.toLowerCase() === lower && i.location === location) ||
-      items.find((i) => i.name.toLowerCase() === lower)
-    );
+    const normalized = normalizeForMatch(name);
+    if (!normalized) return undefined;
+    const exact = (list) => list.find((i) => normalizeForMatch(i.name) === normalized);
+    const sameLocation = items.filter((i) => i.location === location);
+    const exactMatch = exact(sameLocation) || exact(items);
+    if (exactMatch) return exactMatch;
+
+    let best = null;
+    let bestScore = FUZZY_MATCH_THRESHOLD;
+    for (const item of items) {
+      const score = fuzzyMatchScore(name, item.name);
+      if (score < bestScore) continue;
+      // Prefer a same-location item over an equally-good one elsewhere.
+      const better = !best || score > bestScore || (score === bestScore && item.location === location && best.location !== location);
+      if (better) {
+        best = item;
+        bestScore = score;
+      }
+    }
+    return best || undefined;
   }
 
   function renderReview(parsedItems) {

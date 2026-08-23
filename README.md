@@ -77,7 +77,15 @@ type and sorted so what's expiring soon or running low surfaces first.
   card's item-name field suggest matching names from your current
   inventory as you type a few letters, so picking one from the list —
   rather than retyping it slightly differently each time — keeps "Use"
-  matching the item you actually mean
+  matching the item you actually mean. Typing (or speaking) a name
+  doesn't even need to be exact: a close spelling — a typo, a missing
+  period, an abbreviation like "San Pellegrino" for "S.Pellegrino" —
+  still finds the right item, by scoring how closely each typed word
+  matches a word in the item's name (allowing roughly a typo's worth
+  of difference) and weighting longer, more distinctive words more
+  than short filler ones, so "san pelligrino" still finds
+  "S.PELLEGRINO Sparkling Natural Mineral Water" even though "san"
+  itself doesn't match anything
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
   the milk"* — it's parsed into structured item(s) that you review and edit
