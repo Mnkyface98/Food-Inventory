@@ -2,7 +2,7 @@
 // (https://world.openfoodfacts.org), a public, community-maintained product
 // database. No API key or paid service involved.
 
-const { guessCategory, guessCategoryFromTags } = require('./categorize');
+const { guessCategory, guessCategoryFromTags, guessLocation } = require('./categorize');
 
 const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product';
 
@@ -39,14 +39,42 @@ function parsePackageSize(raw) {
   return unit ? { amount, unit } : null;
 }
 
+// Maps Open Food Facts' packaging_tags (e.g. "en:glass-jar", "en:tetra-
+// pak", "en:aluminium-can") onto the app's own container-type dropdown
+// (bottle, box, piece, can, bag, jar, package, carton, stick, bunch).
+// Longest/most-specific phrase wins so "tetra pak" (a carton) isn't
+// mistaken for a generic "box" it also happens to mention. Not every
+// product has this data, or a mappable one when it does — returns ''
+// (no guess) rather than forcing a wrong pick.
+const PACKAGING_UNIT_TAG_RULES = [
+  ['tetra pak', 'carton'], ['brick', 'carton'], ['carton', 'carton'],
+  ['glass jar', 'jar'], ['jar', 'jar'],
+  ['aluminium can', 'can'], ['steel can', 'can'], ['metal can', 'can'], ['can', 'can'],
+  ['cardboard box', 'box'], ['box', 'box'],
+  ['plastic bottle', 'bottle'], ['glass bottle', 'bottle'], ['bottle', 'bottle'],
+  ['pouch', 'bag'], ['sachet', 'bag'], ['bag', 'bag'],
+  ['stick', 'stick'],
+].sort((a, b) => b[0].length - a[0].length);
+
+function guessPackagingUnit(packagingTags) {
+  if (!Array.isArray(packagingTags) || packagingTags.length === 0) return '';
+  const joined = packagingTags
+    .map((t) => String(t).toLowerCase().replace(/^[a-z]{2,3}:/, '').replace(/-/g, ' '))
+    .join(' ');
+  for (const [phrase, unit] of PACKAGING_UNIT_TAG_RULES) {
+    if (new RegExp(`\\b${phrase.replace(/ /g, '\\s+')}\\b`).test(joined)) return unit;
+  }
+  return '';
+}
+
 /**
  * Look up a barcode (UPC/EAN) against Open Food Facts.
  * @param {string} code
  * @param {typeof fetch} fetchImpl injectable for testing
- * @returns {Promise<{barcode:string, name:string, brand:string, category:string, quantity:number, unit:string}>}
+ * @returns {Promise<{barcode:string, name:string, brand:string, category:string, quantity:number, unit:string, location:string, fullnessUnit:?string, fullnessAmount:?number, fullnessTotal:?number}>}
  */
 async function lookupBarcode(code, fetchImpl = fetch) {
-  const url = `${OFF_BASE}/${encodeURIComponent(code)}.json?fields=product_name,brands,categories_tags,quantity`;
+  const url = `${OFF_BASE}/${encodeURIComponent(code)}.json?fields=product_name,brands,categories_tags,quantity,packaging_tags`;
 
   let res;
   try {
@@ -84,7 +112,12 @@ async function lookupBarcode(code, fetchImpl = fetch) {
     brand: (product.brands || '').split(',')[0].trim(),
     category,
     quantity: 1, // scanning a barcode always means you're adding 1 of this product
-    unit: '', // a plain container word (e.g. "bottle") if you want to add one — not guessed
+    // Best-effort from OFF's own packaging data (e.g. "en:glass-jar") —
+    // still blank, not guessed, when OFF has nothing usable, same as
+    // location/fullness below; every field here is "use what the barcode
+    // actually told us," never a forced guess dressed up as fact.
+    unit: guessPackagingUnit(product.packaging_tags),
+    location: guessLocation(name),
     fullnessUnit: size ? size.unit : null,
     fullnessAmount: size ? size.amount : null, // assumed full — it's presumably a fresh one
     fullnessTotal: size ? size.amount : null,

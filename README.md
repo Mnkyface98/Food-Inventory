@@ -103,11 +103,17 @@ type and sorted so what's expiring soon or running low surfaces first.
   restocking is easy to spot. What counts as "low" (see below) can be
   tailored per item, not just one flat number for everything
 - **Barcode scanning**: tap 📷, point your phone's camera at a product
-  barcode, and it's looked up automatically (name, category) and dropped
-  into the same review flow as voice entry — quantity always starts at 1
-  (you scanned one item, not "500" of it); the package size (e.g. "500 ml")
-  pre-fills the review card's Weight/volume field automatically instead
-  of sitting as inert label text, still editable before you confirm
+  barcode, and every field the lookup actually knows is filled in
+  automatically, dropped into the same review flow as voice entry —
+  name, category, and Location (guessed from the name, e.g. "milk" →
+  Fridge, same as receipt scanning); quantity always starts at 1 (you
+  scanned one item, not "500" of it); the package size (e.g. "500 ml")
+  pre-fills the Weight/volume field; and Unit is guessed from the
+  product's own packaging data when available (e.g. "glass jar" → Jar,
+  "tetra pak" → Carton). Nothing here is invented when the barcode
+  database doesn't actually have it — a field it has nothing for is
+  left blank for you to fill in, same as manual entry, rather than
+  forcing a guess. Every field is still editable before you confirm
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
   restock a whole grocery trip at once. A package size printed as part of

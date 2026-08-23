@@ -816,7 +816,7 @@
           name: product.name,
           quantity: product.quantity,
           unit: product.unit,
-          location: 'pantry',
+          location: product.location,
           category: product.category,
           action: 'add',
           expirationDate: null,
