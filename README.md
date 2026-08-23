@@ -145,10 +145,11 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **The main inventory list is entirely view-only**: each card shows
   just the item's name, a "Low"/"Out" flag if it's triggered, and its
   expiration badge — but only once expiration is within **2 weeks** (or
-  already past); further out, the date isn't shown at all, keeping the
-  card down to what actually needs attention right now. No location,
-  category, unit, or amount-left details, and no quick add/use controls
-  directly on the card
+  already past), and never at all once the item is **Out**, since
+  there's nothing left to expire; further out (or Out), the date isn't
+  shown at all, keeping the card down to what actually needs attention
+  right now. No location, category, unit, or amount-left details, and
+  no quick add/use controls directly on the card
 - **Tap a name to see its details, rename it, or delete it**: expands
   into a small detail view with the exact expiration date (e.g.
   "12/25/2026," not just a relative badge) and how much is actually

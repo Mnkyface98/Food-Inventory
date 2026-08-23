@@ -427,7 +427,13 @@
       lowBadge.textContent = lowLabel;
       metaEl.appendChild(lowBadge);
     }
-    if (item.expirationDate && daysUntil(item.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS) {
+    // No expiration badge once an item is Out — there's nothing left to
+    // expire, so the date isn't useful information at that point.
+    if (
+      lowLabel !== 'Out' &&
+      item.expirationDate &&
+      daysUntil(item.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS
+    ) {
       const { text, className } = formatExpiration(item.expirationDate);
       const expBadge = document.createElement('span');
       expBadge.className = `expiry-badge ${className}`;
