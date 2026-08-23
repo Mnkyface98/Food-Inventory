@@ -533,6 +533,17 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   letter-spacing: 0.02em;
 }
 
+.category-pill {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .item-qty.zero {
   color: var(--danger);
 }

@@ -320,6 +320,12 @@
     pill.className = 'location-pill';
     pill.textContent = item.location;
     metaEl.appendChild(pill);
+    if (item.category) {
+      const catPill = document.createElement('span');
+      catPill.className = 'category-pill';
+      catPill.textContent = categoryLabels[item.category] || item.category;
+      metaEl.appendChild(catPill);
+    }
     if (item.unit) {
       const unitSpan = document.createElement('span');
       unitSpan.textContent = item.unit;

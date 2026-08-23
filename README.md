@@ -77,8 +77,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   Save commits, Cancel discards
 - Delete items you no longer want to track
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
-  search by name; each item still shows its Pantry/Fridge/Freezer location
-  as a pill on its card
+  search by name; each item card shows its own Pantry/Fridge/Freezer
+  location and category as pills, plus its unit and weight/volume
+  reading (e.g. "300/500 ml") when it's tracked — everything you'd
+  otherwise have to open the item to see
 - In the **All** view, category sections start **collapsed** by default
   (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
   collapse. Handy once you've got a lot of categories in play; expanded
