@@ -428,17 +428,6 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   letter-spacing: 0.02em;
 }
 
-.fullness-badge {
-  display: inline-block;
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  background: #eef1ea;
-  color: var(--green-dark);
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 .expiry-badge {
   display: inline-block;
   padding: 0.05rem 0.5rem;
@@ -519,80 +508,6 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.4rem;
-}
-
-.location-pill {
-  display: inline-block;
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  background: #eef1ea;
-  color: var(--green-dark);
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.category-pill {
-  display: inline-block;
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.item-qty.zero {
-  color: var(--danger);
-}
-
-.qty-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.qty-btn {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: #fff;
-  font-size: 1.2rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--green-dark);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.qty-btn.use {
-  color: var(--danger);
-}
-
-.qty-btn:active {
-  background: #f0efe9;
-}
-
-.qty-value {
-  min-width: 2.6rem;
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 0.3rem;
-  line-height: 1;
 }
 
 .empty-state, .status-line {

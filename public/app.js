@@ -404,55 +404,13 @@
       render();
     });
 
+    // View-only glance card: name, expiration, and a low-stock flag if
+    // triggered — nothing else. No location/category/unit/amount, and
+    // no add/use/delete controls; all of that lives in the edit form
+    // (tap the name) or the + Add item / − Use item flows, including
+    // deleting an item entirely, which only happens from − Use item.
     const metaEl = document.createElement('div');
     metaEl.className = 'item-meta';
-    const pill = document.createElement('span');
-    pill.className = 'location-pill';
-    pill.textContent = item.location;
-    metaEl.appendChild(pill);
-    if (item.category) {
-      const catPill = document.createElement('span');
-      catPill.className = 'category-pill';
-      catPill.textContent = categoryLabels[item.category] || item.category;
-      metaEl.appendChild(catPill);
-    }
-    if (item.fullnessAmount != null && item.fullnessTotal != null) {
-      // Two distinct facts here: how many containers (unit), and how
-      // full the tracked one currently is (the reading itself already
-      // says "how much is left" — 10/16 oz).
-      if (item.unit) {
-        const unitSpan = document.createElement('span');
-        unitSpan.textContent = item.unit;
-        metaEl.appendChild(unitSpan);
-      }
-      const fullnessBadge = document.createElement('span');
-      fullnessBadge.className = 'fullness-badge';
-      const unitSuffix = item.fullnessUnit ? ` ${item.fullnessUnit}` : '';
-      fullnessBadge.textContent = `${formatQty(item.fullnessAmount)}/${formatQty(item.fullnessTotal)}${unitSuffix}`;
-      metaEl.appendChild(fullnessBadge);
-    } else if (item.packSize != null && item.packSize > 0) {
-      // No weight/volume tracking, but a pack size is — show current
-      // vs. the pack's starting count (e.g. "6/24 bottles") the same
-      // "amount left" way a weight/volume reading would.
-      if (item.unit) {
-        const unitSpan = document.createElement('span');
-        unitSpan.textContent = item.unit;
-        metaEl.appendChild(unitSpan);
-      }
-      const packBadge = document.createElement('span');
-      packBadge.className = 'fullness-badge';
-      packBadge.textContent = `${formatQty(item.quantity)}/${formatQty(item.packSize)}`;
-      metaEl.appendChild(packBadge);
-    } else {
-      // Neither tracked — fold quantity and unit into one explicit
-      // "amount left" reading (e.g. "1 bottle left") instead of a bare
-      // unit off on its own with the count only in the +/− controls.
-      const amountBadge = document.createElement('span');
-      amountBadge.className = 'fullness-badge';
-      const unitSuffix = item.unit ? ` ${item.unit}` : '';
-      amountBadge.textContent = `${formatQty(item.quantity)}${unitSuffix} left`;
-      metaEl.appendChild(amountBadge);
-    }
     const lowLabel = getLowStockBadge(item);
     if (lowLabel) {
       const lowBadge = document.createElement('span');
@@ -471,41 +429,7 @@
     info.appendChild(nameEl);
     info.appendChild(metaEl);
 
-    const controls = document.createElement('div');
-    controls.className = 'qty-controls';
-
-    const useBtn = document.createElement('button');
-    useBtn.type = 'button';
-    useBtn.className = 'qty-btn use';
-    useBtn.setAttribute('aria-label', `Use one ${item.name}`);
-    useBtn.textContent = '−'; // minus sign
-    useBtn.addEventListener('click', () => adjustItem(item.id, -1));
-
-    const qtyEl = document.createElement('span');
-    qtyEl.className = 'qty-value' + (item.quantity <= 0 ? ' item-qty zero' : ' item-qty');
-    qtyEl.textContent = formatQty(item.quantity);
-
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'qty-btn';
-    addBtn.setAttribute('aria-label', `Add one ${item.name}`);
-    addBtn.textContent = '+';
-    addBtn.addEventListener('click', () => adjustItem(item.id, 1));
-
-    controls.appendChild(useBtn);
-    controls.appendChild(qtyEl);
-    controls.appendChild(addBtn);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.setAttribute('aria-label', `Delete ${item.name}`);
-    deleteBtn.textContent = '✕'; // multiplication x
-    deleteBtn.addEventListener('click', () => deleteItem(item.id, item.name));
-
     li.appendChild(info);
-    li.appendChild(controls);
-    li.appendChild(deleteBtn);
     return li;
   }
 
@@ -724,40 +648,24 @@
     return li;
   }
 
-  async function adjustItem(id, delta) {
-    const idx = items.findIndex((i) => i.id === id);
-    if (idx === -1) return;
-    // Optimistic update
-    const prevQty = items[idx].quantity;
-    items[idx].quantity = Math.max(0, prevQty + delta);
-    render();
-    try {
-      const updated = await api(`/api/items/${id}/adjust`, {
-        method: 'POST',
-        body: JSON.stringify({ delta }),
-      });
-      const i = items.findIndex((it) => it.id === id);
-      if (i !== -1) items[i] = updated;
-      render();
-    } catch (err) {
-      items[idx].quantity = prevQty;
-      render();
-      showToast(`Couldn't update: ${err.message}`);
-    }
-  }
-
+  // Returns true if the item was actually deleted, false if the user
+  // backed out of the confirm dialog or the request failed — callers
+  // that do follow-up work (e.g. dismissing a review card) check this
+  // rather than assuming deletion always went through.
   async function deleteItem(id, name) {
-    if (!confirm(`Remove "${name}" from your inventory?`)) return;
+    if (!confirm(`Remove "${name}" from your inventory?`)) return false;
     const prevItems = items;
     items = items.filter((i) => i.id !== id);
     render();
     try {
       await api(`/api/items/${id}`, { method: 'DELETE' });
       showToast(`Removed ${name}`);
+      return true;
     } catch (err) {
       items = prevItems;
       render();
       showToast(`Couldn't remove: ${err.message}`);
+      return false;
     }
   }
 
@@ -1398,6 +1306,29 @@
         if (!voiceReviewEl.children.length) voiceReviewEl.classList.add('hidden');
       });
 
+      // Deleting an item entirely only happens here, in − Use item — the
+      // main inventory list is view-only (name/expiration/low flag) with
+      // no add/use/delete controls on the card itself.
+      let deleteBtn = null;
+      if (lockedToUse) {
+        deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn btn-danger';
+        deleteBtn.textContent = 'Delete item';
+        deleteBtn.addEventListener('click', async () => {
+          const match = findMatchingItem(state.name, state.location);
+          if (!match) {
+            note.textContent = `No existing item named "${state.name}" to delete.`;
+            note.classList.remove('hidden');
+            return;
+          }
+          const deleted = await deleteItem(match.id, match.name);
+          if (!deleted) return;
+          card.remove();
+          if (!voiceReviewEl.children.length) voiceReviewEl.classList.add('hidden');
+        });
+      }
+
       confirmBtn.addEventListener('click', async () => {
         confirmBtn.disabled = true;
         note.classList.add('hidden');
@@ -1473,6 +1404,7 @@
 
       buttons.appendChild(confirmBtn);
       buttons.appendChild(dismissBtn);
+      if (deleteBtn) buttons.appendChild(deleteBtn);
 
       card.appendChild(header);
       card.appendChild(qtyRow);
