@@ -45,7 +45,11 @@ type and sorted so what's expiring soon or running low surfaces first.
   full, so it doubles as both total and current amount); switch to
   **Use** and it relabels to "Weight/volume used," where typing an
   amount deducts that much from the matched item's tracked total
-  instead of decrementing its whole-number count
+  instead of decrementing its whole-number count. The card's item-name
+  field also suggests matching names from your current inventory as
+  you type a few letters, so picking one from the list — rather than
+  retyping it slightly differently each time — keeps "Use" matching
+  the item you actually mean
 - Quick **+ / −** buttons on each item card to add or use one unit at a time
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
@@ -92,9 +96,15 @@ type and sorted so what's expiring soon or running low surfaces first.
   search by name; each item card shows its own Pantry/Fridge/Freezer
   location and category as pills, plus how much of it is left —
   weight/volume-tracked items show the precise reading (e.g. "500/500
-  ml") next to their unit, and everything else shows its quantity and
-  unit together as a plain "amount left" reading (e.g. "1 bottle
-  left") — everything you'd otherwise have to open the item to see
+  ml") next to their unit, pack-tracked items show current vs. the
+  pack's starting count (e.g. "6/24"), and everything else shows its
+  quantity and unit together as a plain "amount left" reading (e.g.
+  "1 bottle left") — everything you'd otherwise have to open the item
+  to see. A weight/volume reading always reflects deductions from
+  every path that can change quantity — the quick +/− buttons
+  included, not just Use item — and clears itself the moment quantity
+  moves away from 1, since a reading like "300/500 ml" stops meaning
+  anything once there's no longer exactly one tracked container
 - In the **All** view, category sections start **collapsed** by default
   (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
   collapse. Handy once you've got a lot of categories in play; expanded

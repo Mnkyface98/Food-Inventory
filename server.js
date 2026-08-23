@@ -65,6 +65,23 @@ function computePercentFull(amount, total) {
   return Math.min(100, Math.max(0, (amount / total) * 100));
 }
 
+// Weight/volume tracking only describes exactly one container — once a
+// quantity change takes an item away from 1 (a second one picked up, or
+// the tracked one used up entirely down to 0), that reading no longer
+// means anything real, so it's cleared here rather than left stale on
+// the card. Called by every endpoint that can change quantity.
+function clampFullnessToQuantity(quantity, fullnessUnit, fullnessAmount, fullnessTotal) {
+  if (quantity !== 1) {
+    return { fullnessUnit: null, fullnessAmount: null, fullnessTotal: null, percentFull: null };
+  }
+  return {
+    fullnessUnit,
+    fullnessAmount,
+    fullnessTotal,
+    percentFull: computePercentFull(fullnessAmount, fullnessTotal),
+  };
+}
+
 function serializeItem(row) {
   return {
     id: row.id,
@@ -143,24 +160,29 @@ app.post('/api/items', (req, res) => {
 
   let row;
   if (existing) {
+    const newQty = existing.quantity + qty;
     const mergedExpiration = mergeExpirationDate(existing.expiration_date, cleanExpiration);
     // Pack size / fullness describe metadata about the item, not the
     // quantity being added — keep the existing values unless this
     // request explicitly supplies a new fullness reading (amount+total).
     const mergedPack = cleanPack !== null ? cleanPack : existing.pack_size;
     const hasNewFullness = cleanFullnessAmount !== null && cleanFullnessTotal !== null;
-    const mergedFullnessUnit = hasNewFullness ? cleanFullnessUnitVal : existing.fullness_unit;
-    const mergedFullnessAmount = hasNewFullness ? cleanFullnessAmount : existing.fullness_amount;
-    const mergedFullnessTotal = hasNewFullness ? cleanFullnessTotal : existing.fullness_total;
-    const mergedPercent = computePercentFull(mergedFullnessAmount, mergedFullnessTotal);
+    const rawFullnessUnit = hasNewFullness ? cleanFullnessUnitVal : existing.fullness_unit;
+    const rawFullnessAmount = hasNewFullness ? cleanFullnessAmount : existing.fullness_amount;
+    const rawFullnessTotal = hasNewFullness ? cleanFullnessTotal : existing.fullness_total;
+    const clamped = clampFullnessToQuantity(newQty, rawFullnessUnit, rawFullnessAmount, rawFullnessTotal);
     db.prepare(
-      `UPDATE items SET quantity = quantity + ?, expiration_date = ?, pack_size = ?,
+      `UPDATE items SET quantity = ?, expiration_date = ?, pack_size = ?,
          fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
          updated_at = datetime('now') WHERE id = ?`
-    ).run(qty, mergedExpiration, mergedPack, mergedFullnessUnit, mergedFullnessAmount, mergedFullnessTotal, mergedPercent, existing.id);
+    ).run(
+      newQty, mergedExpiration, mergedPack,
+      clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull,
+      existing.id
+    );
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id);
   } else {
-    const percent = computePercentFull(cleanFullnessAmount, cleanFullnessTotal);
+    const clamped = clampFullnessToQuantity(qty, cleanFullnessUnitVal, cleanFullnessAmount, cleanFullnessTotal);
     const info = db
       .prepare(
         `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size,
@@ -169,7 +191,7 @@ app.post('/api/items', (req, res) => {
       )
       .run(
         cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack,
-        cleanFullnessUnitVal, cleanFullnessAmount, cleanFullnessTotal, percent
+        clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull
       );
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
   }
@@ -191,9 +213,11 @@ app.post('/api/items/:id/adjust', (req, res) => {
   }
 
   const newQty = Math.max(0, existing.quantity + delta);
+  const clamped = clampFullnessToQuantity(newQty, existing.fullness_unit, existing.fullness_amount, existing.fullness_total);
   db.prepare(
-    `UPDATE items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(newQty, id);
+    `UPDATE items SET quantity = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?,
+       percent_full = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });
@@ -232,9 +256,11 @@ app.post('/api/items/:id/use', (req, res) => {
     ).run(newFullnessAmount, newPercent, id);
   } else {
     const newQty = Math.max(0, existing.quantity - amount);
+    const clamped = clampFullnessToQuantity(newQty, existing.fullness_unit, existing.fullness_amount, existing.fullness_total);
     db.prepare(
-      `UPDATE items SET quantity = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(newQty, id);
+      `UPDATE items SET quantity = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?,
+         percent_full = ?, updated_at = datetime('now') WHERE id = ?`
+    ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id);
   }
 
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
@@ -271,17 +297,21 @@ app.put('/api/items/:id', (req, res) => {
   const fullnessTotal = 'fullnessTotal' in req.body
     ? cleanPositiveAmount(req.body.fullnessTotal)
     : existing.fullness_total;
-  const percentFull = computePercentFull(fullnessAmount, fullnessTotal);
   const qty = req.body.quantity !== undefined ? Number(req.body.quantity) : existing.quantity;
   if (!Number.isFinite(qty) || qty < 0) {
     return res.status(400).json({ error: 'Quantity must be a non-negative number.' });
   }
+  const clamped = clampFullnessToQuantity(qty, fullnessUnit, fullnessAmount, fullnessTotal);
 
   db.prepare(
     `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?,
        pack_size = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
        updated_at = datetime('now') WHERE id = ?`
-  ).run(name, qty, unit, location, category, expirationDate, packSize, fullnessUnit, fullnessAmount, fullnessTotal, percentFull, id);
+  ).run(
+    name, qty, unit, location, category, expirationDate, packSize,
+    clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull,
+    id
+  );
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });

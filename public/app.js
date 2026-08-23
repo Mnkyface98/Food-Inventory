@@ -17,6 +17,7 @@
   const micBtn = document.getElementById('mic-btn');
   const micHint = document.getElementById('mic-hint');
   const voiceReviewEl = document.getElementById('voice-review');
+  const nameOptionsEl = document.getElementById('item-name-options');
 
   const barcodeBtn = document.getElementById('barcode-btn');
   const barcodeHint = document.getElementById('barcode-hint');
@@ -284,7 +285,32 @@
     }
   }
 
+  // Keeps the review card's item-name suggestion list in sync with
+  // what's actually in inventory, so typing a few letters of
+  // "S. Pellegrino" offers the exact stored name to pick — avoiding the
+  // mismatched-name errors that come from retyping it slightly
+  // differently (punctuation, spacing, a typo) each time, especially
+  // for Use item where an exact match is what makes deduction work.
+  function updateItemNameOptions() {
+    const seen = new Set();
+    const names = [];
+    for (const item of items) {
+      const key = item.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(item.name);
+    }
+    names.sort((a, b) => a.localeCompare(b));
+    nameOptionsEl.textContent = '';
+    for (const n of names) {
+      const option = document.createElement('option');
+      option.value = n;
+      nameOptionsEl.appendChild(option);
+    }
+  }
+
   function render() {
+    updateItemNameOptions();
     const filtered = items.filter((item) => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm);
@@ -396,11 +422,23 @@
       const unitSuffix = item.fullnessUnit ? ` ${item.fullnessUnit}` : '';
       fullnessBadge.textContent = `${formatQty(item.fullnessAmount)}/${formatQty(item.fullnessTotal)}${unitSuffix}`;
       metaEl.appendChild(fullnessBadge);
+    } else if (item.packSize != null && item.packSize > 0) {
+      // No weight/volume tracking, but a pack size is — show current
+      // vs. the pack's starting count (e.g. "6/24 bottles") the same
+      // "amount left" way a weight/volume reading would.
+      if (item.unit) {
+        const unitSpan = document.createElement('span');
+        unitSpan.textContent = item.unit;
+        metaEl.appendChild(unitSpan);
+      }
+      const packBadge = document.createElement('span');
+      packBadge.className = 'fullness-badge';
+      packBadge.textContent = `${formatQty(item.quantity)}/${formatQty(item.packSize)}`;
+      metaEl.appendChild(packBadge);
     } else {
-      // No weight/volume tracking — fold quantity and unit into one
-      // explicit "amount left" reading (e.g. "1 bottle left") instead
-      // of a bare unit off on its own with the count only in the +/−
-      // controls below.
+      // Neither tracked — fold quantity and unit into one explicit
+      // "amount left" reading (e.g. "1 bottle left") instead of a bare
+      // unit off on its own with the count only in the +/− controls.
       const amountBadge = document.createElement('span');
       amountBadge.className = 'fullness-badge';
       const unitSuffix = item.unit ? ` ${item.unit}` : '';
@@ -1130,6 +1168,7 @@
       nameInputEl.type = 'text';
       nameInputEl.value = state.name;
       nameInputEl.setAttribute('aria-label', 'Item name');
+      nameInputEl.setAttribute('list', 'item-name-options');
       nameInputEl.style.flex = '1';
       nameInputEl.addEventListener('input', () => {
         state.name = nameInputEl.value;
