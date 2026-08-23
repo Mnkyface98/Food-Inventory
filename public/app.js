@@ -911,6 +911,36 @@
   async function parseVoiceText(text) {
     voiceReviewEl.innerHTML = '';
     voiceReviewEl.classList.remove('hidden');
+
+    // Under − Use item, typing (or picking from the suggestion list) an
+    // item's exact name is just a lookup, not a sentence to parse — skip
+    // the NLP parser entirely and default straight to "use 1 of this."
+    // Otherwise a name that happens to contain a digit of its own (e.g.
+    // an old "... 10 Fl Oz" leftover in a stored name) gets misread as a
+    // typed quantity by the general-purpose sentence parser below, which
+    // is built for phrases like "used 2 cans of black beans" and has no
+    // way to tell a name's own digit apart from an intended one. A
+    // fuzzy (not just exact) match isn't used for this shortcut — a
+    // phrase like "use 3 olive oil" can fuzzy-match "Olive Oil" well
+    // enough to trigger it, silently dropping the "3" the user typed.
+    if (entryMode === 'use') {
+      const exactMatch = findExactItemMatch(text);
+      if (exactMatch) {
+        renderReview([
+          {
+            name: exactMatch.name,
+            quantity: 1,
+            unit: exactMatch.unit,
+            location: exactMatch.location,
+            category: exactMatch.category,
+            action: 'use',
+            expirationDate: null,
+          },
+        ]);
+        return;
+      }
+    }
+
     voiceReviewEl.innerHTML = '<p class="status-line">Parsing…</p>';
     try {
       const result = await api('/api/voice/parse', {
@@ -988,6 +1018,17 @@
 
   const FUZZY_MATCH_THRESHOLD = 0.6;
 
+  // Any item whose (normalized) name matches `name` exactly, regardless
+  // of location. No fuzzy scoring here — used where a partial or
+  // sentence-like typed phrase must NOT count as a match (see
+  // parseVoiceText()'s use of this for "don't invent a quantity out of
+  // a name lookup").
+  function findExactItemMatch(name) {
+    const normalized = normalizeForMatch(name);
+    if (!normalized) return undefined;
+    return items.find((i) => normalizeForMatch(i.name) === normalized);
+  }
+
   // Exact (normalized) match wins first, same as before; a typo'd or
   // partial name (e.g. "san pelligrino" for "S.Pellegrino...") falls
   // back to the closest fuzzy match, if any clears the threshold —
@@ -998,7 +1039,7 @@
     if (!normalized) return undefined;
     const exact = (list) => list.find((i) => normalizeForMatch(i.name) === normalized);
     const sameLocation = items.filter((i) => i.location === location);
-    const exactMatch = exact(sameLocation) || exact(items);
+    const exactMatch = exact(sameLocation) || findExactItemMatch(name);
     if (exactMatch) return exactMatch;
 
     let best = null;
@@ -1081,6 +1122,13 @@
         // from the matched item — nothing to redefine there.
         unitEl.classList.toggle('hidden', !isAdd);
         useModeToggleBtn.classList.toggle('hidden', isAdd);
+        // Expiration date only means something for stock you're adding —
+        // using some of an item doesn't change when what's left expires.
+        expRow.classList.toggle('hidden', !isAdd);
+        if (!isAdd) {
+          expEl.value = '';
+          state.expirationDate = null;
+        }
         if (isAdd) {
           weightVolLabel.textContent = `Weight/volume per ${perUnitLabel} (optional)`;
           wvAmountEl.placeholder = `Amount per ${perUnitLabel}`;

@@ -37,12 +37,15 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **One consistent card, however an item gets entered**: typed, spoken,
   scanned, or parsed from a receipt/recipe photo all land on the same
   review card with the same fields in the same order — Item name, Unit,
-  Weight/volume (+ its own unit), Quantity, Category, Location,
-  Expiration date — nothing about reviewing an item looks different
-  depending on how it got there. **Quantity** is labeled "Quantity
-  being added" or "Quantity being used" depending on the card's
-  Add/Use toggle, so it's never ambiguous what typing a number there
-  will do. **Unit** is a dropdown of common
+  Weight/volume (+ its own unit), Quantity, Category, Location, and
+  Expiration date on **Add** only (see below) — nothing about reviewing
+  an item looks different depending on how it got there. **Quantity**
+  is labeled "Quantity being added" or "Quantity being used" depending
+  on the card's Add/Use toggle, so it's never ambiguous what typing a
+  number there will do — and picking an item's exact name (typed,
+  spoken, or from the suggestion list) always defaults it to 1, never
+  a stray digit misread out of the name itself. **Unit** is a dropdown
+  of common
   packaging (bottle, box, piece, can, bag, jar, package, carton, stick,
   bunch); **Weight/volume** is a separate amount + unit (oz, fl oz, lb,
   kg, g, ml, L, cup, tbsp, tsp), and its label always names the
@@ -97,7 +100,9 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **Expiration dates**: optional, set manually or captured from voice/typed
   phrases like *"expires next Friday"* or *"best by 8/25"*. Items with a
   date sort to the top of their category (soonest first), with "Expires
-  today/tomorrow" and "Expired" badges
+  today/tomorrow" and "Expired" badges. The Expiration date field only
+  appears on the review card's **Add** side — using some of an item
+  doesn't change when what's left expires, so it's hidden on **Use**
 - Within each category, items with no expiration date sort by
   **lowest quantity first** (with "Low"/"Out" badges) so what needs
   restocking is easy to spot. What counts as "low" (see below) can be
