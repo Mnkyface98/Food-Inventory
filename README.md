@@ -39,7 +39,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   review card with the same fields in the same order — Item name, Unit,
   Weight/volume (+ its own unit), Quantity, Category, Location,
   Expiration date — nothing about reviewing an item looks different
-  depending on how it got there. **Unit** is a dropdown of common
+  depending on how it got there. **Quantity** is labeled "Quantity
+  being added" or "Quantity being used" depending on the card's
+  Add/Use toggle, so it's never ambiguous what typing a number there
+  will do. **Unit** is a dropdown of common
   packaging (bottle, box, piece, can, bag, jar, package, carton, stick,
   bunch); **Weight/volume** is a separate amount + unit (oz, fl oz, lb,
   kg, g, ml, L, cup, tbsp, tsp), and its label always names the

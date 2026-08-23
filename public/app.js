@@ -1148,6 +1148,7 @@
         if (isAdd) {
           weightVolLabel.textContent = `Weight/volume per ${perUnitLabel} (optional)`;
           wvAmountEl.placeholder = `Amount per ${perUnitLabel}`;
+          qtyLabel.textContent = 'Quantity being added';
           qtyEl.disabled = false;
           wvAmountEl.disabled = false;
           wvUnitEl.disabled = false;
@@ -1158,6 +1159,7 @@
         } else {
           weightVolLabel.textContent = 'Weight/volume used (optional)';
           wvAmountEl.placeholder = 'Amount used';
+          qtyLabel.textContent = 'Quantity being used';
           useModeToggleBtn.textContent = state.useByAmount
             ? 'Use whole units instead'
             : 'Log a measured amount instead';
@@ -1200,6 +1202,10 @@
       const qtyRow = document.createElement('div');
       qtyRow.className = 'field-row';
 
+      const qtyLabel = document.createElement('label');
+      qtyLabel.className = 'field-label';
+      qtyLabel.textContent = 'Quantity being added';
+
       const qtyEl = document.createElement('input');
       qtyEl.type = 'number';
       qtyEl.min = '0';
@@ -1208,6 +1214,7 @@
       qtyEl.placeholder = 'Qty';
       qtyEl.setAttribute('aria-label', 'Quantity');
       qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
+      qtyRow.appendChild(qtyLabel);
       qtyRow.appendChild(qtyEl);
 
       const catLocRow = document.createElement('div');
