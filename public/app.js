@@ -161,6 +161,10 @@
     ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['lb', 'lb'], ['kg', 'kg'],
     ['g', 'g'], ['ml', 'ml'], ['L', 'L'], ['cup', 'cup'], ['tbsp', 'tbsp'], ['tsp', 'tsp'],
   ];
+  // For labeling "Weight/volume per <unit>" — e.g. picking Bottle as the
+  // Unit makes the Weight/volume field read "per bottle," so it's never
+  // mistaken for a grand total across every bottle in stock.
+  const UNIT_LABELS = Object.fromEntries(UNIT_OPTIONS);
 
   // Builds a <select> from one of the option lists above, pre-selecting
   // `currentValue`. A value that isn't one of the listed options (e.g.
@@ -532,7 +536,14 @@
     weightVolRow.className = 'field-row';
     const weightVolLabel = document.createElement('label');
     weightVolLabel.className = 'field-label';
-    weightVolLabel.textContent = 'Weight/volume (optional)';
+    // Named after the selected Unit ("per bottle") so it's never mistaken
+    // for a grand total across every one in stock — always just one's size.
+    function updateWeightVolLabel() {
+      const perUnitLabel = (UNIT_LABELS[unitEl.value] || 'unit').toLowerCase();
+      weightVolLabel.textContent = `Weight/volume per ${perUnitLabel} (optional)`;
+    }
+    updateWeightVolLabel();
+    unitEl.addEventListener('change', updateWeightVolLabel);
     const weightVolInner = document.createElement('div');
     weightVolInner.className = 'field-row two-up';
     const totalEl = document.createElement('input');
@@ -1121,8 +1132,14 @@
         addToggleBtn.classList.toggle('active', state.action === 'add');
         useToggleBtn.classList.toggle('active', state.action === 'use');
         const isAdd = state.action === 'add';
-        weightVolLabel.textContent = isAdd ? 'Weight/volume (optional)' : 'Weight/volume used (optional)';
-        wvAmountEl.placeholder = isAdd ? 'Amount' : 'Amount used';
+        // On Add, name the label after the selected Unit ("per bottle",
+        // "per box", ...) so it's never mistaken for a grand total across
+        // every bottle in stock — it's always just the size of one.
+        const perUnitLabel = (UNIT_LABELS[state.unit] || 'unit').toLowerCase();
+        weightVolLabel.textContent = isAdd
+          ? `Weight/volume per ${perUnitLabel} (optional)`
+          : 'Weight/volume used (optional)';
+        wvAmountEl.placeholder = isAdd ? `Amount per ${perUnitLabel}` : 'Amount used';
         // On Use, the plain Qty unit (bottle/box/piece) is already known
         // from the matched item — nothing to redefine there. But the
         // weight/volume unit stays selectable on Use too: you might track
@@ -1156,11 +1173,20 @@
       header.appendChild(nameInputEl);
       header.appendChild(toggle);
 
-      // Same field set, same order, as the + Add item / − Use item card
-      // below — however an item got here (typed, spoken, scanned, or
-      // parsed from a receipt/recipe), reviewing it looks identical.
+      // Field order: name (header, above), Unit, Weight/volume (+ its
+      // unit), Quantity, Category, Location, Expiration date.
+      const unitRow = document.createElement('div');
+      unitRow.className = 'field-row';
+
+      const unitEl = buildUnitSelect(state.unit);
+      unitEl.addEventListener('change', () => {
+        state.unit = unitEl.value;
+        refreshToggle(); // keeps the "Weight/volume per <unit>" label in sync
+      });
+      unitRow.appendChild(unitEl);
+
       const qtyRow = document.createElement('div');
-      qtyRow.className = 'field-row two-up';
+      qtyRow.className = 'field-row';
 
       const qtyEl = document.createElement('input');
       qtyEl.type = 'number';
@@ -1170,26 +1196,10 @@
       qtyEl.placeholder = 'Qty';
       qtyEl.setAttribute('aria-label', 'Quantity');
       qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
-
-      const unitEl = buildUnitSelect(state.unit);
-      unitEl.addEventListener('change', () => (state.unit = unitEl.value));
-
       qtyRow.appendChild(qtyEl);
-      qtyRow.appendChild(unitEl);
 
-      const locCatRow = document.createElement('div');
-      locCatRow.className = 'field-row two-up';
-
-      const locEl = document.createElement('select');
-      locEl.setAttribute('aria-label', 'Location');
-      ['pantry', 'fridge', 'freezer'].forEach((loc) => {
-        const opt = document.createElement('option');
-        opt.value = loc;
-        opt.textContent = loc[0].toUpperCase() + loc.slice(1);
-        if (loc === state.location) opt.selected = true;
-        locEl.appendChild(opt);
-      });
-      locEl.addEventListener('change', () => (state.location = locEl.value));
+      const catLocRow = document.createElement('div');
+      catLocRow.className = 'field-row two-up';
 
       const catEl = document.createElement('select');
       catEl.setAttribute('aria-label', 'Category');
@@ -1206,8 +1216,19 @@
       });
       catEl.addEventListener('change', () => (state.category = catEl.value));
 
-      locCatRow.appendChild(locEl);
-      locCatRow.appendChild(catEl);
+      const locEl = document.createElement('select');
+      locEl.setAttribute('aria-label', 'Location');
+      ['pantry', 'fridge', 'freezer'].forEach((loc) => {
+        const opt = document.createElement('option');
+        opt.value = loc;
+        opt.textContent = loc[0].toUpperCase() + loc.slice(1);
+        if (loc === state.location) opt.selected = true;
+        locEl.appendChild(opt);
+      });
+      locEl.addEventListener('change', () => (state.location = locEl.value));
+
+      catLocRow.appendChild(catEl);
+      catLocRow.appendChild(locEl);
 
       const expRow = document.createElement('div');
       expRow.className = 'field-row';
@@ -1282,6 +1303,7 @@
           state.fullnessUnit = match.fullnessUnit;
           setDropdownValue(wvUnitEl, match.fullnessUnit);
         }
+        refreshToggle(); // unit may have just changed — keep the "per <unit>" label in sync
       }
 
       refreshToggle(); // now that weightVolRow/weightVolLabel/wvAmountEl exist, set their initial text/state
@@ -1407,10 +1429,11 @@
       if (deleteBtn) buttons.appendChild(deleteBtn);
 
       card.appendChild(header);
-      card.appendChild(qtyRow);
-      card.appendChild(locCatRow);
-      card.appendChild(expRow);
+      card.appendChild(unitRow);
       card.appendChild(weightVolRow);
+      card.appendChild(qtyRow);
+      card.appendChild(catLocRow);
+      card.appendChild(expRow);
       card.appendChild(note);
       card.appendChild(buttons);
       voiceReviewEl.appendChild(card);

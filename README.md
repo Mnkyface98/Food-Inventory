@@ -36,13 +36,17 @@ type and sorted so what's expiring soon or running low surfaces first.
   haven't added yet (add it via + Add item first, then use it)
 - **One consistent card, however an item gets entered**: typed, spoken,
   scanned, or parsed from a receipt/recipe photo all land on the same
-  review card with the same fields in the same order (Qty/Unit,
-  Location/Category, Expiration date, Weight/volume) — nothing about
-  reviewing an item looks different depending on how it got there.
-  **Unit** is a dropdown of common packaging (bottle, box, piece, can,
-  bag, jar, package, carton, stick, bunch); **Weight/volume** is a
-  separate amount + unit (oz, fl oz, lb, kg, g, ml, L, cup, tbsp, tsp).
-  The instant the typed/spoken/scanned name matches something already
+  review card with the same fields in the same order — Item name, Unit,
+  Weight/volume (+ its own unit), Quantity, Category, Location,
+  Expiration date — nothing about reviewing an item looks different
+  depending on how it got there. **Unit** is a dropdown of common
+  packaging (bottle, box, piece, can, bag, jar, package, carton, stick,
+  bunch); **Weight/volume** is a separate amount + unit (oz, fl oz, lb,
+  kg, g, ml, L, cup, tbsp, tsp), and its label always names the
+  selected Unit back — "Weight/volume per bottle," "per box," etc. (or
+  "per unit" until one's picked) — so it's never mistaken for a total
+  across everything in stock; it's always just the size of one. The
+  instant the typed/spoken/scanned name matches something already
   in your inventory, Unit, Location, Category, and the Weight/volume
   unit all fill themselves in from that item's own record — you're not
   re-describing something the app already knows just because you're
