@@ -73,8 +73,11 @@ type and sorted so what's expiring soon or running low surfaces first.
   whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
   You only ever say how much was used — the app works out what's left
 - **Edit any item after adding it**: tap its name to open an inline edit
-  form for name, quantity, unit, location, category, and expiration date —
-  Save commits, Cancel discards
+  form for name, quantity, unit (dropdown), location, category,
+  expiration date, and — under "Low-stock tracking" — pack size,
+  weight/volume (the item's size), and amount remaining, all directly
+  editable since this form corrects an item's true current state rather
+  than logging a transaction. Save commits, Cancel discards
 - Delete items you no longer want to track
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
   search by name; each item card shows its own Pantry/Fridge/Freezer

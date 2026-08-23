@@ -147,10 +147,53 @@
     return Number.isInteger(qty) ? String(qty) : String(Math.round(qty * 100) / 100);
   }
 
+  // Shared dropdown option lists — the same choices wherever an item's
+  // unit or weight/volume unit is picked (the review card and the
+  // inline edit form), so every card looks and behaves the same way.
+  const UNIT_OPTIONS = [
+    ['', 'Unit'], ['bottle', 'Bottle'], ['box', 'Box'], ['piece', 'Piece'],
+    ['can', 'Can'], ['bag', 'Bag'], ['jar', 'Jar'], ['package', 'Package'],
+    ['carton', 'Carton'], ['stick', 'Stick'], ['bunch', 'Bunch'],
+  ];
+  const WEIGHT_VOLUME_UNIT_OPTIONS = [
+    ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['lb', 'lb'], ['kg', 'kg'],
+    ['g', 'g'], ['ml', 'ml'], ['L', 'L'], ['cup', 'cup'], ['tbsp', 'tbsp'], ['tsp', 'tsp'],
+  ];
+
+  // Builds a <select> from one of the option lists above, pre-selecting
+  // `currentValue`. A value that isn't one of the listed options (e.g.
+  // "cans" saved from an older receipt/voice entry) still shows up as
+  // its own selected option, rather than being silently dropped.
+  function buildDropdown(options, currentValue, ariaLabel) {
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', ariaLabel);
+    options.forEach(([value, label]) => {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      if (value === (currentValue || '')) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if (currentValue && !options.some(([v]) => v === currentValue)) {
+      const opt = document.createElement('option');
+      opt.value = currentValue;
+      opt.textContent = currentValue;
+      opt.selected = true;
+      select.appendChild(opt);
+    }
+    return select;
+  }
+  function buildUnitSelect(currentValue) {
+    return buildDropdown(UNIT_OPTIONS, currentValue, 'Unit');
+  }
+  function buildWeightVolumeUnitSelect(currentValue, ariaLabel) {
+    return buildDropdown(WEIGHT_VOLUME_UNIT_OPTIONS, currentValue, ariaLabel);
+  }
+
   // Container fullness only makes sense for exactly one item that isn't
   // itself being tracked as a multi-pack — hide it (and clear any values)
-  // whenever quantity isn't 1 or a pack size is set. Shared by the Add
-  // form and every inline edit form.
+  // whenever quantity isn't 1 or a pack size is set. Used by the inline
+  // edit form.
   function wireFullnessVisibility(qtyEl, packEl, wrapEl, unitEl, remainingEl, totalEl) {
     function sync() {
       const applies = Number(qtyEl.value) === 1 && !(packEl && packEl.value);
@@ -158,9 +201,7 @@
       if (!applies) {
         unitEl.value = '';
         remainingEl.value = '';
-        remainingEl.placeholder = 'Remaining';
         totalEl.value = '';
-        totalEl.readOnly = false;
       }
     }
     qtyEl.addEventListener('input', sync);
@@ -423,11 +464,7 @@
     qtyEl.value = item.quantity;
     qtyEl.required = true;
     qtyEl.setAttribute('aria-label', 'Quantity');
-    const unitEl = document.createElement('input');
-    unitEl.type = 'text';
-    unitEl.value = item.unit || '';
-    unitEl.placeholder = 'Unit';
-    unitEl.setAttribute('aria-label', 'Unit');
+    const unitEl = buildUnitSelect(item.unit);
     fieldsRow.appendChild(qtyEl);
     fieldsRow.appendChild(unitEl);
 
@@ -485,46 +522,51 @@
     packRow.appendChild(packLabel);
     packRow.appendChild(packEl);
 
+    // Weight/volume — the item's size (e.g. "16 oz" for one bottle) —
+    // and Amount remaining — how much of it is left right now — same
+    // concept as the + Add item / − Use item card, except here both are
+    // directly editable: this form corrects an item's true current
+    // state, rather than logging a used-amount transaction.
     const fullnessWrapEl = document.createElement('div');
     fullnessWrapEl.className = 'field-row';
-    const fullnessLabel = document.createElement('label');
-    fullnessLabel.className = 'field-label';
-    fullnessLabel.textContent = 'Container fullness (single item, no pack size)';
-    const fullnessRow = document.createElement('div');
-    fullnessRow.className = 'field-row three-up';
 
-    const unitEl2 = document.createElement('select');
-    unitEl2.setAttribute('aria-label', 'Fullness unit');
-    [
-      ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['ml', 'ml'],
-      ['L', 'L'], ['g', 'g'], ['kg', 'kg'], ['lb', 'lb'],
-    ].forEach(([value, label]) => {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = label;
-      if (value === (item.fullnessUnit || '')) opt.selected = true;
-      unitEl2.appendChild(opt);
-    });
-
-    const remainingEl = document.createElement('input');
-    remainingEl.type = 'number';
-    remainingEl.min = '0';
-    remainingEl.step = 'any';
-    remainingEl.placeholder = 'Remaining';
-    if (item.fullnessAmount != null) remainingEl.value = item.fullnessAmount;
-
+    const weightVolRow = document.createElement('div');
+    weightVolRow.className = 'field-row';
+    const weightVolLabel = document.createElement('label');
+    weightVolLabel.className = 'field-label';
+    weightVolLabel.textContent = 'Weight/volume (optional)';
+    const weightVolInner = document.createElement('div');
+    weightVolInner.className = 'field-row two-up';
     const totalEl = document.createElement('input');
     totalEl.type = 'number';
     totalEl.min = '0';
     totalEl.step = 'any';
-    totalEl.placeholder = 'Total size';
+    totalEl.placeholder = 'Amount';
+    totalEl.setAttribute('aria-label', 'Weight/volume amount');
     if (item.fullnessTotal != null) totalEl.value = item.fullnessTotal;
+    const unitEl2 = buildWeightVolumeUnitSelect(item.fullnessUnit, 'Weight/volume unit');
+    weightVolInner.appendChild(totalEl);
+    weightVolInner.appendChild(unitEl2);
+    weightVolRow.appendChild(weightVolLabel);
+    weightVolRow.appendChild(weightVolInner);
 
-    fullnessRow.appendChild(unitEl2);
-    fullnessRow.appendChild(remainingEl);
-    fullnessRow.appendChild(totalEl);
-    fullnessWrapEl.appendChild(fullnessLabel);
-    fullnessWrapEl.appendChild(fullnessRow);
+    const remainingRow = document.createElement('div');
+    remainingRow.className = 'field-row';
+    const remainingLabel = document.createElement('label');
+    remainingLabel.className = 'field-label';
+    remainingLabel.textContent = 'Amount remaining (optional)';
+    const remainingEl = document.createElement('input');
+    remainingEl.type = 'number';
+    remainingEl.min = '0';
+    remainingEl.step = 'any';
+    remainingEl.placeholder = 'Amount remaining';
+    remainingEl.setAttribute('aria-label', 'Amount remaining');
+    if (item.fullnessAmount != null) remainingEl.value = item.fullnessAmount;
+    remainingRow.appendChild(remainingLabel);
+    remainingRow.appendChild(remainingEl);
+
+    fullnessWrapEl.appendChild(weightVolRow);
+    fullnessWrapEl.appendChild(remainingRow);
 
     lowStockDetails.appendChild(lowStockSummary);
     lowStockDetails.appendChild(packRow);
@@ -1110,29 +1152,7 @@
       qtyEl.setAttribute('aria-label', 'Quantity');
       qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
 
-      const unitEl = document.createElement('select');
-      unitEl.setAttribute('aria-label', 'Unit');
-      [
-        ['', 'Unit'], ['bottle', 'Bottle'], ['box', 'Box'], ['piece', 'Piece'],
-        ['can', 'Can'], ['bag', 'Bag'], ['jar', 'Jar'], ['package', 'Package'],
-        ['carton', 'Carton'], ['stick', 'Stick'], ['bunch', 'Bunch'],
-      ].forEach(([value, label]) => {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = label;
-        // A parsed unit that isn't one of these (e.g. "cans" from a
-        // receipt) still shows up as its own selected option, rather
-        // than silently reverting to blank.
-        if (value === state.unit) opt.selected = true;
-        unitEl.appendChild(opt);
-      });
-      if (state.unit && ![...unitEl.options].some((o) => o.value === state.unit)) {
-        const opt = document.createElement('option');
-        opt.value = state.unit;
-        opt.textContent = state.unit;
-        opt.selected = true;
-        unitEl.appendChild(opt);
-      }
+      const unitEl = buildUnitSelect(state.unit);
       unitEl.addEventListener('change', () => (state.unit = unitEl.value));
 
       qtyRow.appendChild(qtyEl);
@@ -1211,18 +1231,7 @@
         state.fullnessAmount = val;
       });
 
-      const wvUnitEl = document.createElement('select');
-      wvUnitEl.setAttribute('aria-label', 'Weight/volume unit');
-      [
-        ['', 'Unit'], ['oz', 'oz'], ['fl oz', 'fl oz'], ['lb', 'lb'], ['kg', 'kg'],
-        ['g', 'g'], ['ml', 'ml'], ['L', 'L'], ['cup', 'cup'], ['tbsp', 'tbsp'], ['tsp', 'tsp'],
-      ].forEach(([value, label]) => {
-        const opt = document.createElement('option');
-        opt.value = value;
-        opt.textContent = label;
-        if (value === (state.fullnessUnit || '')) opt.selected = true;
-        wvUnitEl.appendChild(opt);
-      });
+      const wvUnitEl = buildWeightVolumeUnitSelect(state.fullnessUnit, 'Weight/volume unit');
       wvUnitEl.addEventListener('change', () => (state.fullnessUnit = wvUnitEl.value || null));
 
       weightVolInner.appendChild(wvAmountEl);
