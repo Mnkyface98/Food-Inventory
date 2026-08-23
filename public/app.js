@@ -1164,8 +1164,15 @@
   function renderReview(parsedItems) {
     voiceReviewEl.innerHTML = '';
 
+    // Under − Use item, every card is locked to Use — no way to create
+    // a new item from that area. (Under + Add item, or when entryMode
+    // is otherwise unset — e.g. a card left over from a previous mode
+    // — both actions stay available.)
+    const lockedToUse = entryMode === 'use';
+
     parsedItems.forEach((parsed, idx) => {
       const state = { ...parsed };
+      if (lockedToUse) state.action = 'use';
       const card = document.createElement('div');
       card.className = 'review-card';
 
@@ -1232,7 +1239,9 @@
         state.action = 'use';
         refreshToggle();
       });
-      toggle.appendChild(addToggleBtn);
+      // Locked to Use: no Add button at all, so there's no way to end
+      // up creating a new item from the − Use item area.
+      if (!lockedToUse) toggle.appendChild(addToggleBtn);
       toggle.appendChild(useToggleBtn);
 
       header.appendChild(nameInputEl);
@@ -1397,7 +1406,9 @@
             const match = findMatchingItem(state.name, state.location);
             if (!match) {
               throw new Error(
-                `No existing item named "${state.name}" to use. Switch to Add, or add it first.`
+                lockedToUse
+                  ? `No existing item named "${state.name}" to use. Add it via + Add item first.`
+                  : `No existing item named "${state.name}" to use. Switch to Add, or add it first.`
               );
             }
             // "Weight/volume used", when filled in, is the deduction to

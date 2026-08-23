@@ -30,7 +30,10 @@ type and sorted so what's expiring soon or running low surfaces first.
   little or as much as you want, then adjust any field before
   confirming. Either way, add new stock or subtract from an existing
   item by that name (an item that doesn't exist yet says so instead of
-  guessing)
+  guessing) — under **− Use item**, every card is locked to Use: there's
+  no Add toggle to switch to, so there's no way to create a new item
+  from that area at all, whether it's a typo'd name or a real item you
+  haven't added yet (add it via + Add item first, then use it)
 - **One consistent card, however an item gets entered**: typed, spoken,
   scanned, or parsed from a receipt/recipe photo all land on the same
   review card with the same fields in the same order (Qty/Unit,
