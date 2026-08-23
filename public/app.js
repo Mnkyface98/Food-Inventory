@@ -6,31 +6,8 @@
   const modeAddBtn = document.getElementById('mode-add-btn');
   const modeUseBtn = document.getElementById('mode-use-btn');
   const quickInputPanel = document.getElementById('quick-input-panel');
-  const manualEntryToggle = document.getElementById('manual-entry-toggle');
-  const addForm = document.getElementById('add-form');
   const entryFormTitle = document.getElementById('entry-form-title');
   const entryCancelBtn = document.getElementById('entry-cancel-btn');
-  const entrySubmitBtn = document.getElementById('entry-submit-btn');
-  const nameInput = document.getElementById('item-name');
-  const nameOptionsEl = document.getElementById('item-name-options');
-  const qtyInput = document.getElementById('item-qty');
-  const unitInput = document.getElementById('item-unit');
-  const locationSelect = document.getElementById('item-location');
-  const categorySelect = document.getElementById('item-category');
-  const expirationInput = document.getElementById('item-expiration');
-  // "Weight/volume" — Add-only. Describes the size of a single item
-  // (e.g. a 16 oz bottle); a newly (re)stocked item is assumed to start
-  // full, so this doubles as both the total size and the current amount
-  // — see submitAdd(). Only applies while quantity is 1.
-  const weightVolumeWrap = document.getElementById('weight-volume-wrap');
-  const weightVolumeInput = document.getElementById('item-weight-volume');
-  const weightVolumeUnitInput = document.getElementById('item-weight-volume-unit');
-  // "Amount used" — Use-only. Drives the deduction; the running total
-  // it deducts from (the weight/volume set above, whenever an item has
-  // one) is never shown here — see the README.
-  const amountUsedWrap = document.getElementById('amount-used-wrap');
-  const amountUsedInput = document.getElementById('item-amount-used');
-  const amountUsedUnitInput = document.getElementById('item-amount-used-unit');
   const tabsEl = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
@@ -148,11 +125,6 @@
       categories = await api('/api/categories');
       categoryLabels = Object.fromEntries(categories.map((c) => [c.id, c.label]));
       for (const cat of categories) {
-        const opt = document.createElement('option');
-        opt.value = cat.id;
-        opt.textContent = cat.label;
-        categorySelect.appendChild(opt);
-
         const tabBtn = document.createElement('button');
         tabBtn.type = 'button';
         tabBtn.className = 'tab';
@@ -196,110 +168,32 @@
     sync();
   }
 
-  // The fields are hidden until you pick + Add or − Use; picking one
-  // reveals the same shared form, styled and labeled for that action,
-  // with only the Add- or Use-specific fields showing.
-  function resetEntryForm() {
-    nameInput.value = '';
-    qtyInput.value = '1';
-    unitInput.value = '';
-    categorySelect.value = '';
-    expirationInput.value = '';
-    weightVolumeInput.value = '';
-    weightVolumeUnitInput.value = '';
-    amountUsedInput.value = '';
-    amountUsedUnitInput.value = '';
-    amountUsedUnitAutoFilled = false;
-  }
-
-  // Weight/volume only makes sense in Add mode, for exactly one item —
-  // hide it (and clear any value) otherwise.
-  function syncWeightVolumeVisibility() {
-    const applies = entryMode === 'add' && Number(qtyInput.value) === 1;
-    weightVolumeWrap.classList.toggle('hidden', !applies);
-    if (!applies) {
-      weightVolumeInput.value = '';
-      weightVolumeUnitInput.value = '';
-    }
-  }
-  qtyInput.addEventListener('input', syncWeightVolumeVisibility);
-
-  // In Use mode, once the typed name+location match a tracked item,
-  // pre-select the Amount-used unit to that item's own weight/volume
-  // unit (e.g. "ml") — a convenient default instead of having to look
-  // it up and pick it every time. Only touches the dropdown while it's
-  // still showing an auto-filled value (or is blank); once you pick one
-  // yourself, it's left alone until the fields are reset.
-  let amountUsedUnitAutoFilled = false;
-  function syncAmountUsedUnit() {
-    if (entryMode !== 'use') return;
-    if (amountUsedUnitInput.value && !amountUsedUnitAutoFilled) return;
-    const match = findMatchingItem(nameInput.value.trim(), locationSelect.value);
-    if (match && match.fullnessUnit) {
-      amountUsedUnitInput.value = match.fullnessUnit;
-      amountUsedUnitAutoFilled = true;
-    } else if (amountUsedUnitAutoFilled) {
-      amountUsedUnitInput.value = '';
-      amountUsedUnitAutoFilled = false;
-    }
-  }
-  amountUsedUnitInput.addEventListener('change', () => {
-    amountUsedUnitAutoFilled = false;
-  });
-  nameInput.addEventListener('input', syncAmountUsedUnit);
-  locationSelect.addEventListener('change', syncAmountUsedUnit);
-
-  const MANUAL_ENTRY_CLOSED_LABEL = '✏️ Enter item manually';
-  const MANUAL_ENTRY_OPEN_LABEL = '▲ Hide manual entry';
-
   // The quick-input methods (voice/text, barcode, receipt, recipe) stay
-  // out of the way with everything else until a mode is picked, same as
-  // the manual fields — Add reveals text/mic/submit, barcode, and
-  // receipt; Use reveals all of those plus recipe ingredients, since a
-  // recipe's ingredients are meant to be used up. The manual fields
-  // themselves stay collapsed behind their own toggle even then — so a
-  // barcode/voice/receipt scan's review card is the only card on screen,
-  // not stacked underneath a second, redundant "+ Add item" form.
+  // out of the way until a mode is picked — Add reveals text/mic/submit,
+  // barcode, and receipt; Use reveals all of those plus recipe
+  // ingredients, since a recipe's ingredients are meant to be used up.
+  // Every one of them funnels into the same editable review card, which
+  // is the only "entry form" in the app — see renderReview().
   function openEntryForm(mode) {
     entryMode = mode;
     const isAdd = mode === 'add';
     entryModeButtons.classList.add('hidden');
     quickInputPanel.classList.remove('hidden');
-    addForm.classList.add('hidden');
-    manualEntryToggle.textContent = MANUAL_ENTRY_CLOSED_LABEL;
     recipeBtn.classList.toggle('hidden', isAdd);
     if (isAdd) recipePanel.classList.add('hidden'); // close it if it was left open from Use mode
     entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
-    entrySubmitBtn.textContent = isAdd ? '+ Add item' : '− Use item';
-    entrySubmitBtn.className = `btn btn-full ${isAdd ? 'btn-primary' : 'btn-danger'}`;
-    amountUsedWrap.classList.toggle('hidden', isAdd);
-    syncWeightVolumeVisibility();
     voiceTextInput.focus();
   }
 
   function closeEntryForm() {
     entryMode = null;
     quickInputPanel.classList.add('hidden');
-    addForm.classList.add('hidden');
-    manualEntryToggle.textContent = MANUAL_ENTRY_CLOSED_LABEL;
     entryModeButtons.classList.remove('hidden');
-    resetEntryForm();
-  }
-
-  function toggleManualEntry() {
-    const opening = addForm.classList.contains('hidden');
-    addForm.classList.toggle('hidden', !opening);
-    manualEntryToggle.textContent = opening ? MANUAL_ENTRY_OPEN_LABEL : MANUAL_ENTRY_CLOSED_LABEL;
-    if (opening) {
-      syncWeightVolumeVisibility();
-      nameInput.focus();
-    }
   }
 
   modeAddBtn.addEventListener('click', () => openEntryForm('add'));
   modeUseBtn.addEventListener('click', () => openEntryForm('use'));
   entryCancelBtn.addEventListener('click', closeEntryForm);
-  manualEntryToggle.addEventListener('click', toggleManualEntry);
 
   function showToast(message) {
     toastEl.textContent = message;
@@ -334,31 +228,7 @@
     }
   }
 
-  // Keeps the item-name field's suggestion list in sync with what's
-  // actually in inventory, so typing a few letters of "S. Pellegrino"
-  // offers the exact stored name to pick — avoiding the mismatched-name
-  // errors that come from retyping it slightly differently (punctuation,
-  // spacing, a typo) each time you go to use it.
-  function updateItemNameOptions() {
-    const seen = new Set();
-    const names = [];
-    for (const item of items) {
-      const key = item.name.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      names.push(item.name);
-    }
-    names.sort((a, b) => a.localeCompare(b));
-    nameOptionsEl.textContent = '';
-    for (const n of names) {
-      const option = document.createElement('option');
-      option.value = n;
-      nameOptionsEl.appendChild(option);
-    }
-  }
-
   function render() {
-    updateItemNameOptions();
     const filtered = items.filter((item) => {
       const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchesSearch = !searchTerm || item.name.toLowerCase().includes(searchTerm);
@@ -769,127 +639,6 @@
     }
   }
 
-  async function submitAdd() {
-    const name = nameInput.value.trim();
-    const quantity = Number(qtyInput.value);
-    const unit = unitInput.value.trim();
-    const location = locationSelect.value;
-    const category = categorySelect.value || undefined; // empty = let server guess
-    const expirationDate = expirationInput.value || undefined;
-    // Weight/volume describes a single item's size (e.g. "16 oz") — a
-    // newly (re)stocked item is assumed to start full, so the same value
-    // is sent as both the total size and the current amount. Leaving it
-    // blank sends nothing, so the server keeps whatever weight/volume
-    // that item already has on file untouched.
-    const sizeAmount = weightVolumeInput.value || undefined;
-    const fullnessUnit = sizeAmount ? (weightVolumeUnitInput.value || undefined) : undefined;
-    const fullnessAmount = sizeAmount;
-    const fullnessTotal = sizeAmount;
-
-    if (!name) return;
-    if (!Number.isFinite(quantity) || quantity < 0) {
-      showToast('Enter a valid quantity.');
-      return;
-    }
-
-    entrySubmitBtn.disabled = true;
-    try {
-      const saved = await api('/api/items', {
-        method: 'POST',
-        body: JSON.stringify({
-          name, quantity, unit, location, category, expirationDate,
-          fullnessUnit, fullnessAmount, fullnessTotal,
-        }),
-      });
-      const idx = items.findIndex((i) => i.id === saved.id);
-      if (idx === -1) items.push(saved);
-      else items[idx] = saved;
-      render();
-      showToast(`Added ${name}`);
-      resetEntryForm();
-      nameInput.focus();
-    } catch (err) {
-      showToast(`Couldn't add item: ${err.message}`);
-    } finally {
-      entrySubmitBtn.disabled = false;
-    }
-  }
-
-  // "Use item" mirrors "+ Add item" — same name/qty/location fields, but
-  // subtracts from an existing item instead of creating/adding to one.
-  // Matches the existing voice-review "Use" flow: if nothing matches, it
-  // says so rather than guessing or silently creating a phantom item.
-  async function submitUse() {
-    const name = nameInput.value.trim();
-    const quantity = Number(qtyInput.value);
-    const unit = unitInput.value.trim();
-    const location = locationSelect.value;
-
-    if (!name) {
-      showToast('Enter an item name.');
-      return;
-    }
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      showToast('Enter a valid quantity to use.');
-      return;
-    }
-
-    const match = findMatchingItem(name, location);
-    if (!match) {
-      showToast(`No existing item named "${name}" to use. Add it first.`);
-      return;
-    }
-
-    // "Amount used", when filled in, is the deduction to make (in that
-    // field's unit) — it takes priority over the plain Qty/Unit fields
-    // above, which stay the fallback for whole-count items (e.g. "3
-    // eggs") that don't track a measured fullness at all.
-    let effectiveAmount = quantity;
-    let effectiveUnit = unit;
-    if (amountUsedInput.value.trim()) {
-      const usedAmount = Number(amountUsedInput.value);
-      if (!Number.isFinite(usedAmount) || usedAmount < 0) {
-        showToast('Enter a valid amount used.');
-        return;
-      }
-      effectiveAmount = usedAmount;
-      effectiveUnit = amountUsedUnitInput.value || unit;
-    }
-
-    entrySubmitBtn.disabled = true;
-    try {
-      // /use is unit-aware: if the matched item tracks container fullness
-      // (e.g. a bottle) and this unit converts to it (same family — weight
-      // or volume), it deducts from that instead of the whole-item count.
-      // Whichever way it lands, the server works out what's left — this
-      // form never asks for a remaining amount, only how much was used.
-      const updated = await api(`/api/items/${match.id}/use`, {
-        method: 'POST',
-        body: JSON.stringify({ amount: effectiveAmount, unit: effectiveUnit }),
-      });
-      const idx = items.findIndex((i) => i.id === updated.id);
-      if (idx !== -1) items[idx] = updated;
-      render();
-      const usedText = `Used ${formatQty(effectiveAmount)}${effectiveUnit ? ' ' + effectiveUnit : ''} ${match.name}`.trim();
-      const leftText = updated.fullnessAmount != null && updated.fullnessTotal != null
-        ? ` — ${formatQty(updated.fullnessAmount)}/${formatQty(updated.fullnessTotal)}${updated.fullnessUnit ? ' ' + updated.fullnessUnit : ''} left`
-        : ` — ${formatQty(updated.quantity)} left`;
-      showToast(usedText + leftText);
-      resetEntryForm();
-      nameInput.focus();
-    } catch (err) {
-      showToast(`Couldn't use item: ${err.message}`);
-    } finally {
-      entrySubmitBtn.disabled = false;
-    }
-  }
-
-  addForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (entryMode === 'use') submitUse();
-    else submitAdd();
-  });
-
   function setActiveCategory(category) {
     activeCategory = category;
     [...tabsEl.children].forEach((c) => c.classList.toggle('active', c.dataset.category === category));
@@ -900,13 +649,6 @@
     const btn = e.target.closest('.tab');
     if (!btn) return;
     setActiveCategory(btn.dataset.category);
-  });
-
-  // Picking a specific category in the "Add an item" form also switches
-  // the list's filter tab to match, so you immediately see where it
-  // landed. "Auto" has no single category to switch to, so it's a no-op.
-  categorySelect.addEventListener('change', () => {
-    if (categorySelect.value) setActiveCategory(categorySelect.value);
   });
 
   searchInput.addEventListener('input', () => {

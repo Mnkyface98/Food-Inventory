@@ -105,12 +105,6 @@ main {
   border-top: 1px solid var(--border);
 }
 
-#quick-input-panel + #add-form {
-  margin-top: 0.9rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--border);
-}
-
 .entry-form-header {
   display: flex;
   align-items: center;

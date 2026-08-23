@@ -14,34 +14,29 @@ type and sorted so what's expiring soon or running low surfaces first.
 - Assign each item to Pantry, Fridge, or Freezer
 - **"+ Add item" and "− Use item"** — equally prominent full-width
   buttons, and the only thing on the page until you tap one. Every entry
-  method — typed/spoken quick-add, barcode scan, receipt scan, the
-  manual fields — stays out of the way until then, so there's nothing to
-  puzzle over up front. Tapping **+ Add item** reveals quick text/mic
-  entry, barcode scanning, and receipt scanning; **− Use item** reveals
-  all of that *and* recipe ingredients too (since a recipe is naturally
+  method stays out of the way until then, so there's nothing to puzzle
+  over up front. Tapping **+ Add item** reveals quick text/mic entry,
+  barcode scanning, and receipt scanning; **− Use item** reveals all of
+  that *and* recipe ingredients too (since a recipe is naturally
   something you use up, not add). ✕ closes it all back down to just the
-  two buttons — nothing typed into the quick-entry fields is lost, it's
-  just hidden until you reopen the same mode. The full manual fields
-  stay tucked behind their own **✏️ Enter item manually** toggle even
-  then, so scanning/speaking an item shows just its one review card, not
-  a second, redundant form stacked underneath it — tap the toggle
-  whenever you actually want to type an item by hand, and it stays open
-  (fields clearing after each Add/Use) so you can add several in a row
-  without reopening it each time. Either way, fill in a name/quantity
-  and either add new stock or subtract from an existing item by that
-  name (an item that doesn't exist yet says so instead of guessing)
-- **One consistent card, however an item gets entered**: typed by hand,
-  spoken, scanned, or parsed from a receipt/recipe photo all land on the
-  same fields in the same order (Qty/Unit, Location/Category, Expiration
-  date, Weight/volume) — nothing about reviewing an item looks different
-  depending on how it got there. **Unit** is a dropdown of common
-  packaging (bottle, box, piece, can, bag, jar, package, carton, stick,
-  bunch); **Weight/volume** is a separate amount + unit (oz, fl oz, lb,
-  kg, g, ml, L, cup, tbsp, tsp) describing the size of a single item
-- **Name autocomplete**: the item-name field suggests matching names from
-  your current inventory as you type a few letters, so picking one from
-  the list — rather than retyping it slightly differently each time —
-  keeps "Use item" matching the item you actually mean
+  two buttons — nothing typed is lost, it's just hidden until you
+  reopen the same mode. There's no separate manual-entry form to open —
+  the text box (type or speak a sentence, e.g. *"add 2 bottles of olive
+  oil"* or just a bare item name) produces the same fully editable
+  review card as scanning does, so it doubles as manual entry: type as
+  little or as much as you want, then adjust any field before
+  confirming. Either way, add new stock or subtract from an existing
+  item by that name (an item that doesn't exist yet says so instead of
+  guessing)
+- **One consistent card, however an item gets entered**: typed, spoken,
+  scanned, or parsed from a receipt/recipe photo all land on the same
+  review card with the same fields in the same order (Qty/Unit,
+  Location/Category, Expiration date, Weight/volume) — nothing about
+  reviewing an item looks different depending on how it got there.
+  **Unit** is a dropdown of common packaging (bottle, box, piece, can,
+  bag, jar, package, carton, stick, bunch); **Weight/volume** is a
+  separate amount + unit (oz, fl oz, lb, kg, g, ml, L, cup, tbsp, tsp)
+  describing the size of a single item
 - Quick **+ / −** buttons on each item card to add or use one unit at a time
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
