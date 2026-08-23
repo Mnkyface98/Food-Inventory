@@ -108,6 +108,31 @@ function parseReceiptLine(rawLine) {
   };
 }
 
+// A long product name can visually wrap in the source image right where
+// its "(12 fl oz)"-style size sits, so OCR reads it as two separate
+// lines — "...Refrigerated (12 fl" then "oz)" — leaving the size
+// unparseable (and, worse, letting an earlier, similar-looking number
+// like "9g Fiber" get mistaken for it instead) and pushing the real
+// quantity line ("4 x $2.79") one row further away than the lookahead
+// below expects. Re-joins any line with an unclosed "(" onto the
+// line(s) after it until the parentheses balance, so the rest of the
+// parser sees one complete line either way.
+function mergeWrappedParenLines(rawLines) {
+  const merged = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    let line = rawLines[i];
+    const unbalanced = () => (line.match(/\(/g) || []).length > (line.match(/\)/g) || []).length;
+    while (unbalanced() && i + 1 < rawLines.length) {
+      i++;
+      line = `${line} ${rawLines[i]}`.trim();
+    }
+    merged.push(line);
+    i++;
+  }
+  return merged;
+}
+
 /**
  * Parse raw OCR'd receipt text into candidate inventory items, one per
  * plausible product line. Non-product lines (totals, tax, card info,
@@ -117,7 +142,7 @@ function parseReceiptLine(rawLine) {
  * @returns {{items: Array<object>}}
  */
 function parseReceiptText(rawText) {
-  const lines = String(rawText || '').split(/\r?\n/);
+  const lines = mergeWrappedParenLines(String(rawText || '').split(/\r?\n/));
   const items = [];
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
