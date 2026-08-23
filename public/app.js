@@ -103,6 +103,19 @@
     return Math.round((target - today) / 86400000);
   }
 
+  // Sort key for ordering items within a category: Out first, then
+  // expiring soon (within the same window the list's expiration badge
+  // itself uses), then Low, then everything else — the same tiers the
+  // badges already show, just used to order the list too, so the two
+  // never disagree about what counts as urgent.
+  function itemSortPriority(item) {
+    const lowLabel = getLowStockBadge(item);
+    if (lowLabel === 'Out') return 0;
+    if (item.expirationDate && daysUntil(item.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS) return 1;
+    if (lowLabel === 'Low') return 2;
+    return 3;
+  }
+
   function formatExpiration(dateStr) {
     const days = daysUntil(dateStr);
     let className = 'expiry-ok';
@@ -327,22 +340,29 @@
 
     // When a single category tab is already active, every item is that
     // category, so a heading would just repeat the tab you clicked —
-    // render the flat list with no grouping/collapsing.
+    // render the flat list with no grouping/collapsing. Still sorted by
+    // urgency (see itemSortPriority()).
     if (activeCategory !== 'all') {
-      for (const item of filtered) {
+      const sorted = [...filtered].sort((a, b) => itemSortPriority(a) - itemSortPriority(b));
+      for (const item of sorted) {
         listEl.appendChild(item.id === editingId ? renderItemDetail(item) : renderItem(item));
       }
       return;
     }
 
-    // "All" view: group by category (preserving the server's ordering
-    // within each group — expiration/low-stock first), with a clickable,
-    // collapsible heading per group so a long category list can be
-    // tucked away without leaving the "All" view.
+    // "All" view: group by category, with a clickable, collapsible
+    // heading per group so a long category list can be tucked away
+    // without leaving the "All" view. Within each group, sorted by
+    // urgency: Out, then expiring soon, then Low, then everything else
+    // (a stable sort, so same-priority items keep the server's own
+    // secondary ordering — soonest expiration, then lowest quantity).
     const groups = new Map();
     for (const item of filtered) {
       if (!groups.has(item.category)) groups.set(item.category, []);
       groups.get(item.category).push(item);
+    }
+    for (const groupItems of groups.values()) {
+      groupItems.sort((a, b) => itemSortPriority(a) - itemSortPriority(b));
     }
 
     for (const [category, groupItems] of groups) {
@@ -387,17 +407,17 @@
     nameEl.type = 'button';
     nameEl.className = 'item-name item-name-btn';
     nameEl.textContent = item.name;
-    nameEl.setAttribute('aria-label', `Edit ${item.name}`);
+    nameEl.setAttribute('aria-label', `Show details for ${item.name}`);
     nameEl.addEventListener('click', () => {
       editingId = item.id;
       render();
     });
 
     // View-only glance card: name, expiration, and a low-stock flag if
-    // triggered — nothing else. No location/category/unit/amount, and
-    // no add/use/delete controls; all of that lives in the edit form
-    // (tap the name) or the + Add item / − Use item flows, including
-    // deleting an item entirely, which only happens from − Use item.
+    // triggered — nothing else. No quantity/location/category/unit/
+    // amount and no quick add/use controls; tap the name to open the
+    // read-only detail view (renderItemDetail()) for the rest, plus
+    // renaming and deleting the item entirely.
     const metaEl = document.createElement('div');
     metaEl.className = 'item-meta';
     const lowLabel = getLowStockBadge(item);
@@ -459,16 +479,52 @@
     li.className = 'item-card item-detail-card';
     li.dataset.id = item.id;
 
-    const nameEl = document.createElement('button');
-    nameEl.type = 'button';
-    nameEl.className = 'item-name item-name-btn';
-    nameEl.textContent = item.name;
-    nameEl.setAttribute('aria-label', `Close ${item.name}`);
-    nameEl.addEventListener('click', () => {
-      editingId = null;
-      render();
+    // The name is the one thing directly editable here — everything
+    // else (quantity, unit, location, category, weight/volume) is set
+    // through + Add item / − Use item, not rewritten in place.
+    const nameRow = document.createElement('div');
+    nameRow.className = 'field-row two-up';
+    const nameInputEl = document.createElement('input');
+    nameInputEl.type = 'text';
+    nameInputEl.value = item.name;
+    nameInputEl.setAttribute('aria-label', 'Item name');
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.className = 'btn btn-secondary';
+    renameBtn.textContent = 'Rename';
+    nameRow.appendChild(nameInputEl);
+    nameRow.appendChild(renameBtn);
+    li.appendChild(nameRow);
+
+    const note = document.createElement('p');
+    note.className = 'review-note hidden';
+
+    renameBtn.addEventListener('click', async () => {
+      const newName = nameInputEl.value.trim();
+      note.classList.add('hidden');
+      if (!newName) {
+        note.textContent = 'Item name is required.';
+        note.classList.remove('hidden');
+        return;
+      }
+      if (newName === item.name) return;
+      renameBtn.disabled = true;
+      try {
+        const updated = await api(`/api/items/${item.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: newName }),
+        });
+        const idx = items.findIndex((i) => i.id === updated.id);
+        if (idx !== -1) items[idx] = updated;
+        render(); // stays expanded — editingId is unchanged
+        showToast(`Renamed to ${updated.name}`);
+      } catch (err) {
+        note.textContent = err.message;
+        note.classList.remove('hidden');
+      } finally {
+        renameBtn.disabled = false;
+      }
     });
-    li.appendChild(nameEl);
 
     const rows = document.createElement('div');
     rows.className = 'item-detail-rows';
@@ -496,16 +552,32 @@
     rows.appendChild(expRow);
     rows.appendChild(amountRow);
     li.appendChild(rows);
+    li.appendChild(note);
 
+    const buttons = document.createElement('div');
+    buttons.className = 'review-card-buttons';
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
-    closeBtn.className = 'btn btn-secondary btn-full';
+    closeBtn.className = 'btn btn-secondary';
     closeBtn.textContent = 'Close';
     closeBtn.addEventListener('click', () => {
       editingId = null;
       render();
     });
-    li.appendChild(closeBtn);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'btn btn-danger';
+    deleteBtn.textContent = 'Delete item';
+    // deleteItem()'s own confirm() dialog spells out that this removes
+    // the item entirely, not one unit of it — same wording wherever
+    // deletion happens (also the − Use item review card's Delete item).
+    deleteBtn.addEventListener('click', async () => {
+      const deleted = await deleteItem(item.id, item.name);
+      if (deleted) editingId = null;
+    });
+    buttons.appendChild(closeBtn);
+    buttons.appendChild(deleteBtn);
+    li.appendChild(buttons);
 
     return li;
   }
@@ -515,7 +587,9 @@
   // that do follow-up work (e.g. dismissing a review card) check this
   // rather than assuming deletion always went through.
   async function deleteItem(id, name) {
-    if (!confirm(`Remove "${name}" from your inventory?`)) return false;
+    if (!confirm(`Delete "${name}" completely from your inventory? This removes the whole item — not just one unit of it — and can't be undone.`)) {
+      return false;
+    }
     const prevItems = items;
     items = items.filter((i) => i.id !== id);
     render();

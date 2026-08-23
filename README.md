@@ -98,15 +98,14 @@ type and sorted so what's expiring soon or running low surfaces first.
   Baking, Snacks, Beverages, Other) — guessed automatically from the item
   name, editable via a dropdown
 - **Expiration dates**: optional, set manually or captured from voice/typed
-  phrases like *"expires next Friday"* or *"best by 8/25"*. Items with a
-  date sort to the top of their category (soonest first), with "Expires
-  today/tomorrow" and "Expired" badges. The Expiration date field only
-  appears on the review card's **Add** side — using some of an item
-  doesn't change when what's left expires, so it's hidden on **Use**
-- Within each category, items with no expiration date sort by
-  **lowest quantity first** (with "Low"/"Out" badges) so what needs
-  restocking is easy to spot. What counts as "low" (see below) can be
-  tailored per item, not just one flat number for everything
+  phrases like *"expires next Friday"* or *"best by 8/25"*, with "Expires
+  today/tomorrow" and "Expired" badges (see below for how this affects
+  list order). The Expiration date field only appears on the review
+  card's **Add** side — using some of an item doesn't change when
+  what's left expires, so it's hidden on **Use**
+- "Low"/"Out" badges flag items that need restocking (see below for
+  what counts as "low"), tailored per item rather than one flat number
+  for everything
 - **Barcode scanning**: tap 📷, point your phone's camera at a product
   barcode, and every field the lookup actually knows is filled in
   automatically, dropped into the same review flow as voice entry —
@@ -148,22 +147,30 @@ type and sorted so what's expiring soon or running low surfaces first.
   expiration badge — but only once expiration is within **2 weeks** (or
   already past); further out, the date isn't shown at all, keeping the
   card down to what actually needs attention right now. No location,
-  category, unit, or amount-left details, and no way to add, use, edit,
-  or delete an item directly from the card
-- **Tap a name to see (not edit) the rest**: expands into a small
-  read-only detail view with the exact expiration date (e.g.
+  category, unit, or amount-left details, and no quick add/use controls
+  directly on the card
+- **Tap a name to see its details, rename it, or delete it**: expands
+  into a small detail view with the exact expiration date (e.g.
   "12/25/2026," not just a relative badge) and how much is actually
   left — a weight/volume reading (e.g. "30/32 fl oz"), a pack-size
   fraction, or a plain quantity+unit count, whichever applies to that
-  item. Tap the name again, or **Close**, to collapse it back. There's
-  no Save button here because there's nothing to change — correcting an
-  item's record isn't something this view does at all; deleting an item
-  entirely only happens from the **− Use item** flow (type the name,
-  then **Delete item** on its review card instead of confirming a use).
-  A weight/volume reading always reflects deductions from every path
-  that can change quantity, and clears itself the moment quantity moves
-  away from 1, since a reading like "300/500 ml" stops meaning anything
-  once there's no longer exactly one tracked container
+  item — plus an editable **item name** field with its own **Rename**
+  button. The name is the only field correctable here; quantity, unit,
+  location, category, and weight/volume are all set through + Add item
+  / − Use item instead, never rewritten in place. A **Delete item**
+  button removes the item entirely — its confirmation is explicit that
+  this deletes the whole item, not just one unit of it, and can't be
+  undone (the same button and wording also live on the − Use item
+  review card, for deleting an item while you're already there). Tap
+  the name again, or **Close**, to collapse the detail view back. A
+  weight/volume reading always reflects deductions from every path that
+  can change quantity, and clears itself the moment quantity moves away
+  from 1, since a reading like "300/500 ml" stops meaning anything once
+  there's no longer exactly one tracked container
+- **Ordered by urgency within each category**: Out first, then expiring
+  within 2 weeks, then Low, then everything else — the same tiers the
+  badges themselves use, so the list never disagrees with what it's
+  flagging as needing attention
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
   search by name
 - In the **All** view, category sections start **collapsed** by default
