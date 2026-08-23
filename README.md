@@ -261,11 +261,14 @@ these rules, in order — the first one that applies wins:
    that's all there is to set; a **barcode scan** fills it in
    automatically from the product's package size (e.g. "500 ml"), still
    editable before you confirm. From there, using some of it is just
-   "Amount used": on the **− Use item** card, type how much you used and
-   its unit, and the app deducts it from that item's running total on
-   its own — you only ever say how much was used, never how much is
-   left, and the running total itself is never shown back to you, just
-   the result. The app computes the percentage remaining and flags it
+   "Amount used": on the **− Use item** card, type its name and how much
+   you used. Its unit pre-fills on its own from that item's tracked
+   weight/volume the moment the name matches (change it if you're using
+   a different measurement — it won't be touched again once you pick
+   one yourself), and the app deducts it from that item's running total —
+   you only ever say how much was used, never how much is left, and the
+   running total itself is never shown back to you, just the result. The
+   app computes the percentage remaining and flags it
    low at **50% full or less** (half or more used) — the item's card
    shows the current reading (e.g. "8/16 oz") alongside the badge.
    Restocking an already-tracked item through **+ Add item** without

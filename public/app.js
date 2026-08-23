@@ -209,6 +209,7 @@
     weightVolumeUnitInput.value = '';
     amountUsedInput.value = '';
     amountUsedUnitInput.value = '';
+    amountUsedUnitAutoFilled = false;
   }
 
   // Weight/volume only makes sense in Add mode, for exactly one item —
@@ -222,6 +223,31 @@
     }
   }
   qtyInput.addEventListener('input', syncWeightVolumeVisibility);
+
+  // In Use mode, once the typed name+location match a tracked item,
+  // pre-select the Amount-used unit to that item's own weight/volume
+  // unit (e.g. "ml") — a convenient default instead of having to look
+  // it up and pick it every time. Only touches the dropdown while it's
+  // still showing an auto-filled value (or is blank); once you pick one
+  // yourself, it's left alone until the fields are reset.
+  let amountUsedUnitAutoFilled = false;
+  function syncAmountUsedUnit() {
+    if (entryMode !== 'use') return;
+    if (amountUsedUnitInput.value && !amountUsedUnitAutoFilled) return;
+    const match = findMatchingItem(nameInput.value.trim(), locationSelect.value);
+    if (match && match.fullnessUnit) {
+      amountUsedUnitInput.value = match.fullnessUnit;
+      amountUsedUnitAutoFilled = true;
+    } else if (amountUsedUnitAutoFilled) {
+      amountUsedUnitInput.value = '';
+      amountUsedUnitAutoFilled = false;
+    }
+  }
+  amountUsedUnitInput.addEventListener('change', () => {
+    amountUsedUnitAutoFilled = false;
+  });
+  nameInput.addEventListener('input', syncAmountUsedUnit);
+  locationSelect.addEventListener('change', syncAmountUsedUnit);
 
   const MANUAL_ENTRY_CLOSED_LABEL = '✏️ Enter item manually';
   const MANUAL_ENTRY_OPEN_LABEL = '▲ Hide manual entry';
