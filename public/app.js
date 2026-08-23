@@ -66,6 +66,10 @@
   const CANNED_BEVERAGE_LOW_QTY = 4; // canned beverages: low at 4 or fewer cans
   // An item expiring within this many days gets the amber "soon" badge.
   const EXPIRING_SOON_DAYS = 3;
+  // The main list card only shows an expiration badge at all once it's
+  // this close (or already past) — further out, it's not worth the
+  // clutter on a card that's otherwise just name/low-stock flag.
+  const EXPIRY_BADGE_VISIBLE_DAYS = 14;
 
   // Returns 'Out', 'Low', or null (not low) for an item's low-stock badge.
   function getLowStockBadge(item) {
@@ -422,7 +426,7 @@
       lowBadge.textContent = lowLabel;
       metaEl.appendChild(lowBadge);
     }
-    if (item.expirationDate) {
+    if (item.expirationDate && daysUntil(item.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS) {
       const { text, className } = formatExpiration(item.expirationDate);
       const expBadge = document.createElement('span');
       expBadge.className = `expiry-badge ${className}`;

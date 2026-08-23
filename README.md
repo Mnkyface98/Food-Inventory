@@ -127,13 +127,16 @@ type and sorted so what's expiring soon or running low surfaces first.
   editable since this form corrects an item's true current state rather
   than logging a transaction. Save commits, Cancel discards
 - **The main inventory list is view-only**: each card shows just the
-  item's name, its expiration badge (if any), and a "Low"/"Out" flag if
-  it's triggered — no location, category, unit, or amount-left details,
-  and no way to add, use, or delete an item directly from the card.
-  Tap the name to see/edit everything else via the edit form; deleting
-  an item entirely only happens from the **− Use item** flow (type the
-  name, then **Delete item** on its review card instead of confirming a
-  use)
+  item's name, a "Low"/"Out" flag if it's triggered, and its expiration
+  badge — but only once expiration is within **2 weeks** (or already
+  past); further out, the date isn't shown at all, keeping the card
+  down to what actually needs attention right now. No location,
+  category, unit, or amount-left details, and no way to add, use, or
+  delete an item directly from the card. Tap the name to see/edit
+  everything else (including the exact expiration date) via the edit
+  form; deleting an item entirely only happens from the **− Use item**
+  flow (type the name, then **Delete item** on its review card instead
+  of confirming a use)
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
   search by name. Weight/volume, pack-size, and quantity readings —
   Pantry/Fridge/Freezer location and category too — still live on the
