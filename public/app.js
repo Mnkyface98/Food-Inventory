@@ -52,7 +52,7 @@
   let activeCategory = 'all';
   let searchTerm = '';
   let toastTimer = null;
-  let editingId = null; // id of the item currently shown as an edit form, if any
+  let editingId = null; // id of the item currently expanded into its read-only detail view, if any
   const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
   let entryMode = null; // 'add' | 'use' | null (fields hidden until one is chosen)
 
@@ -215,25 +215,6 @@
     selectEl.value = value;
   }
 
-  // Container fullness only makes sense for exactly one item that isn't
-  // itself being tracked as a multi-pack — hide it (and clear any values)
-  // whenever quantity isn't 1 or a pack size is set. Used by the inline
-  // edit form.
-  function wireFullnessVisibility(qtyEl, packEl, wrapEl, unitEl, remainingEl, totalEl) {
-    function sync() {
-      const applies = Number(qtyEl.value) === 1 && !(packEl && packEl.value);
-      wrapEl.classList.toggle('hidden', !applies);
-      if (!applies) {
-        unitEl.value = '';
-        remainingEl.value = '';
-        totalEl.value = '';
-      }
-    }
-    qtyEl.addEventListener('input', sync);
-    if (packEl) packEl.addEventListener('input', sync);
-    sync();
-  }
-
   // The quick-input methods stay out of the way until a mode is picked.
   // Add reveals text/mic/submit, barcode scanning, and receipt scanning
   // — all ways of bringing a new product into inventory. Use reveals
@@ -349,7 +330,7 @@
     // render the flat list with no grouping/collapsing.
     if (activeCategory !== 'all') {
       for (const item of filtered) {
-        listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
+        listEl.appendChild(item.id === editingId ? renderItemDetail(item) : renderItem(item));
       }
       return;
     }
@@ -388,7 +369,7 @@
 
       if (!collapsed) {
         for (const item of groupItems) {
-          listEl.appendChild(item.id === editingId ? renderEditForm(item) : renderItem(item));
+          listEl.appendChild(item.id === editingId ? renderItemDetail(item) : renderItem(item));
         }
       }
     }
@@ -444,222 +425,88 @@
   // Inline edit form shown in place of an item card when its name is
   // tapped. Same fields as the Add form, pre-filled with the item's
   // current values. Nothing is saved until Save is pressed.
-  function renderEditForm(item) {
+  // Full "M/D/YYYY" rendering of an ISO date — the detail view below
+  // shows the exact date, not the relative "Exp 3/16"-style badge text.
+  function formatFullDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return `${m}/${d}/${y}`;
+  }
+
+  // Same three-way "what's actually left" logic the list card itself
+  // used before it went view-only: a tracked weight/volume reading, a
+  // pack-size fraction, or a plain quantity+unit count — whichever
+  // applies to this item.
+  function describeAmountRemaining(item) {
+    const unitSuffix = item.unit ? ` ${item.unit}` : '';
+    if (item.fullnessAmount != null && item.fullnessTotal != null) {
+      const fullnessSuffix = item.fullnessUnit ? ` ${item.fullnessUnit}` : '';
+      return `${formatQty(item.fullnessAmount)}/${formatQty(item.fullnessTotal)}${fullnessSuffix}`;
+    }
+    if (item.packSize != null && item.packSize > 0) {
+      return `${formatQty(item.quantity)}/${formatQty(item.packSize)}${unitSuffix}`;
+    }
+    return `${formatQty(item.quantity)}${unitSuffix}`;
+  }
+
+  // Tapping an item's name opens this read-only detail view, not an
+  // edit form — the main list is a lookup surface, not a place to
+  // rewrite an item's record. It shows exactly the two facts the card
+  // itself doesn't have room for: the exact expiration date, and how
+  // much is actually left (as a unit count and/or weight/volume
+  // reading). Tap the name again, or Close, to collapse it back.
+  function renderItemDetail(item) {
     const li = document.createElement('li');
-    li.className = 'item-card item-edit-card';
+    li.className = 'item-card item-detail-card';
     li.dataset.id = item.id;
 
-    const form = document.createElement('form');
-    form.className = 'edit-form';
-
-    const nameRow = document.createElement('div');
-    nameRow.className = 'field-row';
-    const nameInputEl = document.createElement('input');
-    nameInputEl.type = 'text';
-    nameInputEl.value = item.name;
-    nameInputEl.required = true;
-    nameInputEl.setAttribute('aria-label', 'Item name');
-    nameRow.appendChild(nameInputEl);
-
-    const fieldsRow = document.createElement('div');
-    fieldsRow.className = 'field-row two-up';
-    const qtyEl = document.createElement('input');
-    qtyEl.type = 'number';
-    qtyEl.min = '0';
-    qtyEl.step = 'any';
-    qtyEl.value = item.quantity;
-    qtyEl.required = true;
-    qtyEl.setAttribute('aria-label', 'Quantity');
-    const unitEl = buildUnitSelect(item.unit);
-    fieldsRow.appendChild(qtyEl);
-    fieldsRow.appendChild(unitEl);
-
-    const fieldsRow2 = document.createElement('div');
-    fieldsRow2.className = 'field-row two-up';
-    const locEl = document.createElement('select');
-    locEl.setAttribute('aria-label', 'Location');
-    ['pantry', 'fridge', 'freezer'].forEach((loc) => {
-      const opt = document.createElement('option');
-      opt.value = loc;
-      opt.textContent = loc[0].toUpperCase() + loc.slice(1);
-      if (loc === item.location) opt.selected = true;
-      locEl.appendChild(opt);
-    });
-    const catEl = document.createElement('select');
-    catEl.setAttribute('aria-label', 'Category');
-    categories.forEach((cat) => {
-      const opt = document.createElement('option');
-      opt.value = cat.id;
-      opt.textContent = cat.label;
-      if (cat.id === item.category) opt.selected = true;
-      catEl.appendChild(opt);
-    });
-    fieldsRow2.appendChild(locEl);
-    fieldsRow2.appendChild(catEl);
-
-    const expRow = document.createElement('div');
-    expRow.className = 'field-row';
-    const expLabel = document.createElement('label');
-    expLabel.className = 'field-label';
-    expLabel.textContent = 'Expiration date (optional)';
-    const expEl = document.createElement('input');
-    expEl.type = 'date';
-    expEl.setAttribute('aria-label', 'Expiration date');
-    if (item.expirationDate) expEl.value = item.expirationDate;
-    expRow.appendChild(expLabel);
-    expRow.appendChild(expEl);
-
-    const lowStockDetails = document.createElement('details');
-    lowStockDetails.className = 'low-stock-details';
-    const lowStockSummary = document.createElement('summary');
-    lowStockSummary.textContent = 'Low-stock tracking (optional)';
-
-    const packRow = document.createElement('div');
-    packRow.className = 'field-row';
-    const packLabel = document.createElement('label');
-    packLabel.className = 'field-label';
-    packLabel.textContent = 'Pack size';
-    const packEl = document.createElement('input');
-    packEl.type = 'number';
-    packEl.min = '1';
-    packEl.step = 'any';
-    packEl.placeholder = 'e.g. 24';
-    if (item.packSize != null) packEl.value = item.packSize;
-    packRow.appendChild(packLabel);
-    packRow.appendChild(packEl);
-
-    // Weight/volume — the item's size (e.g. "16 oz" for one bottle) —
-    // and Amount remaining — how much of it is left right now — same
-    // concept as the + Add item / − Use item card, except here both are
-    // directly editable: this form corrects an item's true current
-    // state, rather than logging a used-amount transaction.
-    const fullnessWrapEl = document.createElement('div');
-    fullnessWrapEl.className = 'field-row';
-
-    const weightVolRow = document.createElement('div');
-    weightVolRow.className = 'field-row';
-    const weightVolLabel = document.createElement('label');
-    weightVolLabel.className = 'field-label';
-    // Named after the selected Unit ("per bottle") so it's never mistaken
-    // for a grand total across every one in stock — always just one's size.
-    function updateWeightVolLabel() {
-      const perUnitLabel = (UNIT_LABELS[unitEl.value] || 'unit').toLowerCase();
-      weightVolLabel.textContent = `Weight/volume per ${perUnitLabel} (optional)`;
-    }
-    updateWeightVolLabel();
-    unitEl.addEventListener('change', updateWeightVolLabel);
-    const weightVolInner = document.createElement('div');
-    weightVolInner.className = 'field-row two-up';
-    const totalEl = document.createElement('input');
-    totalEl.type = 'number';
-    totalEl.min = '0';
-    totalEl.step = 'any';
-    totalEl.placeholder = 'Amount';
-    totalEl.setAttribute('aria-label', 'Weight/volume amount');
-    if (item.fullnessTotal != null) totalEl.value = item.fullnessTotal;
-    const unitEl2 = buildWeightVolumeUnitSelect(item.fullnessUnit, 'Weight/volume unit');
-    weightVolInner.appendChild(totalEl);
-    weightVolInner.appendChild(unitEl2);
-    weightVolRow.appendChild(weightVolLabel);
-    weightVolRow.appendChild(weightVolInner);
-
-    const remainingRow = document.createElement('div');
-    remainingRow.className = 'field-row';
-    const remainingLabel = document.createElement('label');
-    remainingLabel.className = 'field-label';
-    remainingLabel.textContent = 'Amount remaining (optional)';
-    const remainingEl = document.createElement('input');
-    remainingEl.type = 'number';
-    remainingEl.min = '0';
-    remainingEl.step = 'any';
-    remainingEl.placeholder = 'Amount remaining';
-    remainingEl.setAttribute('aria-label', 'Amount remaining');
-    if (item.fullnessAmount != null) remainingEl.value = item.fullnessAmount;
-    remainingRow.appendChild(remainingLabel);
-    remainingRow.appendChild(remainingEl);
-
-    fullnessWrapEl.appendChild(weightVolRow);
-    fullnessWrapEl.appendChild(remainingRow);
-
-    lowStockDetails.appendChild(lowStockSummary);
-    lowStockDetails.appendChild(packRow);
-    lowStockDetails.appendChild(fullnessWrapEl);
-    if (item.packSize != null || item.percentFull != null) lowStockDetails.open = true;
-    wireFullnessVisibility(qtyEl, packEl, fullnessWrapEl, unitEl2, remainingEl, totalEl);
-
-    const note = document.createElement('p');
-    note.className = 'review-note hidden';
-
-    const buttons = document.createElement('div');
-    buttons.className = 'review-card-buttons';
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'submit';
-    saveBtn.className = 'btn btn-primary';
-    saveBtn.textContent = 'Save';
-    const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button';
-    cancelBtn.className = 'btn btn-secondary';
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.addEventListener('click', () => {
+    const nameEl = document.createElement('button');
+    nameEl.type = 'button';
+    nameEl.className = 'item-name item-name-btn';
+    nameEl.textContent = item.name;
+    nameEl.setAttribute('aria-label', `Close ${item.name}`);
+    nameEl.addEventListener('click', () => {
       editingId = null;
       render();
     });
-    buttons.appendChild(saveBtn);
-    buttons.appendChild(cancelBtn);
+    li.appendChild(nameEl);
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = nameInputEl.value.trim();
-      const quantity = Number(qtyEl.value);
-      if (!name) {
-        note.textContent = 'Item name is required.';
-        note.classList.remove('hidden');
-        return;
-      }
-      if (!Number.isFinite(quantity) || quantity < 0) {
-        note.textContent = 'Enter a valid quantity.';
-        note.classList.remove('hidden');
-        return;
-      }
-      saveBtn.disabled = true;
-      note.classList.add('hidden');
-      try {
-        const updated = await api(`/api/items/${item.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            name,
-            quantity,
-            unit: unitEl.value.trim(),
-            location: locEl.value,
-            category: catEl.value,
-            expirationDate: expEl.value || '',
-            packSize: packEl.value || '',
-            fullnessUnit: unitEl2.value || '',
-            fullnessAmount: remainingEl.value || '',
-            fullnessTotal: totalEl.value || '',
-          }),
-        });
-        const idx = items.findIndex((i) => i.id === updated.id);
-        if (idx !== -1) items[idx] = updated;
-        editingId = null;
-        render();
-        showToast(`Saved ${updated.name}`);
-      } catch (err) {
-        note.textContent = err.message;
-        note.classList.remove('hidden');
-      } finally {
-        saveBtn.disabled = false;
-      }
+    const rows = document.createElement('div');
+    rows.className = 'item-detail-rows';
+
+    const expRow = document.createElement('p');
+    expRow.className = 'item-detail-row';
+    const expLabel = document.createElement('span');
+    expLabel.className = 'field-label';
+    expLabel.textContent = 'Expiration date';
+    const expValue = document.createElement('span');
+    expValue.textContent = item.expirationDate ? formatFullDate(item.expirationDate) : 'Not set';
+    expRow.appendChild(expLabel);
+    expRow.appendChild(expValue);
+
+    const amountRow = document.createElement('p');
+    amountRow.className = 'item-detail-row';
+    const amountLabel = document.createElement('span');
+    amountLabel.className = 'field-label';
+    amountLabel.textContent = 'Amount remaining';
+    const amountValue = document.createElement('span');
+    amountValue.textContent = describeAmountRemaining(item);
+    amountRow.appendChild(amountLabel);
+    amountRow.appendChild(amountValue);
+
+    rows.appendChild(expRow);
+    rows.appendChild(amountRow);
+    li.appendChild(rows);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn btn-secondary btn-full';
+    closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => {
+      editingId = null;
+      render();
     });
+    li.appendChild(closeBtn);
 
-    form.appendChild(nameRow);
-    form.appendChild(fieldsRow);
-    form.appendChild(fieldsRow2);
-    form.appendChild(expRow);
-    form.appendChild(lowStockDetails);
-    form.appendChild(note);
-    form.appendChild(buttons);
-    li.appendChild(form);
     return li;
   }
 

@@ -138,31 +138,29 @@ type and sorted so what's expiring soon or running low surfaces first.
   cups-to-ounces conversion, which needs an ingredient-specific density);
   whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
   You only ever say how much was used — the app works out what's left
-- **Edit any item after adding it**: tap its name to open an inline edit
-  form for name, quantity, unit (dropdown), location, category,
-  expiration date, and — under "Low-stock tracking" — pack size,
-  weight/volume (the item's size), and amount remaining, all directly
-  editable since this form corrects an item's true current state rather
-  than logging a transaction. Save commits, Cancel discards
-- **The main inventory list is view-only**: each card shows just the
-  item's name, a "Low"/"Out" flag if it's triggered, and its expiration
-  badge — but only once expiration is within **2 weeks** (or already
-  past); further out, the date isn't shown at all, keeping the card
-  down to what actually needs attention right now. No location,
-  category, unit, or amount-left details, and no way to add, use, or
-  delete an item directly from the card. Tap the name to see/edit
-  everything else (including the exact expiration date) via the edit
-  form; deleting an item entirely only happens from the **− Use item**
-  flow (type the name, then **Delete item** on its review card instead
-  of confirming a use)
+- **The main inventory list is entirely view-only**: each card shows
+  just the item's name, a "Low"/"Out" flag if it's triggered, and its
+  expiration badge — but only once expiration is within **2 weeks** (or
+  already past); further out, the date isn't shown at all, keeping the
+  card down to what actually needs attention right now. No location,
+  category, unit, or amount-left details, and no way to add, use, edit,
+  or delete an item directly from the card
+- **Tap a name to see (not edit) the rest**: expands into a small
+  read-only detail view with the exact expiration date (e.g.
+  "12/25/2026," not just a relative badge) and how much is actually
+  left — a weight/volume reading (e.g. "30/32 fl oz"), a pack-size
+  fraction, or a plain quantity+unit count, whichever applies to that
+  item. Tap the name again, or **Close**, to collapse it back. There's
+  no Save button here because there's nothing to change — correcting an
+  item's record isn't something this view does at all; deleting an item
+  entirely only happens from the **− Use item** flow (type the name,
+  then **Delete item** on its review card instead of confirming a use).
+  A weight/volume reading always reflects deductions from every path
+  that can change quantity, and clears itself the moment quantity moves
+  away from 1, since a reading like "300/500 ml" stops meaning anything
+  once there's no longer exactly one tracked container
 - Filter by category (tap a tab: All, Produce, Dairy & Eggs, ...) and
-  search by name. Weight/volume, pack-size, and quantity readings —
-  Pantry/Fridge/Freezer location and category too — still live on the
-  item, just under the edit form now rather than on the list card
-  itself; a weight/volume reading always reflects deductions from
-  every path that can change quantity, and clears itself the moment
-  quantity moves away from 1, since a reading like "300/500 ml" stops
-  meaning anything once there's no longer exactly one tracked container
+  search by name
 - In the **All** view, category sections start **collapsed** by default
   (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
   collapse. Handy once you've got a lot of categories in play; expanded

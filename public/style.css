@@ -72,22 +72,6 @@ main {
   gap: 0.5rem;
 }
 
-.low-stock-details {
-  margin-bottom: 0.6rem;
-}
-
-.low-stock-details summary {
-  font-size: 0.85rem;
-  color: var(--green-dark);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.3rem 0;
-}
-
-.low-stock-details[open] summary {
-  margin-bottom: 0.4rem;
-}
-
 .field-label {
   display: block;
   font-size: 0.8rem;
@@ -513,12 +497,27 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   color: var(--green-dark);
 }
 
-.item-edit-card {
+.item-detail-card {
   display: block;
 }
 
-.edit-form {
-  width: 100%;
+.item-detail-rows {
+  margin: 0.5rem 0 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.item-detail-row .field-label {
+  margin-bottom: 0;
 }
 
 .item-meta {
