@@ -388,6 +388,13 @@ app.post('/api/receipt/parse', (req, res) => {
       category: CATEGORY_IDS.has(item.category) ? item.category : guessCategory(item.name),
       action: 'add',
       expirationDate: cleanExpirationDate(item.expirationDate),
+      // The receipt parser pulls a package size (e.g. "32 fl oz") out of
+      // the product title when there is one, so it drives the review
+      // card's Weight/volume field automatically instead of the user
+      // having to retype it — same treatment a scanned barcode gets.
+      fullnessUnit: cleanFullnessUnit(item.fullnessUnit),
+      fullnessAmount: cleanPositiveAmount(item.fullnessAmount),
+      fullnessTotal: cleanPositiveAmount(item.fullnessTotal),
     }))
     .filter((item) => item.name);
 

@@ -110,7 +110,19 @@ type and sorted so what's expiring soon or running low surfaces first.
   of sitting as inert label text, still editable before you confirm
 - **Receipt scanning**: tap 🧾, take/choose a photo of a receipt, and it's
   OCR'd and parsed into a list of candidate items to review — a fast way to
-  restock a whole grocery trip at once
+  restock a whole grocery trip at once. A package size printed as part of
+  the product title (e.g. "ELMHURST UNSWEETENED ALMOND MILK 32 FL OZ", or
+  "OLIPOP ... (12 fl oz)") is pulled out automatically into the review
+  card's Weight/volume field, the same way a barcode scan's package size
+  does — a size in parentheses is preferred when there is one, so an
+  early, similar-looking marketing callout ("9g Fiber") earlier in the
+  name doesn't get mistaken for the actual package size later in it.
+  Quantity is read from a leading count on the item's own line ("2 Black
+  Beans") when present, or, on receipts that print it on its own line
+  instead (common on digital order confirmations, e.g. "OLIPOP ... (12 fl
+  oz)" followed by "4 x $2.79"), from that line right below it — either
+  way, you shouldn't need to retype the name, size, or quantity a receipt
+  already told you
 - **Recipe ingredients**: tap 📋, then either paste/type an ingredient list
   or upload a photo of a recipe. Each ingredient is parsed and defaults to
   **Use** instead of Add — a recipe consumes inventory, the opposite of a
