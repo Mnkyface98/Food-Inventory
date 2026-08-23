@@ -35,8 +35,17 @@ type and sorted so what's expiring soon or running low surfaces first.
   reviewing an item looks different depending on how it got there.
   **Unit** is a dropdown of common packaging (bottle, box, piece, can,
   bag, jar, package, carton, stick, bunch); **Weight/volume** is a
-  separate amount + unit (oz, fl oz, lb, kg, g, ml, L, cup, tbsp, tsp)
-  describing the size of a single item
+  separate amount + unit (oz, fl oz, lb, kg, g, ml, L, cup, tbsp, tsp).
+  The instant the typed/spoken/scanned name matches something already
+  in your inventory, Unit, Location, Category, and the Weight/volume
+  unit all fill themselves in from that item's own record — you're not
+  re-describing something the app already knows just because you're
+  using it again. Weight/volume itself does double duty depending on
+  the card's Add/Use toggle: on **Add** it's the item's size (assumed
+  full, so it doubles as both total and current amount); switch to
+  **Use** and it relabels to "Weight/volume used," where typing an
+  amount deducts that much from the matched item's tracked total
+  instead of decrementing its whole-number count
 - Quick **+ / −** buttons on each item card to add or use one unit at a time
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
@@ -255,28 +264,27 @@ these rules, in order — the first one that applies wins:
 2. **Weight/volume tracking** — instead of typing an abstract
    percentage, you work with a real measurement: a unit (oz, fl oz, lb,
    kg, g, ml, L, cup, tbsp, or tsp) and the size of a single item, set on
-   the **+ Add item** card's "Weight/volume" field (e.g. "16 oz" for one
-   bottle) — leave it blank for items you don't need this level of
-   tracking for. A newly (re)stocked item is assumed to start full, so
-   that's all there is to set; a **barcode scan** fills it in
-   automatically from the product's package size (e.g. "500 ml"), still
-   editable before you confirm. From there, using some of it is just
-   "Amount used": on the **− Use item** card, type its name and how much
-   you used. Its unit pre-fills on its own from that item's tracked
-   weight/volume the moment the name matches (change it if you're using
-   a different measurement — it won't be touched again once you pick
-   one yourself), and the app deducts it from that item's running total —
-   you only ever say how much was used, never how much is left, and the
-   running total itself is never shown back to you, just the result. The
-   app computes the percentage remaining and flags it
-   low at **50% full or less** (half or more used) — the item's card
-   shows the current reading (e.g. "8/16 oz") alongside the badge.
-   Restocking an already-tracked item through **+ Add item** without
-   typing a new weight/volume leaves its existing reading untouched;
-   typing one always means "this is now a full item of that size."
-   Only applies while quantity is exactly 1 *and* no pack size is set on
-   the item, since it stops meaning anything with 2+ items or once
-   you're counting a pack instead.
+   a review card's "Weight/volume" field (e.g. "16 oz" for one bottle)
+   while it's set to **Add** — leave it blank for items you don't need
+   this level of tracking for. A newly (re)stocked item is assumed to
+   start full, so that's all there is to set; a **barcode scan** fills
+   it in automatically from the product's package size (e.g. "500 ml"),
+   still editable before you confirm. From there, using some of it is
+   just switching the same card to **Use**, which relabels the field to
+   "Weight/volume used" — type how much you used and its unit
+   (pre-filled on its own the moment the typed name matches a tracked
+   item, editable if you're using a different measurement), and the app
+   deducts it from that item's running total. You only ever say how
+   much was used, never how much is left, and the running total itself
+   is never shown back to you, just the result. The app computes the
+   percentage remaining and flags it low at **50% full or less** (half
+   or more used) — the item's card shows the current reading (e.g.
+   "8/16 oz") alongside the badge. Restocking an already-tracked item
+   on **Add** without typing a new weight/volume leaves its existing
+   reading untouched; typing one always means "this is now a full item
+   of that size." Only applies while quantity is exactly 1 *and* no
+   pack size is set on the item, since it stops meaning anything with
+   2+ items or once you're counting a pack instead.
 3. **Pack size tracking** — if you've set a "pack size" (the count it
    started at, e.g. 24) by editing an item, it's flagged low once the
    remaining quantity drops to **25% or less** of that (6 or fewer left

@@ -190,6 +190,21 @@
     return buildDropdown(WEIGHT_VOLUME_UNIT_OPTIONS, currentValue, ariaLabel);
   }
 
+  // Sets a <select>'s value after the fact (e.g. auto-filling from a
+  // matched item) — adding a fallback option first if the value isn't
+  // one of the dropdown's own choices, same as buildDropdown does at
+  // construction time, so nothing is silently dropped.
+  function setDropdownValue(selectEl, value) {
+    if (!value) return;
+    if (![...selectEl.options].some((o) => o.value === value)) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = value;
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = value;
+  }
+
   // Container fullness only makes sense for exactly one item that isn't
   // itself being tracked as a multi-pack — hide it (and clear any values)
   // whenever quantity isn't 1 or a pack size is set. Used by the inline
@@ -1103,7 +1118,13 @@
       nameInputEl.value = state.name;
       nameInputEl.setAttribute('aria-label', 'Item name');
       nameInputEl.style.flex = '1';
-      nameInputEl.addEventListener('input', () => (state.name = nameInputEl.value));
+      nameInputEl.addEventListener('input', () => {
+        state.name = nameInputEl.value;
+        // syncFieldsFromMatch() is declared further down (once its
+        // target fields exist) but not called until a real "input"
+        // event fires, by which point everything's in place.
+        syncFieldsFromMatch();
+      });
 
       const toggle = document.createElement('div');
       toggle.className = 'action-toggle';
@@ -1115,13 +1136,28 @@
       useToggleBtn.type = 'button';
       useToggleBtn.dataset.action = 'use';
       useToggleBtn.textContent = 'Use';
+      // Weight/volume stays visible either way — same field, different
+      // meaning: on Add it's the item's size (assumed full, doubling as
+      // both total and current amount); on Use it's how much of it you
+      // used, taking priority over the plain Qty/Unit fields when
+      // filled in. Declared further down, but not called until after
+      // weightVolRow/weightVolLabel/wvAmountEl exist.
       function refreshToggle() {
         addToggleBtn.classList.toggle('active', state.action === 'add');
         useToggleBtn.classList.toggle('active', state.action === 'use');
-        // Weight/volume (a new item's size) only makes sense on Add,
-        // same as the + Add item card — declared further down, but this
-        // function isn't actually called until after it exists.
-        weightVolRow.classList.toggle('hidden', state.action !== 'add');
+        const isAdd = state.action === 'add';
+        weightVolLabel.textContent = isAdd ? 'Weight/volume (optional)' : 'Weight/volume used (optional)';
+        wvAmountEl.placeholder = isAdd ? 'Amount' : 'Amount used';
+        const val = wvAmountEl.value || null;
+        if (isAdd) {
+          state.fullnessTotal = val;
+          state.fullnessAmount = val;
+          state.weightVolumeUsedAmount = null;
+        } else {
+          state.weightVolumeUsedAmount = val;
+          state.fullnessTotal = null;
+          state.fullnessAmount = null;
+        }
       }
       addToggleBtn.addEventListener('click', () => {
         state.action = 'add';
@@ -1223,13 +1259,7 @@
       wvAmountEl.placeholder = 'Amount';
       wvAmountEl.setAttribute('aria-label', 'Weight/volume amount');
       if (state.fullnessTotal != null) wvAmountEl.value = state.fullnessTotal;
-      wvAmountEl.addEventListener('input', () => {
-        // A single item is assumed full, so the same value doubles as
-        // both the total size and the current amount — same as Add.
-        const val = wvAmountEl.value || null;
-        state.fullnessTotal = val;
-        state.fullnessAmount = val;
-      });
+      wvAmountEl.addEventListener('input', refreshToggle); // recomputes which state field this value feeds
 
       const wvUnitEl = buildWeightVolumeUnitSelect(state.fullnessUnit, 'Weight/volume unit');
       wvUnitEl.addEventListener('change', () => (state.fullnessUnit = wvUnitEl.value || null));
@@ -1238,7 +1268,41 @@
       weightVolInner.appendChild(wvUnitEl);
       weightVolRow.appendChild(weightVolLabel);
       weightVolRow.appendChild(weightVolInner);
-      refreshToggle(); // now that weightVolRow exists, set its initial visibility too
+
+      // Once the name (and location) match an existing item, its own
+      // unit/location/category/weight-volume-unit are already known —
+      // no need to retype facts about an item the app already tracks.
+      // Only re-syncs when the match changes to a different item, so it
+      // never fights an edit you've made since the last match.
+      let lastMatchedId = null;
+      function syncFieldsFromMatch() {
+        const match = findMatchingItem(state.name, state.location);
+        if (!match) {
+          lastMatchedId = null;
+          return;
+        }
+        if (match.id === lastMatchedId) return;
+        lastMatchedId = match.id;
+        if (match.unit) {
+          state.unit = match.unit;
+          setDropdownValue(unitEl, match.unit);
+        }
+        if (match.location) {
+          state.location = match.location;
+          locEl.value = match.location;
+        }
+        if (match.category) {
+          state.category = match.category;
+          catEl.value = match.category;
+        }
+        if (match.fullnessUnit) {
+          state.fullnessUnit = match.fullnessUnit;
+          setDropdownValue(wvUnitEl, match.fullnessUnit);
+        }
+      }
+
+      refreshToggle(); // now that weightVolRow/weightVolLabel/wvAmountEl exist, set their initial text/state
+      syncFieldsFromMatch(); // and now that every synced field exists, pick up an initial match if there is one
 
       const note = document.createElement('p');
       note.className = 'review-note hidden';
@@ -1271,6 +1335,19 @@
                 `No existing item named "${state.name}" to use. Switch to Add, or add it first.`
               );
             }
+            // "Weight/volume used", when filled in, is the deduction to
+            // make (in that field's unit) — it takes priority over the
+            // plain Qty/Unit fields, which stay the fallback for whole-
+            // count items (e.g. "3 eggs") that aren't measured this way.
+            let amount = state.quantity;
+            let unit = state.unit;
+            if (state.weightVolumeUsedAmount) {
+              amount = Number(state.weightVolumeUsedAmount);
+              if (!Number.isFinite(amount) || amount < 0) {
+                throw new Error('Enter a valid weight/volume amount used.');
+              }
+              unit = state.fullnessUnit || unit;
+            }
             // /use is unit-aware: if the matched item tracks container
             // fullness (e.g. a bottle) and this unit converts to it (same
             // family — weight or volume), it deducts from that instead of
@@ -1278,11 +1355,11 @@
             // same as before.
             const updated = await api(`/api/items/${match.id}/use`, {
               method: 'POST',
-              body: JSON.stringify({ amount: state.quantity, unit: state.unit }),
+              body: JSON.stringify({ amount, unit }),
             });
             const i = items.findIndex((it) => it.id === updated.id);
             if (i !== -1) items[i] = updated;
-            showToast(`Used ${state.quantity} ${state.unit || ''} ${state.name}`.trim());
+            showToast(`Used ${formatQty(amount)}${unit ? ' ' + unit : ''} ${state.name}`.trim());
           } else {
             const saved = await api('/api/items', {
               method: 'POST',
