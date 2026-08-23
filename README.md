@@ -62,11 +62,19 @@ type and sorted so what's expiring soon or running low surfaces first.
   unit you're logging a use in doesn't have to match how the item's
   stored: track a bottle in fl oz but log "used 1 cup" and it converts
   automatically (weight ↔ weight, volume ↔ volume) before deducting.
-  Both the top typed/spoken text box and the review card's item-name
-  field suggest matching names from your current inventory as you type
-  a few letters, so picking one from the list — rather than retyping it
-  slightly differently each time — keeps "Use" matching the item you
-  actually mean
+  On **Use**, Quantity and Weight/volume are mutually exclusive — using
+  "1 bottle" and logging "6 fl oz used" can't both be true — so the
+  card defaults to whole-units mode (Quantity active, Weight/volume
+  greyed out and unselectable) with a **"Log a measured amount
+  instead"** link to switch: click it to grey out Quantity instead and
+  type a partial amount there. The running total itself is never shown
+  back to you either way, just the resulting Low/Out badge and, in the
+  edit form's collapsible "Low-stock tracking" section, the updated
+  Amount remaining. Both the top typed/spoken text box and the review
+  card's item-name field suggest matching names from your current
+  inventory as you type a few letters, so picking one from the list —
+  rather than retyping it slightly differently each time — keeps "Use"
+  matching the item you actually mean
 - **Voice / quick-sentence entry**: tap the mic and say (or type) something
   like *"add two cans of black beans to the pantry"* or *"used the last of
   the milk"* — it's parsed into structured item(s) that you review and edit

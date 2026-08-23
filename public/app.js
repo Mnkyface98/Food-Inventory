@@ -1092,6 +1092,8 @@
     parsedItems.forEach((parsed, idx) => {
       const state = { ...parsed };
       if (lockedToUse) state.action = 'use';
+      // Defaults to whole-units mode on Use — see refreshToggle().
+      state.useByAmount = false;
       const card = document.createElement('div');
       card.className = 'review-card';
 
@@ -1125,9 +1127,12 @@
       // Weight/volume stays visible either way — same field, different
       // meaning: on Add it's the item's size (assumed full, doubling as
       // both total and current amount); on Use it's how much of it you
-      // used, taking priority over the plain Qty/Unit fields when
-      // filled in. Declared further down, but not called until after
-      // weightVolRow/weightVolLabel/wvAmountEl exist.
+      // used. On Use, using whole units and logging a measured amount
+      // are mutually exclusive — "1 bottle" and "6 fl oz used" can't both
+      // be true — so only one of Quantity / Weight-volume is ever active;
+      // state.useByAmount (toggled via useModeToggleBtn) picks which.
+      // Declared further down, but not called until after every element
+      // it touches exists.
       function refreshToggle() {
         addToggleBtn.classList.toggle('active', state.action === 'add');
         useToggleBtn.classList.toggle('active', state.action === 'use');
@@ -1136,23 +1141,30 @@
         // "per box", ...) so it's never mistaken for a grand total across
         // every bottle in stock — it's always just the size of one.
         const perUnitLabel = (UNIT_LABELS[state.unit] || 'unit').toLowerCase();
-        weightVolLabel.textContent = isAdd
-          ? `Weight/volume per ${perUnitLabel} (optional)`
-          : 'Weight/volume used (optional)';
-        wvAmountEl.placeholder = isAdd ? `Amount per ${perUnitLabel}` : 'Amount used';
         // On Use, the plain Qty unit (bottle/box/piece) is already known
-        // from the matched item — nothing to redefine there. But the
-        // weight/volume unit stays selectable on Use too: you might track
-        // an item in fl oz total yet want to log "used 1 cup" — the /use
-        // endpoint converts within the same family (weight or volume).
+        // from the matched item — nothing to redefine there.
         unitEl.classList.toggle('hidden', !isAdd);
-        const val = wvAmountEl.value || null;
+        useModeToggleBtn.classList.toggle('hidden', isAdd);
         if (isAdd) {
+          weightVolLabel.textContent = `Weight/volume per ${perUnitLabel} (optional)`;
+          wvAmountEl.placeholder = `Amount per ${perUnitLabel}`;
+          qtyEl.disabled = false;
+          wvAmountEl.disabled = false;
+          wvUnitEl.disabled = false;
+          const val = wvAmountEl.value || null;
           state.fullnessTotal = val;
           state.fullnessAmount = val;
           state.weightVolumeUsedAmount = null;
         } else {
-          state.weightVolumeUsedAmount = val;
+          weightVolLabel.textContent = 'Weight/volume used (optional)';
+          wvAmountEl.placeholder = 'Amount used';
+          useModeToggleBtn.textContent = state.useByAmount
+            ? 'Use whole units instead'
+            : 'Log a measured amount instead';
+          qtyEl.disabled = state.useByAmount;
+          wvAmountEl.disabled = !state.useByAmount;
+          wvUnitEl.disabled = !state.useByAmount;
+          state.weightVolumeUsedAmount = state.useByAmount ? (wvAmountEl.value || null) : null;
           state.fullnessTotal = null;
           state.fullnessAmount = null;
         }
@@ -1268,10 +1280,28 @@
       const wvUnitEl = buildWeightVolumeUnitSelect(state.fullnessUnit, 'Weight/volume unit');
       wvUnitEl.addEventListener('change', () => (state.fullnessUnit = wvUnitEl.value || null));
 
+      // Use-only: switches between "use whole units" (Quantity active,
+      // this field disabled) and "log a measured amount" (this field
+      // active, Quantity disabled) — see refreshToggle() for why they're
+      // mutually exclusive rather than both always editable.
+      const useModeToggleBtn = document.createElement('button');
+      useModeToggleBtn.type = 'button';
+      useModeToggleBtn.className = 'mode-switch-btn hidden';
+      useModeToggleBtn.addEventListener('click', () => {
+        state.useByAmount = !state.useByAmount;
+        if (!state.useByAmount) {
+          wvAmountEl.value = '';
+          state.weightVolumeUsedAmount = null;
+        }
+        refreshToggle();
+        (state.useByAmount ? wvAmountEl : qtyEl).focus();
+      });
+
       weightVolInner.appendChild(wvAmountEl);
       weightVolInner.appendChild(wvUnitEl);
       weightVolRow.appendChild(weightVolLabel);
       weightVolRow.appendChild(weightVolInner);
+      weightVolRow.appendChild(useModeToggleBtn);
 
       // Once the name (and location) match an existing item, its own
       // unit/location/category/weight-volume-unit are already known —
