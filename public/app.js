@@ -70,6 +70,14 @@
   // this close (or already past) — further out, it's not worth the
   // clutter on a card that's otherwise just name/low-stock flag.
   const EXPIRY_BADGE_VISIBLE_DAYS = 14;
+  // A receipt-scanned quantity at or above this is flagged for a second
+  // look — most single grocery line items run 1-4, and OCR occasionally
+  // misreads one digit for another (a common one: "1" read as "7"),
+  // silently turning a plausible-looking wrong number into what looks
+  // like a normal purchase. Not enforced — just a nudge to check before
+  // confirming, same "review before it's saved" spirit as everything
+  // else a scan/parse produces.
+  const SUSPICIOUS_RECEIPT_QTY = 6;
 
   // Returns 'Out', 'Low', or null (not low) for an item's low-stock badge.
   function getLowStockBadge(item) {
@@ -1234,6 +1242,7 @@
           state.fullnessTotal = null;
           state.fullnessAmount = null;
         }
+        updateQtyWarning(); // the nudge only ever applies on Add — re-check on every toggle
       }
       addToggleBtn.addEventListener('click', () => {
         state.action = 'add';
@@ -1277,9 +1286,31 @@
       qtyEl.value = state.quantity;
       qtyEl.placeholder = 'Qty';
       qtyEl.setAttribute('aria-label', 'Quantity');
-      qtyEl.addEventListener('input', () => (state.quantity = Number(qtyEl.value)));
+
+      const qtyWarning = document.createElement('p');
+      qtyWarning.className = 'qty-warning hidden';
+      qtyWarning.textContent =
+        "That's a lot for one receipt line — double-check it wasn't misread (e.g. \"1\" as \"7\").";
+
+      // Only receipt-scanned Add quantities get this nudge — OCR is the
+      // failure mode being guarded against, not a quantity you typed or
+      // spoke yourself (or a Use amount, which this field doesn't drive).
+      function updateQtyWarning() {
+        const suspicious =
+          state.source === 'receipt' &&
+          state.action === 'add' &&
+          Number(qtyEl.value) >= SUSPICIOUS_RECEIPT_QTY;
+        qtyWarning.classList.toggle('hidden', !suspicious);
+      }
+      qtyEl.addEventListener('input', () => {
+        state.quantity = Number(qtyEl.value);
+        updateQtyWarning();
+      });
+      updateQtyWarning();
+
       qtyRow.appendChild(qtyLabel);
       qtyRow.appendChild(qtyEl);
+      qtyRow.appendChild(qtyWarning);
 
       const catLocRow = document.createElement('div');
       catLocRow.className = 'field-row two-up';

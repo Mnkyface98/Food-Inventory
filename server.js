@@ -395,6 +395,12 @@ app.post('/api/receipt/parse', (req, res) => {
       fullnessUnit: cleanFullnessUnit(item.fullnessUnit),
       fullnessAmount: cleanPositiveAmount(item.fullnessAmount),
       fullnessTotal: cleanPositiveAmount(item.fullnessTotal),
+      // Tags this item as receipt-derived so the client can flag an
+      // unusually high quantity as worth double-checking — OCR
+      // occasionally misreads a single digit (e.g. "1" as "7"), and a
+      // wrong quantity here isn't self-evidently wrong the way a
+      // garbled name is.
+      source: 'receipt',
     }))
     .filter((item) => item.name);
 

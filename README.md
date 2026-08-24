@@ -132,7 +132,12 @@ type and sorted so what's expiring soon or running low surfaces first.
   instead (common on digital order confirmations, e.g. "OLIPOP ... (12 fl
   oz)" followed by "4 x $2.79"), from that line right below it — either
   way, you shouldn't need to retype the name, size, or quantity a receipt
-  already told you
+  already told you. Since on-device OCR can occasionally misread a
+  digit (a common one: "1" read as "7"), a receipt-scanned Quantity of
+  **6 or more** shows an amber double-check note right on the review
+  card — not blocking anything, just a nudge to glance at that one
+  number before confirming; it clears itself the moment you edit the
+  quantity below that
 - **Recipe ingredients**: tap 📋, then either paste/type an ingredient list
   or upload a photo of a recipe. Each ingredient is parsed and defaults to
   **Use** instead of Add — a recipe consumes inventory, the opposite of a
