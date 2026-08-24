@@ -1089,14 +1089,15 @@
     return { recipe, matches, matchedCount, total, matchRatio: total ? matchedCount / total : 0, urgencyScore };
   }
 
-  // Needs at least 2 matched ingredients to be worth suggesting at
-  // all — a recipe where you have 1 of 8 ingredients isn't a real
-  // suggestion. Relaxed to 1 only if nothing clears that bar, so an
-  // near-empty inventory still gets *something* rather than nothing.
+  // A recipe only counts as suggestible once at least 80% of its
+  // ingredients are actually on hand — no relaxing that if fewer than
+  // 3 recipes clear it; better to show 0-2 real suggestions than pad
+  // the list with something you're missing a third of.
+  const RECIPE_MIN_MATCH_RATIO = 0.8;
+
   function pickTopRecipes(rankMode) {
     const scored = recipesData.map(scoreRecipe);
-    let candidates = scored.filter((s) => s.matchedCount >= 2);
-    if (candidates.length === 0) candidates = scored.filter((s) => s.matchedCount >= 1);
+    const candidates = scored.filter((s) => s.matchRatio >= RECIPE_MIN_MATCH_RATIO);
     const sorted = [...candidates].sort((a, b) => {
       if (rankMode === 'urgent') {
         return b.urgencyScore - a.urgencyScore || b.matchRatio - a.matchRatio;
@@ -1115,7 +1116,7 @@
     const top = pickTopRecipes(suggestRankMode);
     if (top.length === 0) {
       suggestResultsEl.innerHTML =
-        '<p class="review-note">Nothing in the recipe list matches what\'s in your inventory yet.</p>';
+        '<p class="review-note">Nothing in the recipe list has 80% or more of its ingredients in your inventory right now.</p>';
       return;
     }
     for (const scored of top) {

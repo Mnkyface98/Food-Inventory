@@ -150,13 +150,17 @@ type and sorted so what's expiring soon or running low surfaces first.
 - **🍳 Suggest recipes**: a third top-level button (next to + Add item /
   − Use item) that searches a small bundled recipe list — free and
   fully offline, same as everything else in this app, no API key or
-  network call — for the 3 recipes that best fit what's actually in
-  stock right now. Toggle between two ranking modes any time: **Best
-  match** (the 3 you can make with the fewest ingredients missing) or
-  **Use up expiring/low** (weighted toward recipes that use ingredients
-  that are expiring soon or already flagged Low, even if that means a
-  slightly less complete match). Only items with quantity above 0
-  count as "available" — Out items don't. Each suggestion lists every
+  network call — for recipes you can actually make. A recipe only
+  qualifies at all once **80% or more** of its ingredients are on
+  hand; below that it's never shown, no matter how few recipes clear
+  the bar (down to none, with a note saying so, rather than padding
+  the list with something you're a third short on). Among whatever
+  does qualify, toggle between two ranking modes any time: **Best
+  match** (the most complete matches first) or **Use up expiring/low**
+  (weighted toward recipes that use ingredients that are expiring soon
+  or already flagged Low, still only among 80%+ matches). Only items
+  with quantity above 0 count as "available" — Out items don't. Each
+  suggestion lists every
   ingredient with a ✓ (have) or ✗ (missing) mark and how much the
   recipe calls for; tapping **Use this recipe** feeds just the
   ingredients you have into the same − Use item review flow as typing
