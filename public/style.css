@@ -363,9 +363,27 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   padding: 0.8rem 0.9rem;
 }
 
+.recipe-suggestion-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .recipe-suggestion-name {
   margin: 0;
   font-size: 1rem;
+}
+
+.recipe-delete-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  line-height: 1;
 }
 
 .recipe-suggestion-count {

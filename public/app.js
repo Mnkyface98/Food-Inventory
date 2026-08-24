@@ -52,6 +52,13 @@
   const suggestRankMatchBtn = document.getElementById('suggest-rank-match');
   const suggestRankUrgentBtn = document.getElementById('suggest-rank-urgent');
   const suggestResultsEl = document.getElementById('suggest-results');
+  const addRecipeBtn = document.getElementById('add-recipe-btn');
+  const addRecipeForm = document.getElementById('add-recipe-form');
+  const newRecipeNameInput = document.getElementById('new-recipe-name');
+  const newRecipeIngredientsInput = document.getElementById('new-recipe-ingredients');
+  const addRecipeNote = document.getElementById('add-recipe-note');
+  const saveRecipeBtn = document.getElementById('save-recipe-btn');
+  const cancelAddRecipeBtn = document.getElementById('cancel-add-recipe-btn');
 
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
@@ -1014,15 +1021,26 @@
   // rest of this app's parsing) for the 3 recipes that best fit what's
   // currently in stock. Fetched once and cached; ranking is picked by
   // the user each time via suggestRankMode, not fixed by the app.
+  // Merges the bundled list (public/recipes.json, static — a source:
+  // 'bundled' tag) with whatever the user has added themselves (from the
+  // recipes table via the API — source: 'user'), so both are searched
+  // and ranked together as one pool, distinguished only by a ⭐ on the
+  // card (see renderRecipeSuggestionCard()).
   function loadRecipesData() {
     if (recipesData) return Promise.resolve(recipesData);
     if (!recipesLoadPromise) {
-      recipesLoadPromise = fetch('recipes.json')
-        .then((res) => {
+      recipesLoadPromise = Promise.all([
+        fetch('recipes.json').then((res) => {
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           return res.json();
-        })
-        .then((data) => {
+        }),
+        api('/api/recipes'),
+      ])
+        .then(([bundled, userRecipes]) => {
+          const data = [
+            ...bundled.map((r) => ({ ...r, source: 'bundled' })),
+            ...userRecipes.map((r) => ({ ...r, source: 'user' })),
+          ];
           recipesData = data;
           return data;
         })
@@ -1144,10 +1162,39 @@
     const card = document.createElement('div');
     card.className = 'recipe-suggestion-card';
 
+    const isUserRecipe = recipe.source === 'user';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'recipe-suggestion-name-row';
     const nameEl = document.createElement('h3');
     nameEl.className = 'recipe-suggestion-name';
-    nameEl.textContent = recipe.name;
-    card.appendChild(nameEl);
+    // ⭐ distinguishes a recipe you added yourself from the bundled
+    // list — same recipe pool and matching either way, just a visual
+    // "this one's yours" marker, per the star the user asked for.
+    nameEl.textContent = isUserRecipe ? `⭐ ${recipe.name}` : recipe.name;
+    if (isUserRecipe) nameEl.setAttribute('aria-label', `${recipe.name} (your recipe)`);
+    nameRow.appendChild(nameEl);
+
+    if (isUserRecipe) {
+      const deleteRecipeBtn = document.createElement('button');
+      deleteRecipeBtn.type = 'button';
+      deleteRecipeBtn.className = 'recipe-delete-btn';
+      deleteRecipeBtn.setAttribute('aria-label', `Delete your recipe ${recipe.name}`);
+      deleteRecipeBtn.textContent = '✕';
+      deleteRecipeBtn.addEventListener('click', async () => {
+        if (!confirm(`Delete your recipe "${recipe.name}"? This can't be undone.`)) return;
+        try {
+          await api(`/api/recipes/${recipe.id}`, { method: 'DELETE' });
+          recipesData = recipesData.filter((r) => !(r.source === 'user' && r.id === recipe.id));
+          renderSuggestResults();
+          showToast(`Deleted ${recipe.name}`);
+        } catch (err) {
+          showToast(`Couldn't delete: ${err.message}`);
+        }
+      });
+      nameRow.appendChild(deleteRecipeBtn);
+    }
+    card.appendChild(nameRow);
 
     const countEl = document.createElement('p');
     countEl.className = 'recipe-suggestion-count';
@@ -1213,6 +1260,7 @@
   function closeSuggestPanel() {
     suggestPanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
+    closeAddRecipeForm(); // don't leave a half-filled add-recipe form open for next time
   }
 
   modeSuggestBtn.addEventListener('click', openSuggestPanel);
@@ -1228,6 +1276,63 @@
     suggestRankUrgentBtn.classList.add('active');
     suggestRankMatchBtn.classList.remove('active');
     renderSuggestResults();
+  });
+
+  function closeAddRecipeForm() {
+    addRecipeForm.classList.add('hidden');
+    addRecipeBtn.classList.remove('hidden');
+    newRecipeNameInput.value = '';
+    newRecipeIngredientsInput.value = '';
+    addRecipeNote.classList.add('hidden');
+  }
+
+  addRecipeBtn.addEventListener('click', () => {
+    addRecipeForm.classList.remove('hidden');
+    addRecipeBtn.classList.add('hidden');
+    newRecipeNameInput.focus();
+  });
+  cancelAddRecipeBtn.addEventListener('click', closeAddRecipeForm);
+
+  // Reuses /api/recipe/parse — the same free-text ingredient parser
+  // "Enter recipe ingredients" already uses — so pasting a recipe here
+  // works the same way; only name/quantity/unit are kept, since a
+  // saved recipe's location/category get resolved fresh against
+  // whatever matches at suggestion time, not fixed at save time.
+  saveRecipeBtn.addEventListener('click', async () => {
+    const name = newRecipeNameInput.value.trim();
+    const ingredientsText = newRecipeIngredientsInput.value.trim();
+    addRecipeNote.classList.add('hidden');
+    if (!name) {
+      addRecipeNote.textContent = 'Recipe name is required.';
+      addRecipeNote.classList.remove('hidden');
+      return;
+    }
+    if (!ingredientsText) {
+      addRecipeNote.textContent = 'Enter at least one ingredient.';
+      addRecipeNote.classList.remove('hidden');
+      return;
+    }
+    saveRecipeBtn.disabled = true;
+    try {
+      const parsed = await api('/api/recipe/parse', {
+        method: 'POST',
+        body: JSON.stringify({ text: ingredientsText }),
+      });
+      const ingredients = parsed.items.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit }));
+      const saved = await api('/api/recipes', {
+        method: 'POST',
+        body: JSON.stringify({ name, ingredients }),
+      });
+      if (recipesData) recipesData.push({ ...saved, source: 'user' });
+      closeAddRecipeForm();
+      renderSuggestResults();
+      showToast(`Saved "${saved.name}"`);
+    } catch (err) {
+      addRecipeNote.textContent = err.message;
+      addRecipeNote.classList.remove('hidden');
+    } finally {
+      saveRecipeBtn.disabled = false;
+    }
   });
 
   voiceForm.addEventListener('submit', (e) => {

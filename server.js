@@ -450,6 +450,59 @@ app.post('/api/recipe/parse', (req, res) => {
   res.json({ items: cleaned });
 });
 
+// User-added recipes for the Suggest recipes feature — kept separate
+// from the bundled public/recipes.json list, which stays a static file
+// served directly rather than DB rows. The client merges both into one
+// pool and tags each with where it came from.
+function serializeRecipe(row) {
+  let ingredients;
+  try {
+    ingredients = JSON.parse(row.ingredients);
+  } catch {
+    ingredients = [];
+  }
+  return { id: row.id, name: row.name, ingredients };
+}
+
+app.get('/api/recipes', (req, res) => {
+  const rows = db.prepare('SELECT * FROM recipes ORDER BY created_at DESC').all();
+  res.json(rows.map(serializeRecipe));
+});
+
+app.post('/api/recipes', (req, res) => {
+  const { name, ingredients } = req.body || {};
+  if (typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Recipe name is required.' });
+  }
+  if (!Array.isArray(ingredients)) {
+    return res.status(400).json({ error: 'ingredients must be an array.' });
+  }
+  const cleanedIngredients = ingredients
+    .map((ing) => ({
+      name: typeof ing?.name === 'string' ? ing.name.trim() : '',
+      quantity: Number.isFinite(Number(ing?.quantity)) && Number(ing.quantity) > 0 ? Number(ing.quantity) : 1,
+      unit: typeof ing?.unit === 'string' ? ing.unit.trim() : '',
+    }))
+    .filter((ing) => ing.name);
+  if (cleanedIngredients.length === 0) {
+    return res.status(400).json({ error: 'At least one ingredient with a name is required.' });
+  }
+
+  const info = db
+    .prepare('INSERT INTO recipes (name, ingredients) VALUES (?, ?)')
+    .run(name.trim(), JSON.stringify(cleanedIngredients));
+  const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(info.lastInsertRowid);
+  res.status(201).json(serializeRecipe(row));
+});
+
+app.delete('/api/recipes/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM recipes WHERE id = ?').run(req.params.id);
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'Recipe not found.' });
+  }
+  res.status(204).end();
+});
+
 // Delete an item entirely.
 app.delete('/api/items/:id', (req, res) => {
   const { id } = req.params;

@@ -175,6 +175,18 @@ type and sorted so what's expiring soon or running low surfaces first.
   qualifies" note) explaining that a wider variety makes it more
   likely something clears the 80% bar — recipe matching is naturally
   sparse against a small pantry, so this isn't presented as a bug
+- **⭐ Add your own recipe**: a button on the Suggest recipes panel
+  lets you save a recipe of your own — a name plus an ingredient list
+  typed or pasted the same free-text way as "Enter recipe ingredients"
+  (parsed the same way, then just the name/quantity/unit kept; a
+  recipe's location/category get resolved fresh against whatever
+  matches at suggestion time, not fixed when you save it). It's stored
+  in the database (not the bundled recipes.json file) and searched and
+  ranked alongside the bundled list the same way from then on — the
+  only difference is a **⭐** before its name on the suggestion card,
+  so you can always tell which recipes are yours, plus a **✕** to
+  delete it (with a confirm, since deleting an item elsewhere in the
+  app works the same way)
 - **The main inventory list is entirely view-only**: each card shows
   just the item's name, a "Low"/"Out" flag if it's triggered, and its
   expiration badge — but only once expiration is within **2 weeks** (or
@@ -448,6 +460,9 @@ to full.
 | GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
 | POST   | `/api/receipt/parse`       | Parse OCR'd receipt text into candidate item(s) (read-only) |
 | POST   | `/api/recipe/parse`        | Parse typed/OCR'd recipe ingredients into candidate item(s) to use (read-only) |
+| GET    | `/api/recipes`             | List user-added recipes (name + ingredients) for Suggest recipes |
+| POST   | `/api/recipes`             | Save a new user recipe |
+| DELETE | `/api/recipes/:id`         | Delete a user recipe |
 
 ## Roadmap
 

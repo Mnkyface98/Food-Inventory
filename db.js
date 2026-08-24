@@ -54,4 +54,17 @@ for (const [sql, column] of MIGRATIONS) {
   }
 }
 
+// User-added recipes for the Suggest recipes feature — separate from the
+// bundled recipes.json list (which stays a static file, not DB rows), so
+// they can be created/deleted at any time without touching that file.
+// ingredients is stored as a JSON array of {name, quantity, unit}.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS recipes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    ingredients TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
 module.exports = db;

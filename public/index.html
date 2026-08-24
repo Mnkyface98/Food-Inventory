@@ -29,6 +29,32 @@
           <button type="button" id="suggest-rank-match" class="active" data-rank="match">Best match</button>
           <button type="button" id="suggest-rank-urgent" data-rank="urgent">Use up expiring/low</button>
         </div>
+
+        <button type="button" id="add-recipe-btn" class="btn btn-secondary btn-full">
+          ⭐ Add your own recipe
+        </button>
+        <div id="add-recipe-form" class="hidden">
+          <div class="field-row">
+            <input
+              id="new-recipe-name"
+              type="text"
+              placeholder="Recipe name, e.g. Grandma's Chili"
+            />
+          </div>
+          <div class="field-row">
+            <textarea
+              id="new-recipe-ingredients"
+              rows="5"
+              placeholder="Type or paste ingredients — one per line, comma-separated, or just spaced out. e.g.&#10;2 cups flour, 1 tsp salt&#10;3 eggs"
+            ></textarea>
+          </div>
+          <p id="add-recipe-note" class="review-note hidden"></p>
+          <div class="review-card-buttons">
+            <button type="button" id="save-recipe-btn" class="btn btn-primary">Save recipe</button>
+            <button type="button" id="cancel-add-recipe-btn" class="btn btn-secondary">Cancel</button>
+          </div>
+        </div>
+
         <div id="suggest-results" class="suggest-results"></div>
       </div>
 
