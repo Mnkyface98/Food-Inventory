@@ -17,6 +17,19 @@
       <div id="entry-mode-buttons" class="entry-mode-buttons">
         <button type="button" id="mode-add-btn" class="btn btn-primary btn-full">+ Add item</button>
         <button type="button" id="mode-use-btn" class="btn btn-danger btn-full">− Use item</button>
+        <button type="button" id="mode-suggest-btn" class="btn btn-secondary btn-full">🍳 Suggest recipes</button>
+      </div>
+
+      <div id="suggest-panel" class="hidden">
+        <div class="entry-form-header">
+          <span class="entry-form-title">🍳 Suggest recipes</span>
+          <button type="button" id="suggest-cancel-btn" class="entry-cancel-btn" aria-label="Cancel">✕</button>
+        </div>
+        <div class="action-toggle suggest-rank-toggle" id="suggest-rank-toggle">
+          <button type="button" id="suggest-rank-match" class="active" data-rank="match">Best match</button>
+          <button type="button" id="suggest-rank-urgent" data-rank="urgent">Use up expiring/low</button>
+        </div>
+        <div id="suggest-results" class="suggest-results"></div>
       </div>
 
       <div id="quick-input-panel" class="hidden">

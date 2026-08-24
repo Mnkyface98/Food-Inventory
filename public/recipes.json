@@ -1,0 +1,460 @@
+[
+  {
+    "name": "Scrambled Eggs on Toast",
+    "ingredients": [
+      { "name": "Eggs", "quantity": 3, "unit": "" },
+      { "name": "Butter", "quantity": 1, "unit": "tbsp" },
+      { "name": "Bread", "quantity": 2, "unit": "" },
+      { "name": "Salt", "quantity": 1, "unit": "tsp" },
+      { "name": "Black Pepper", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Classic Pancakes",
+    "ingredients": [
+      { "name": "All-Purpose Flour", "quantity": 1.5, "unit": "cup" },
+      { "name": "Milk", "quantity": 1.25, "unit": "cup" },
+      { "name": "Eggs", "quantity": 1, "unit": "" },
+      { "name": "Sugar", "quantity": 2, "unit": "tbsp" },
+      { "name": "Baking Powder", "quantity": 1, "unit": "tbsp" },
+      { "name": "Butter", "quantity": 2, "unit": "tbsp" },
+      { "name": "Maple Syrup", "quantity": 1, "unit": "" }
+    ]
+  },
+  {
+    "name": "Oatmeal with Banana",
+    "ingredients": [
+      { "name": "Oats", "quantity": 1, "unit": "cup" },
+      { "name": "Milk", "quantity": 2, "unit": "cup" },
+      { "name": "Bananas", "quantity": 1, "unit": "" },
+      { "name": "Honey", "quantity": 1, "unit": "tbsp" },
+      { "name": "Cinnamon", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Greek Yogurt Parfait",
+    "ingredients": [
+      { "name": "Greek Yogurt", "quantity": 1, "unit": "cup" },
+      { "name": "Honey", "quantity": 1, "unit": "tbsp" },
+      { "name": "Blueberries", "quantity": 0.5, "unit": "cup" },
+      { "name": "Almonds", "quantity": 0.25, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Peanut Butter Banana Toast",
+    "ingredients": [
+      { "name": "Bread", "quantity": 2, "unit": "" },
+      { "name": "Peanut Butter", "quantity": 2, "unit": "tbsp" },
+      { "name": "Bananas", "quantity": 1, "unit": "" },
+      { "name": "Honey", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Classic Grilled Cheese",
+    "ingredients": [
+      { "name": "Bread", "quantity": 2, "unit": "" },
+      { "name": "Cheddar Cheese", "quantity": 2, "unit": "oz" },
+      { "name": "Butter", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Turkey Sandwich",
+    "ingredients": [
+      { "name": "Bread", "quantity": 2, "unit": "" },
+      { "name": "Deli Turkey", "quantity": 4, "unit": "oz" },
+      { "name": "Cheddar Cheese", "quantity": 1, "unit": "oz" },
+      { "name": "Mayonnaise", "quantity": 1, "unit": "tbsp" },
+      { "name": "Mustard", "quantity": 1, "unit": "tsp" },
+      { "name": "Spinach", "quantity": 0.5, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Tuna Salad",
+    "ingredients": [
+      { "name": "Tuna", "quantity": 2, "unit": "can" },
+      { "name": "Mayonnaise", "quantity": 3, "unit": "tbsp" },
+      { "name": "Celery", "quantity": 1, "unit": "" },
+      { "name": "Lemon", "quantity": 1, "unit": "" },
+      { "name": "Black Pepper", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Chicken Caesar Salad",
+    "ingredients": [
+      { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
+      { "name": "Romaine Lettuce", "quantity": 1, "unit": "head" },
+      { "name": "Parmesan Cheese", "quantity": 0.5, "unit": "cup" },
+      { "name": "Caesar Dressing", "quantity": 0.5, "unit": "cup" },
+      { "name": "Bread Crumbs", "quantity": 0.5, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Black Bean Tacos",
+    "ingredients": [
+      { "name": "Black Beans", "quantity": 1, "unit": "can" },
+      { "name": "Tortillas", "quantity": 6, "unit": "" },
+      { "name": "Cheddar Cheese", "quantity": 1, "unit": "cup" },
+      { "name": "Salsa", "quantity": 0.5, "unit": "cup" },
+      { "name": "Avocado", "quantity": 1, "unit": "" },
+      { "name": "Cilantro", "quantity": 1, "unit": "tbsp" },
+      { "name": "Lime", "quantity": 1, "unit": "" }
+    ]
+  },
+  {
+    "name": "Ground Beef Tacos",
+    "ingredients": [
+      { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
+      { "name": "Tortillas", "quantity": 8, "unit": "" },
+      { "name": "Cheddar Cheese", "quantity": 1, "unit": "cup" },
+      { "name": "Salsa", "quantity": 0.5, "unit": "cup" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Chili Powder", "quantity": 1, "unit": "tbsp" },
+      { "name": "Cumin", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Classic Spaghetti Marinara",
+    "ingredients": [
+      { "name": "Pasta", "quantity": 1, "unit": "lb" },
+      { "name": "Marinara Sauce", "quantity": 24, "unit": "oz" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
+      { "name": "Parmesan Cheese", "quantity": 0.5, "unit": "cup" },
+      { "name": "Basil", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Spaghetti and Meatballs",
+    "ingredients": [
+      { "name": "Pasta", "quantity": 1, "unit": "lb" },
+      { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
+      { "name": "Marinara Sauce", "quantity": 24, "unit": "oz" },
+      { "name": "Bread Crumbs", "quantity": 0.5, "unit": "cup" },
+      { "name": "Eggs", "quantity": 1, "unit": "" },
+      { "name": "Parmesan Cheese", "quantity": 0.5, "unit": "cup" },
+      { "name": "Garlic", "quantity": 2, "unit": "" }
+    ]
+  },
+  {
+    "name": "Creamy Mac and Cheese",
+    "ingredients": [
+      { "name": "Pasta", "quantity": 1, "unit": "lb" },
+      { "name": "Cheddar Cheese", "quantity": 2, "unit": "cup" },
+      { "name": "Milk", "quantity": 1, "unit": "cup" },
+      { "name": "Butter", "quantity": 3, "unit": "tbsp" },
+      { "name": "All-Purpose Flour", "quantity": 3, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Shrimp Scampi",
+    "ingredients": [
+      { "name": "Shrimp", "quantity": 1, "unit": "lb" },
+      { "name": "Pasta", "quantity": 12, "unit": "oz" },
+      { "name": "Garlic", "quantity": 4, "unit": "" },
+      { "name": "Butter", "quantity": 4, "unit": "tbsp" },
+      { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
+      { "name": "Lemon", "quantity": 1, "unit": "" },
+      { "name": "White Wine", "quantity": 0.5, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Baked Salmon",
+    "ingredients": [
+      { "name": "Salmon", "quantity": 1, "unit": "lb" },
+      { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
+      { "name": "Lemon", "quantity": 1, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Salt", "quantity": 1, "unit": "tsp" },
+      { "name": "Black Pepper", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Roast Chicken Breast with Vegetables",
+    "ingredients": [
+      { "name": "Chicken Breast", "quantity": 2, "unit": "lb" },
+      { "name": "Potatoes", "quantity": 4, "unit": "" },
+      { "name": "Carrots", "quantity": 3, "unit": "" },
+      { "name": "Olive Oil", "quantity": 3, "unit": "tbsp" },
+      { "name": "Rosemary", "quantity": 1, "unit": "tbsp" },
+      { "name": "Salt", "quantity": 1, "unit": "tsp" },
+      { "name": "Black Pepper", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Chicken Stir-Fry",
+    "ingredients": [
+      { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
+      { "name": "Broccoli", "quantity": 2, "unit": "cup" },
+      { "name": "Bell Pepper", "quantity": 1, "unit": "" },
+      { "name": "Carrots", "quantity": 2, "unit": "" },
+      { "name": "Soy Sauce", "quantity": 3, "unit": "tbsp" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Ginger", "quantity": 1, "unit": "tbsp" },
+      { "name": "Sesame Oil", "quantity": 1, "unit": "tbsp" },
+      { "name": "Rice", "quantity": 2, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Beef and Broccoli",
+    "ingredients": [
+      { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
+      { "name": "Broccoli", "quantity": 3, "unit": "cup" },
+      { "name": "Soy Sauce", "quantity": 3, "unit": "tbsp" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Ginger", "quantity": 1, "unit": "tbsp" },
+      { "name": "Rice", "quantity": 2, "unit": "cup" },
+      { "name": "Brown Sugar", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Shrimp Fried Rice",
+    "ingredients": [
+      { "name": "Shrimp", "quantity": 0.5, "unit": "lb" },
+      { "name": "Rice", "quantity": 3, "unit": "cup" },
+      { "name": "Eggs", "quantity": 2, "unit": "" },
+      { "name": "Peas", "quantity": 0.5, "unit": "cup" },
+      { "name": "Carrots", "quantity": 1, "unit": "" },
+      { "name": "Soy Sauce", "quantity": 3, "unit": "tbsp" },
+      { "name": "Sesame Oil", "quantity": 1, "unit": "tbsp" },
+      { "name": "Onion", "quantity": 1, "unit": "" }
+    ]
+  },
+  {
+    "name": "Vegetable Fried Rice",
+    "ingredients": [
+      { "name": "Rice", "quantity": 3, "unit": "cup" },
+      { "name": "Eggs", "quantity": 2, "unit": "" },
+      { "name": "Peas", "quantity": 0.5, "unit": "cup" },
+      { "name": "Carrots", "quantity": 1, "unit": "" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Soy Sauce", "quantity": 3, "unit": "tbsp" },
+      { "name": "Sesame Oil", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Chicken Curry",
+    "ingredients": [
+      { "name": "Chicken Breast", "quantity": 1.5, "unit": "lb" },
+      { "name": "Coconut Milk", "quantity": 1, "unit": "can" },
+      { "name": "Curry Powder", "quantity": 2, "unit": "tbsp" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Ginger", "quantity": 1, "unit": "tbsp" },
+      { "name": "Rice", "quantity": 2, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Lentil Soup",
+    "ingredients": [
+      { "name": "Lentils", "quantity": 1, "unit": "cup" },
+      { "name": "Chicken Broth", "quantity": 4, "unit": "cup" },
+      { "name": "Carrots", "quantity": 2, "unit": "" },
+      { "name": "Celery", "quantity": 2, "unit": "" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
+      { "name": "Bay Leaves", "quantity": 1, "unit": "" }
+    ]
+  },
+  {
+    "name": "Chicken Noodle Soup",
+    "ingredients": [
+      { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
+      { "name": "Chicken Broth", "quantity": 6, "unit": "cup" },
+      { "name": "Pasta", "quantity": 2, "unit": "cup" },
+      { "name": "Carrots", "quantity": 2, "unit": "" },
+      { "name": "Celery", "quantity": 2, "unit": "" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Thyme", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Tomato Soup",
+    "ingredients": [
+      { "name": "Canned Diced Tomatoes", "quantity": 28, "unit": "oz" },
+      { "name": "Chicken Broth", "quantity": 2, "unit": "cup" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Heavy Cream", "quantity": 0.5, "unit": "cup" },
+      { "name": "Butter", "quantity": 2, "unit": "tbsp" },
+      { "name": "Basil", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Chili con Carne",
+    "ingredients": [
+      { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
+      { "name": "Black Beans", "quantity": 1, "unit": "can" },
+      { "name": "Canned Diced Tomatoes", "quantity": 28, "unit": "oz" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Chili Powder", "quantity": 2, "unit": "tbsp" },
+      { "name": "Cumin", "quantity": 1, "unit": "tbsp" },
+      { "name": "Garlic", "quantity": 2, "unit": "" }
+    ]
+  },
+  {
+    "name": "Vegetable Chickpea Curry",
+    "ingredients": [
+      { "name": "Chickpeas", "quantity": 2, "unit": "can" },
+      { "name": "Coconut Milk", "quantity": 1, "unit": "can" },
+      { "name": "Canned Diced Tomatoes", "quantity": 14, "unit": "oz" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Curry Powder", "quantity": 2, "unit": "tbsp" },
+      { "name": "Spinach", "quantity": 2, "unit": "cup" },
+      { "name": "Rice", "quantity": 2, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Quinoa Salad",
+    "ingredients": [
+      { "name": "Quinoa", "quantity": 1, "unit": "cup" },
+      { "name": "Chickpeas", "quantity": 1, "unit": "can" },
+      { "name": "Bell Pepper", "quantity": 1, "unit": "" },
+      { "name": "Cucumber", "quantity": 1, "unit": "" },
+      { "name": "Feta Cheese", "quantity": 0.5, "unit": "cup" },
+      { "name": "Olive Oil", "quantity": 3, "unit": "tbsp" },
+      { "name": "Lemon", "quantity": 1, "unit": "" }
+    ]
+  },
+  {
+    "name": "Caprese Salad",
+    "ingredients": [
+      { "name": "Tomatoes", "quantity": 3, "unit": "" },
+      { "name": "Mozzarella Cheese", "quantity": 8, "unit": "oz" },
+      { "name": "Basil", "quantity": 0.25, "unit": "cup" },
+      { "name": "Olive Oil", "quantity": 3, "unit": "tbsp" },
+      { "name": "Balsamic Vinegar", "quantity": 2, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Loaded Baked Potatoes",
+    "ingredients": [
+      { "name": "Potatoes", "quantity": 4, "unit": "" },
+      { "name": "Cheddar Cheese", "quantity": 1, "unit": "cup" },
+      { "name": "Sour Cream", "quantity": 0.5, "unit": "cup" },
+      { "name": "Bacon", "quantity": 4, "unit": "" },
+      { "name": "Butter", "quantity": 2, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Vegetable Omelet",
+    "ingredients": [
+      { "name": "Eggs", "quantity": 3, "unit": "" },
+      { "name": "Bell Pepper", "quantity": 0.5, "unit": "" },
+      { "name": "Onion", "quantity": 0.5, "unit": "" },
+      { "name": "Mushrooms", "quantity": 0.5, "unit": "cup" },
+      { "name": "Cheddar Cheese", "quantity": 0.25, "unit": "cup" },
+      { "name": "Butter", "quantity": 1, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Zucchini Noodle Stir-Fry",
+    "ingredients": [
+      { "name": "Zucchini", "quantity": 2, "unit": "" },
+      { "name": "Garlic", "quantity": 2, "unit": "" },
+      { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
+      { "name": "Parmesan Cheese", "quantity": 0.25, "unit": "cup" },
+      { "name": "Cherry Tomatoes", "quantity": 1, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Banana Bread",
+    "ingredients": [
+      { "name": "Bananas", "quantity": 3, "unit": "" },
+      { "name": "All-Purpose Flour", "quantity": 2, "unit": "cup" },
+      { "name": "Sugar", "quantity": 0.75, "unit": "cup" },
+      { "name": "Butter", "quantity": 0.5, "unit": "cup" },
+      { "name": "Eggs", "quantity": 2, "unit": "" },
+      { "name": "Baking Soda", "quantity": 1, "unit": "tsp" },
+      { "name": "Vanilla Extract", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Chocolate Chip Cookies",
+    "ingredients": [
+      { "name": "All-Purpose Flour", "quantity": 2.25, "unit": "cup" },
+      { "name": "Butter", "quantity": 1, "unit": "cup" },
+      { "name": "Brown Sugar", "quantity": 0.75, "unit": "cup" },
+      { "name": "Sugar", "quantity": 0.75, "unit": "cup" },
+      { "name": "Eggs", "quantity": 2, "unit": "" },
+      { "name": "Chocolate Chips", "quantity": 2, "unit": "cup" },
+      { "name": "Baking Soda", "quantity": 1, "unit": "tsp" },
+      { "name": "Vanilla Extract", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Fluffy Pancake Waffles",
+    "ingredients": [
+      { "name": "All-Purpose Flour", "quantity": 2, "unit": "cup" },
+      { "name": "Milk", "quantity": 1.75, "unit": "cup" },
+      { "name": "Eggs", "quantity": 2, "unit": "" },
+      { "name": "Butter", "quantity": 0.33, "unit": "cup" },
+      { "name": "Sugar", "quantity": 2, "unit": "tbsp" },
+      { "name": "Baking Powder", "quantity": 1, "unit": "tbsp" },
+      { "name": "Vanilla Extract", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Apple Cinnamon Oatmeal",
+    "ingredients": [
+      { "name": "Oats", "quantity": 1, "unit": "cup" },
+      { "name": "Apples", "quantity": 1, "unit": "" },
+      { "name": "Milk", "quantity": 2, "unit": "cup" },
+      { "name": "Cinnamon", "quantity": 1, "unit": "tsp" },
+      { "name": "Honey", "quantity": 1, "unit": "tbsp" },
+      { "name": "Walnuts", "quantity": 0.25, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Bacon and Egg Breakfast Tacos",
+    "ingredients": [
+      { "name": "Eggs", "quantity": 4, "unit": "" },
+      { "name": "Bacon", "quantity": 4, "unit": "" },
+      { "name": "Tortillas", "quantity": 4, "unit": "" },
+      { "name": "Cheddar Cheese", "quantity": 0.5, "unit": "cup" },
+      { "name": "Salsa", "quantity": 0.25, "unit": "cup" }
+    ]
+  },
+  {
+    "name": "Honey Garlic Salmon",
+    "ingredients": [
+      { "name": "Salmon", "quantity": 1, "unit": "lb" },
+      { "name": "Honey", "quantity": 3, "unit": "tbsp" },
+      { "name": "Soy Sauce", "quantity": 2, "unit": "tbsp" },
+      { "name": "Garlic", "quantity": 3, "unit": "" },
+      { "name": "Ginger", "quantity": 1, "unit": "tsp" }
+    ]
+  },
+  {
+    "name": "Garlic Butter Shrimp",
+    "ingredients": [
+      { "name": "Shrimp", "quantity": 1, "unit": "lb" },
+      { "name": "Butter", "quantity": 4, "unit": "tbsp" },
+      { "name": "Garlic", "quantity": 4, "unit": "" },
+      { "name": "Lemon", "quantity": 1, "unit": "" },
+      { "name": "Bread", "quantity": 4, "unit": "" }
+    ]
+  },
+  {
+    "name": "Classic Coleslaw",
+    "ingredients": [
+      { "name": "Cabbage", "quantity": 1, "unit": "" },
+      { "name": "Carrots", "quantity": 2, "unit": "" },
+      { "name": "Mayonnaise", "quantity": 0.5, "unit": "cup" },
+      { "name": "Sugar", "quantity": 1, "unit": "tbsp" },
+      { "name": "Rice Vinegar", "quantity": 2, "unit": "tbsp" }
+    ]
+  },
+  {
+    "name": "Cheesy Broccoli Rice Casserole",
+    "ingredients": [
+      { "name": "Rice", "quantity": 2, "unit": "cup" },
+      { "name": "Broccoli", "quantity": 3, "unit": "cup" },
+      { "name": "Cheddar Cheese", "quantity": 2, "unit": "cup" },
+      { "name": "Chicken Broth", "quantity": 1, "unit": "cup" },
+      { "name": "Onion", "quantity": 1, "unit": "" },
+      { "name": "Butter", "quantity": 2, "unit": "tbsp" }
+    ]
+  }
+]

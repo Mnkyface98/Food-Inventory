@@ -147,6 +147,26 @@ type and sorted so what's expiring soon or running low surfaces first.
   cups-to-ounces conversion, which needs an ingredient-specific density);
   whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
   You only ever say how much was used — the app works out what's left
+- **🍳 Suggest recipes**: a third top-level button (next to + Add item /
+  − Use item) that searches a small bundled recipe list — free and
+  fully offline, same as everything else in this app, no API key or
+  network call — for the 3 recipes that best fit what's actually in
+  stock right now. Toggle between two ranking modes any time: **Best
+  match** (the 3 you can make with the fewest ingredients missing) or
+  **Use up expiring/low** (weighted toward recipes that use ingredients
+  that are expiring soon or already flagged Low, even if that means a
+  slightly less complete match). Only items with quantity above 0
+  count as "available" — Out items don't. Each suggestion lists every
+  ingredient with a ✓ (have) or ✗ (missing) mark and how much the
+  recipe calls for; tapping **Use this recipe** feeds just the
+  ingredients you have into the same − Use item review flow as typing
+  or scanning a recipe by hand — same editable cards, same "used 3, not
+  how much is left" deduction, same Delete item button. Ingredient
+  matching uses a stricter version of the app's usual close-spelling
+  matching (since nothing here gets a human glancing at it character by
+  character the way typing a name does) — strict enough that "Bell
+  Pepper" won't get silently matched to a jar of "Black Pepper" just
+  because they share the word "pepper"
 - **The main inventory list is entirely view-only**: each card shows
   just the item's name, a "Low"/"Out" flag if it's triggered, and its
   expiration badge — but only once expiration is within **2 weeks** (or
@@ -429,3 +449,4 @@ to full.
 - [x] Barcode scanning
 - [x] Receipt scanning / OCR import
 - [x] Recipe ingredients (text or photo) deduct from inventory
+- [x] Suggest recipes from what's currently in stock

@@ -46,6 +46,13 @@
   const photoCaptureBtn = document.getElementById('photo-capture-btn');
   const photoCaptureCancelBtn = document.getElementById('photo-capture-cancel');
 
+  const modeSuggestBtn = document.getElementById('mode-suggest-btn');
+  const suggestPanel = document.getElementById('suggest-panel');
+  const suggestCancelBtn = document.getElementById('suggest-cancel-btn');
+  const suggestRankMatchBtn = document.getElementById('suggest-rank-match');
+  const suggestRankUrgentBtn = document.getElementById('suggest-rank-urgent');
+  const suggestResultsEl = document.getElementById('suggest-results');
+
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
   let categoryLabels = {};
@@ -55,6 +62,9 @@
   let editingId = null; // id of the item currently expanded into its read-only detail view, if any
   const collapsedCategories = {}; // categoryId -> true if its section is collapsed in the "All" view
   let entryMode = null; // 'add' | 'use' | null (fields hidden until one is chosen)
+  let recipesData = null; // loaded once from recipes.json, then cached
+  let recipesLoadPromise = null;
+  let suggestRankMode = 'match'; // 'match' | 'urgent' — how the 3 suggestions are ranked
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
@@ -996,6 +1006,212 @@
   recipeCameraBtn.addEventListener('click', async () => {
     const blob = await captureFromCamera('Line up the recipe, then tap Capture');
     if (blob) await processRecipeImageFile(blob);
+  });
+
+  // Suggest recipes: a third top-level mode, separate from + Add item /
+  // − Use item, that searches a small bundled recipe dataset
+  // (recipes.json — free, offline, no API key, same philosophy as the
+  // rest of this app's parsing) for the 3 recipes that best fit what's
+  // currently in stock. Fetched once and cached; ranking is picked by
+  // the user each time via suggestRankMode, not fixed by the app.
+  function loadRecipesData() {
+    if (recipesData) return Promise.resolve(recipesData);
+    if (!recipesLoadPromise) {
+      recipesLoadPromise = fetch('recipes.json')
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          recipesData = data;
+          return data;
+        })
+        .catch((err) => {
+          recipesLoadPromise = null; // allow retrying on the next open
+          throw err;
+        });
+    }
+    return recipesLoadPromise;
+  }
+
+  // Only items actually in stock count as "available" — an Out item
+  // isn't something you can cook with, even though findMatchingItem()
+  // (used elsewhere for Use/Delete) doesn't care about quantity.
+  // Stricter than FUZZY_MATCH_THRESHOLD (0.6, used for typed Use-item
+  // lookups): this runs unattended over every recipe's ingredient list
+  // with no character-by-character human review the way typing a name
+  // gets, so a marginal match reads as a confident "you have this" —
+  // e.g. "Bell Pepper" vs "Black Pepper" shares enough weight in
+  // "pepper" alone to clear 0.6, which would silently claim a spice
+  // jar as a vegetable. 0.75 still catches real typos in a stored name
+  // while rejecting look-alikes like that.
+  const RECIPE_INGREDIENT_MATCH_THRESHOLD = 0.75;
+
+  function findAvailableIngredientMatch(ingredientName) {
+    const inStock = items.filter((i) => i.quantity > 0);
+    const normalized = normalizeForMatch(ingredientName);
+    const exact = inStock.find((i) => normalizeForMatch(i.name) === normalized);
+    if (exact) return exact;
+    let best = null;
+    let bestScore = RECIPE_INGREDIENT_MATCH_THRESHOLD;
+    for (const item of inStock) {
+      const score = fuzzyMatchScore(ingredientName, item.name);
+      if (score < bestScore) continue;
+      best = item;
+      bestScore = score;
+    }
+    return best;
+  }
+
+  // Matches every ingredient against current stock, then scores the
+  // recipe two ways: matchRatio (how much of it you can make right
+  // now) for "Best match" mode, and urgencyScore — weighting matched
+  // ingredients by how urgently they need using (expiring soon > Low >
+  // everything else, the exact same tiers itemSortPriority() uses for
+  // the list) — for "Use up expiring/low" mode.
+  function scoreRecipe(recipe) {
+    const matches = recipe.ingredients.map((ingredient) => ({
+      ingredient,
+      matchedItem: findAvailableIngredientMatch(ingredient.name),
+    }));
+    const matchedCount = matches.filter((m) => m.matchedItem).length;
+    const total = recipe.ingredients.length;
+    let urgencyScore = 0;
+    for (const m of matches) {
+      if (!m.matchedItem) continue;
+      const expiringSoon =
+        m.matchedItem.expirationDate && daysUntil(m.matchedItem.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS;
+      const lowLabel = getLowStockBadge(m.matchedItem);
+      if (expiringSoon) urgencyScore += 3;
+      else if (lowLabel === 'Low' || lowLabel === 'Out') urgencyScore += 2;
+      else urgencyScore += 1;
+    }
+    return { recipe, matches, matchedCount, total, matchRatio: total ? matchedCount / total : 0, urgencyScore };
+  }
+
+  // Needs at least 2 matched ingredients to be worth suggesting at
+  // all — a recipe where you have 1 of 8 ingredients isn't a real
+  // suggestion. Relaxed to 1 only if nothing clears that bar, so an
+  // near-empty inventory still gets *something* rather than nothing.
+  function pickTopRecipes(rankMode) {
+    const scored = recipesData.map(scoreRecipe);
+    let candidates = scored.filter((s) => s.matchedCount >= 2);
+    if (candidates.length === 0) candidates = scored.filter((s) => s.matchedCount >= 1);
+    const sorted = [...candidates].sort((a, b) => {
+      if (rankMode === 'urgent') {
+        return b.urgencyScore - a.urgencyScore || b.matchRatio - a.matchRatio;
+      }
+      return b.matchRatio - a.matchRatio || b.matchedCount - a.matchedCount || a.total - b.total;
+    });
+    return sorted.slice(0, 3);
+  }
+
+  function renderSuggestResults() {
+    suggestResultsEl.innerHTML = '';
+    if (!recipesData) {
+      suggestResultsEl.innerHTML = '<p class="status-line">Loading recipes…</p>';
+      return;
+    }
+    const top = pickTopRecipes(suggestRankMode);
+    if (top.length === 0) {
+      suggestResultsEl.innerHTML =
+        '<p class="review-note">Nothing in the recipe list matches what\'s in your inventory yet.</p>';
+      return;
+    }
+    for (const scored of top) {
+      suggestResultsEl.appendChild(renderRecipeSuggestionCard(scored));
+    }
+  }
+
+  function renderRecipeSuggestionCard(scored) {
+    const { recipe, matches, matchedCount, total } = scored;
+    const card = document.createElement('div');
+    card.className = 'recipe-suggestion-card';
+
+    const nameEl = document.createElement('h3');
+    nameEl.className = 'recipe-suggestion-name';
+    nameEl.textContent = recipe.name;
+    card.appendChild(nameEl);
+
+    const countEl = document.createElement('p');
+    countEl.className = 'recipe-suggestion-count';
+    countEl.textContent = `${matchedCount} of ${total} ingredients on hand`;
+    card.appendChild(countEl);
+
+    const list = document.createElement('ul');
+    list.className = 'recipe-ingredient-list';
+    for (const { ingredient, matchedItem } of matches) {
+      const li = document.createElement('li');
+      li.className = matchedItem ? 'have' : 'missing';
+      const amount = ingredient.quantity ? `${formatQty(ingredient.quantity)}${ingredient.unit ? ' ' + ingredient.unit : ''} ` : '';
+      li.textContent = matchedItem ? `${amount}${ingredient.name}` : `${amount}${ingredient.name} (missing)`;
+      list.appendChild(li);
+    }
+    card.appendChild(list);
+
+    const useBtn = document.createElement('button');
+    useBtn.type = 'button';
+    useBtn.className = 'btn btn-primary btn-full';
+    useBtn.textContent = 'Use this recipe';
+    useBtn.addEventListener('click', () => {
+      const reviewItems = matches
+        .filter((m) => m.matchedItem)
+        .map((m) => ({
+          name: m.matchedItem.name,
+          quantity: m.ingredient.quantity,
+          unit: m.ingredient.unit,
+          location: m.matchedItem.location,
+          category: m.matchedItem.category,
+          action: 'use',
+          expirationDate: null,
+        }));
+      closeSuggestPanel();
+      // Reuses the same Use-mode review flow as every other entry
+      // method — openEntryForm('use') sets entryMode so the resulting
+      // cards are locked to Use, and shows the panel voiceReviewEl
+      // actually lives inside.
+      openEntryForm('use');
+      voiceReviewEl.classList.remove('hidden');
+      renderReview(reviewItems);
+      showToast(`Loaded ${reviewItems.length} ingredient${reviewItems.length === 1 ? '' : 's'} from ${recipe.name}`);
+    });
+    card.appendChild(useBtn);
+
+    return card;
+  }
+
+  function openSuggestPanel() {
+    entryModeButtons.classList.add('hidden');
+    suggestPanel.classList.remove('hidden');
+    renderSuggestResults(); // renders real results if already cached, else the loading state
+    if (!recipesData) {
+      loadRecipesData()
+        .then(renderSuggestResults)
+        .catch(() => {
+          suggestResultsEl.innerHTML =
+            '<p class="review-note">Couldn\'t load the recipe list. Try again.</p>';
+        });
+    }
+  }
+
+  function closeSuggestPanel() {
+    suggestPanel.classList.add('hidden');
+    entryModeButtons.classList.remove('hidden');
+  }
+
+  modeSuggestBtn.addEventListener('click', openSuggestPanel);
+  suggestCancelBtn.addEventListener('click', closeSuggestPanel);
+  suggestRankMatchBtn.addEventListener('click', () => {
+    suggestRankMode = 'match';
+    suggestRankMatchBtn.classList.add('active');
+    suggestRankUrgentBtn.classList.remove('active');
+    renderSuggestResults();
+  });
+  suggestRankUrgentBtn.addEventListener('click', () => {
+    suggestRankMode = 'urgent';
+    suggestRankUrgentBtn.classList.add('active');
+    suggestRankMatchBtn.classList.remove('active');
+    renderSuggestResults();
   });
 
   voiceForm.addEventListener('submit', (e) => {
