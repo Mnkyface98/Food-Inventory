@@ -170,7 +170,11 @@ type and sorted so what's expiring soon or running low surfaces first.
   matching (since nothing here gets a human glancing at it character by
   character the way typing a name does) — strict enough that "Bell
   Pepper" won't get silently matched to a jar of "Black Pepper" just
-  because they share the word "pepper"
+  because they share the word "pepper". With fewer than **20 items**
+  in inventory, a hint appears above the results (or the "nothing
+  qualifies" note) explaining that a wider variety makes it more
+  likely something clears the 80% bar — recipe matching is naturally
+  sparse against a small pantry, so this isn't presented as a bug
 - **The main inventory list is entirely view-only**: each card shows
   just the item's name, a "Low"/"Out" flag if it's triggered, and its
   expiration badge — but only once expiration is within **2 weeks** (or

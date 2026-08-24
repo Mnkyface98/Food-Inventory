@@ -1094,6 +1094,10 @@
   // 3 recipes clear it; better to show 0-2 real suggestions than pad
   // the list with something you're missing a third of.
   const RECIPE_MIN_MATCH_RATIO = 0.8;
+  // Below this many total items in inventory, matches are naturally
+  // sparse — a hint to that effect, not a hard block, shown alongside
+  // whatever (if anything) still qualifies.
+  const MIN_ITEMS_FOR_GOOD_RECIPE_MATCHES = 20;
 
   function pickTopRecipes(rankMode) {
     const scored = recipesData.map(scoreRecipe);
@@ -1113,10 +1117,21 @@
       suggestResultsEl.innerHTML = '<p class="status-line">Loading recipes…</p>';
       return;
     }
+    if (items.length < MIN_ITEMS_FOR_GOOD_RECIPE_MATCHES) {
+      const hint = document.createElement('p');
+      hint.className = 'review-note';
+      hint.textContent =
+        `You have ${items.length} item${items.length === 1 ? '' : 's'} in your inventory — ` +
+        `more inventory is needed for good recipe matches (a wider variety makes it much more ` +
+        `likely a recipe clears the 80% bar below).`;
+      suggestResultsEl.appendChild(hint);
+    }
     const top = pickTopRecipes(suggestRankMode);
     if (top.length === 0) {
-      suggestResultsEl.innerHTML =
-        '<p class="review-note">Nothing in the recipe list has 80% or more of its ingredients in your inventory right now.</p>';
+      const note = document.createElement('p');
+      note.className = 'review-note';
+      note.textContent = "Nothing in the recipe list has 80% or more of its ingredients in your inventory right now.";
+      suggestResultsEl.appendChild(note);
       return;
     }
     for (const scored of top) {
