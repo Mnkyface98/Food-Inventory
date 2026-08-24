@@ -245,7 +245,13 @@ app.post('/api/items/:id/use', (req, res) => {
     return res.status(404).json({ error: 'Item not found.' });
   }
 
-  const hasFullness = existing.fullness_amount != null && existing.fullness_total != null && existing.fullness_unit;
+  // Beverages can only ever be used a whole bottle/can at a time — no
+  // measured (weight/volume) deduction, enforced here too (not just in
+  // the client's review card) so it holds regardless of what called
+  // this — a recipe referencing a beverage by volume, for instance —
+  // rather than only when the review card's own toggle was used.
+  const isBeverage = existing.category === 'beverages';
+  const hasFullness = !isBeverage && existing.fullness_amount != null && existing.fullness_total != null && existing.fullness_unit;
   const converted = hasFullness && unit ? convertUnit(amount, unit, existing.fullness_unit) : null;
 
   if (converted != null) {

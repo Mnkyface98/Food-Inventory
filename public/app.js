@@ -64,6 +64,7 @@
   const BOTTLE_LOW_PERCENT = 50; // single-container items: low at <=50% full (i.e. half or more used)
   const CANNED_FOOD_LOW_QTY = 2; // canned food: low at 2 or fewer cans
   const CANNED_BEVERAGE_LOW_QTY = 4; // canned beverages: low at 4 or fewer cans
+  const BOTTLED_BEVERAGE_LOW_QTY = 5; // bottled beverages: low at fewer than 6 bottles
   // An item expiring within this many days gets the amber "soon" badge.
   const EXPIRING_SOON_DAYS = 3;
   // The main list card only shows an expiration badge at all once it's
@@ -98,6 +99,14 @@
     if (unit === 'can' || unit === 'cans') {
       if (item.category === 'canned_goods') return item.quantity <= CANNED_FOOD_LOW_QTY ? 'Low' : null;
       if (item.category === 'beverages') return item.quantity <= CANNED_BEVERAGE_LOW_QTY ? 'Low' : null;
+    }
+    // Beverages can only ever be used a whole bottle at a time (see
+    // renderReview()'s beverage-only whole-unit restriction below), so
+    // a bottle count is the one number that actually reflects what's
+    // left — flagged low well before running out, since going through
+    // 6 happens fast a bottle at a time.
+    if ((unit === 'bottle' || unit === 'bottles') && item.category === 'beverages') {
+      return item.quantity <= BOTTLED_BEVERAGE_LOW_QTY ? 'Low' : null;
     }
 
     return item.quantity <= LOW_STOCK_THRESHOLD ? 'Low' : null;
@@ -1232,9 +1241,17 @@
           weightVolLabel.textContent = 'Weight/volume used (optional)';
           wvAmountEl.placeholder = 'Amount used';
           qtyLabel.textContent = 'Quantity being used';
-          useModeToggleBtn.textContent = state.useByAmount
-            ? 'Use whole units instead'
-            : 'Log a measured amount instead';
+          // Beverages can only ever be used a whole bottle at a time —
+          // no measured (weight/volume) deduction, so there's no mode
+          // to switch into at all; force whole-units and hide the toggle.
+          const isBeverage = state.category === 'beverages';
+          if (isBeverage) state.useByAmount = false;
+          useModeToggleBtn.classList.toggle('hidden', isBeverage);
+          if (!isBeverage) {
+            useModeToggleBtn.textContent = state.useByAmount
+              ? 'Use whole units instead'
+              : 'Log a measured amount instead';
+          }
           qtyEl.disabled = state.useByAmount;
           wvAmountEl.disabled = !state.useByAmount;
           wvUnitEl.disabled = !state.useByAmount;
@@ -1328,7 +1345,10 @@
         if (cat.id === state.category) opt.selected = true;
         catEl.appendChild(opt);
       });
-      catEl.addEventListener('change', () => (state.category = catEl.value));
+      catEl.addEventListener('change', () => {
+        state.category = catEl.value;
+        refreshToggle(); // beverages restrict Use to whole units — recheck on every change
+      });
 
       const locEl = document.createElement('select');
       locEl.setAttribute('aria-label', 'Location');

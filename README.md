@@ -381,7 +381,24 @@ these rules, in order — the first one that applies wins:
    **2 or fewer** cans.
 5. **Canned beverages** (unit "can"/"cans" + category Beverages) — low at
    **4 or fewer** cans.
-6. **Everything else** — the flat fallback: low at **1 or fewer**.
+6. **Bottled beverages** (unit "bottle"/"bottles" + category Beverages) —
+   low at **fewer than 6** bottles. Beverages are also restricted to
+   whole-bottle Use only (see below) — a bottle count is the one number
+   that actually reflects what's left, so it's flagged low well before
+   running out.
+7. **Everything else** — the flat fallback: low at **1 or fewer**.
+
+**Beverages can only be used a whole bottle/can at a time** — no
+measured (weight/volume) deduction. On a beverage's − Use item review
+card, the "Log a measured amount instead" option doesn't appear at all;
+only a whole-number Quantity. This holds even for a beverage with a
+tracked size (e.g. "12 fl oz" set on Add) — that size is still
+recorded, it just can't be partially deducted from. Enforced on the
+server too, not just hidden in the UI, so it applies no matter what
+triggers the use (a recipe referencing a beverage by volume, for
+instance, still decrements it a whole bottle at a time). Every other
+category keeps the existing behavior — a single bottle of anything
+else can still be used in measured amounts.
 
 Pack size and weight/volume are optional and per-item — set them once on
 an item you want tracked that way and they stick until you change or
