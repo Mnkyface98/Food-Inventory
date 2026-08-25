@@ -288,7 +288,7 @@ type and sorted so what's expiring soon or running low surfaces first.
   every section to however you last left it
 - Responsive, large-tap-target layout designed for phone browsers
 - Persistent storage via SQLite (survives server restarts)
-- **⬇️ Export CSV / ⬆️ Import CSV** (below the search box): download your
+- **⬇️ Export Inventory List CSV / ⬆️ Import Inventory List CSV** (below the search box): download your
   whole inventory as a spreadsheet, edit it anywhere, and upload it back
   — see below for exactly how the round trip works
 
@@ -487,7 +487,7 @@ A full round trip between your inventory and any spreadsheet app —
 Excel, Google Sheets, Numbers, whatever you have. Both live below the
 search box on the home view.
 
-- **⬇️ Export CSV** downloads a snapshot of your whole inventory as-is
+- **⬇️ Export Inventory List CSV** downloads a snapshot of your whole inventory as-is
   — every column the app tracks (name, quantity, unit, location,
   category, expiration date, pack size, weight/volume) plus a hidden
   `id` column that's how the app recognizes "this is the same item"
@@ -495,7 +495,7 @@ search box on the home view.
 - Edit it however you like: fix quantities after a big shopping trip,
   correct an expiration date, add a new row for something you just
   bought — no app needed for any of that part.
-- **⬆️ Import CSV** uploads the edited file back. Nothing saves
+- **⬆️ Import Inventory List CSV** uploads the edited file back. Nothing saves
   immediately — first you get a review screen, the same "confirm
   before anything's written" pattern every other entry method in this
   app already uses, listing exactly what will happen:
