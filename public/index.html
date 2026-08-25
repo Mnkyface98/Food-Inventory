@@ -143,6 +143,23 @@
         </button>
         <p id="receipt-status" class="mic-hint hidden"></p>
 
+        <div id="use-recipe-section" class="hidden">
+          <p class="entry-section-label">− Use Ingredients from Recipe</p>
+          <div class="field-row voice-row">
+            <input
+              id="use-recipe-input"
+              type="text"
+              placeholder="Type or say a recipe name, e.g. &quot;buttered noodles&quot;"
+              autocomplete="off"
+            />
+            <button type="button" id="use-recipe-mic-btn" class="btn mic-btn hidden" aria-label="Speak a recipe name">
+              🎤
+            </button>
+            <button type="button" id="use-recipe-submit-btn" class="btn btn-secondary voice-submit-btn">Submit</button>
+          </div>
+          <div id="use-recipe-matches" class="recipe-search-matches hidden"></div>
+        </div>
+
         <div id="voice-review" class="voice-review hidden"></div>
         <datalist id="item-name-options"></datalist>
       </div>

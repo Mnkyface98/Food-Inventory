@@ -24,6 +24,12 @@
   const voiceReviewEl = document.getElementById('voice-review');
   const nameOptionsEl = document.getElementById('item-name-options');
 
+  const useRecipeSectionEl = document.getElementById('use-recipe-section');
+  const useRecipeInput = document.getElementById('use-recipe-input');
+  const useRecipeMicBtn = document.getElementById('use-recipe-mic-btn');
+  const useRecipeSubmitBtn = document.getElementById('use-recipe-submit-btn');
+  const useRecipeMatchesEl = document.getElementById('use-recipe-matches');
+
   const barcodeBtn = document.getElementById('barcode-btn');
   const barcodeHint = document.getElementById('barcode-hint');
   const barcodeModal = document.getElementById('barcode-modal');
@@ -277,12 +283,11 @@
   // The quick-input methods stay out of the way until a mode is picked.
   // Add reveals text/mic/submit, barcode scanning, and receipt scanning
   // — all ways of bringing a new product into inventory. Use reveals
-  // just text/mic/submit: finding an item to use is what the item-name
-  // suggestion list (see updateItemNameOptions()) is for, not a fresh
-  // scan — scanning a barcode or receipt would only ever describe a
-  // product you're adding, never one you're using up, and using up a
-  // recipe's worth of ingredients now goes through Search Recipes'
-  // "Use this recipe" instead of typing/scanning one by hand here.
+  // just text/mic/submit plus "Use Ingredients from Recipe": finding an
+  // item to use is what the item-name suggestion list (see
+  // updateItemNameOptions()) is for, not a fresh scan — scanning a
+  // barcode or receipt would only ever describe a product you're
+  // adding, never one you're using up.
   // Every method funnels into the same editable review card, which is
   // the only "entry form" in the app — see renderReview().
   function openEntryForm(mode) {
@@ -295,6 +300,13 @@
     barcodeHint.classList.toggle('hidden', !isAdd || (hasCamera && hasZXing));
     receiptLabel.classList.toggle('hidden', !isAdd);
     receiptCameraBtn.classList.toggle('hidden', !isAdd || !hasCamera || !hasTesseract);
+    useRecipeSectionEl.classList.toggle('hidden', isAdd);
+    if (!isAdd) {
+      useRecipeInput.value = '';
+      useRecipeMatchesEl.classList.add('hidden');
+      useRecipeMatchesEl.innerHTML = '';
+      loadRecipesData().catch(() => {}); // pre-warm so typing/Submit doesn't have to wait
+    }
     entryFormTitle.textContent = isAdd ? '+ Add item' : '− Use item';
     voiceTextInput.focus();
   }
@@ -725,6 +737,113 @@
     micHint.classList.remove('hidden');
   }
 
+  // --- Use Ingredients from Recipe (Use item only) -----------------------
+  //
+  // A quick way to load a recipe's ingredients without leaving − Use item
+  // for Search Recipes: type a few letters or say the name, pick it from
+  // the live matches (or just leave the exact name typed/spoken), then
+  // Submit — reuses loadRecipeIntoUseReview(), the same in-stock-only,
+  // recipe-quantity deduction Search Recipes' "Use this recipe" uses.
+  // Bypasses the 65% match bar entirely, same as Search Recipes' own name
+  // search — a deliberate name lookup isn't a suggestion.
+
+  function findRecipeByExactName(name) {
+    if (!recipesData) return null;
+    const normalized = name.trim().toLowerCase();
+    if (!normalized) return null;
+    return recipesData.find((r) => r.name.toLowerCase() === normalized) || null;
+  }
+
+  function renderUseRecipeMatches() {
+    const term = useRecipeInput.value.trim().toLowerCase();
+    useRecipeMatchesEl.innerHTML = '';
+    if (!term || !recipesData) {
+      useRecipeMatchesEl.classList.add('hidden');
+      return;
+    }
+    const matches = recipesData.filter((r) => r.name.toLowerCase().includes(term)).slice(0, 8);
+    if (matches.length === 0) {
+      useRecipeMatchesEl.classList.add('hidden');
+      return;
+    }
+    useRecipeMatchesEl.classList.remove('hidden');
+    for (const recipe of matches) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'recipe-search-match-btn';
+      btn.textContent = recipe.source === 'user' ? `⭐ ${recipe.name}` : recipe.name;
+      btn.addEventListener('click', () => {
+        useRecipeInput.value = recipe.name;
+        useRecipeMatchesEl.classList.add('hidden');
+        useRecipeMatchesEl.innerHTML = '';
+      });
+      useRecipeMatchesEl.appendChild(btn);
+    }
+  }
+
+  useRecipeInput.addEventListener('input', renderUseRecipeMatches);
+
+  async function submitUseRecipe() {
+    const name = useRecipeInput.value.trim();
+    if (!name) {
+      showToast('Type or say a recipe name first.');
+      return;
+    }
+    if (!recipesData) {
+      await loadRecipesData().catch(() => {});
+    }
+    const recipe = findRecipeByExactName(name);
+    if (!recipe) {
+      showToast("Couldn't find a recipe by that name — pick one from the list as you type.");
+      return;
+    }
+    if (loadRecipeIntoUseReview(recipe)) {
+      useRecipeInput.value = '';
+      useRecipeMatchesEl.classList.add('hidden');
+      useRecipeMatchesEl.innerHTML = '';
+    }
+  }
+
+  useRecipeSubmitBtn.addEventListener('click', submitUseRecipe);
+
+  let useRecipeRecognition = null;
+  if (SpeechRecognitionCtor) {
+    useRecipeMicBtn.classList.remove('hidden');
+    useRecipeRecognition = new SpeechRecognitionCtor();
+    useRecipeRecognition.lang = 'en-US';
+    useRecipeRecognition.interimResults = false;
+    useRecipeRecognition.maxAlternatives = 1;
+
+    useRecipeRecognition.addEventListener('start', () => {
+      useRecipeMicBtn.classList.add('listening');
+    });
+    useRecipeRecognition.addEventListener('end', () => {
+      useRecipeMicBtn.classList.remove('listening');
+    });
+    useRecipeRecognition.addEventListener('error', (e) => {
+      useRecipeMicBtn.classList.remove('listening');
+      if (e.error !== 'aborted' && e.error !== 'no-speech') {
+        showToast(`Mic error: ${e.error}`);
+      }
+    });
+    useRecipeRecognition.addEventListener('result', (e) => {
+      // Fills the box and refreshes matches, same as typing — Submit is
+      // still a separate, explicit step, not an auto-confirm.
+      const transcript = e.results[0][0].transcript;
+      useRecipeInput.value = transcript;
+      renderUseRecipeMatches();
+    });
+
+    useRecipeMicBtn.addEventListener('click', () => {
+      if (useRecipeMicBtn.classList.contains('listening')) {
+        useRecipeRecognition.stop();
+      } else {
+        useRecipeInput.value = '';
+        useRecipeRecognition.start();
+      }
+    });
+  }
+
   // --- Barcode scanning -------------------------------------------------
   //
   // Camera decoding runs entirely on-device via ZXing (vendored locally,
@@ -1047,6 +1166,36 @@
     return { recipe, matches, matchedCount, total, matchRatio: total ? matchedCount / total : 0, urgencyScore };
   }
 
+  // Builds review cards from a recipe's ingredients that are actually in
+  // stock — at the recipe's own stated quantity, not what you have — and
+  // loads them into the current Use-mode review. Shared by "Use this
+  // recipe" (Search Recipes) and "Use Ingredients from Recipe" (the Use
+  // item panel) so both defer to the exact same in-stock-only, deduct-
+  // the-recipe's-amount logic. Returns false (and warns) if nothing in
+  // the recipe is currently in stock, rather than opening an empty review.
+  function loadRecipeIntoUseReview(recipe) {
+    const { matches } = scoreRecipe(recipe);
+    const reviewItems = matches
+      .filter((m) => m.matchedItem)
+      .map((m) => ({
+        name: m.matchedItem.name,
+        quantity: m.ingredient.quantity,
+        unit: m.ingredient.unit,
+        location: m.matchedItem.location,
+        category: m.matchedItem.category,
+        action: 'use',
+        expirationDate: null,
+      }));
+    if (reviewItems.length === 0) {
+      showToast(`None of ${recipe.name}'s ingredients are currently in stock.`);
+      return false;
+    }
+    voiceReviewEl.classList.remove('hidden');
+    renderReview(reviewItems);
+    showToast(`Loaded ${reviewItems.length} ingredient${reviewItems.length === 1 ? '' : 's'} from ${recipe.name}`);
+    return true;
+  }
+
   // A recipe only counts as suggestible once at least 65% of its
   // ingredients are actually on hand — no relaxing that if fewer than
   // 3 recipes clear it; better to show 0-2 real suggestions than pad
@@ -1181,26 +1330,13 @@
     useBtn.className = 'btn btn-primary';
     useBtn.textContent = 'Use this recipe';
     useBtn.addEventListener('click', () => {
-      const reviewItems = matches
-        .filter((m) => m.matchedItem)
-        .map((m) => ({
-          name: m.matchedItem.name,
-          quantity: m.ingredient.quantity,
-          unit: m.ingredient.unit,
-          location: m.matchedItem.location,
-          category: m.matchedItem.category,
-          action: 'use',
-          expirationDate: null,
-        }));
       closeSearchRecipePanel();
       // Reuses the same Use-mode review flow as every other entry
       // method — openEntryForm('use') sets entryMode so the resulting
       // cards are locked to Use, and shows the panel voiceReviewEl
       // actually lives inside.
       openEntryForm('use');
-      voiceReviewEl.classList.remove('hidden');
-      renderReview(reviewItems);
-      showToast(`Loaded ${reviewItems.length} ingredient${reviewItems.length === 1 ? '' : 's'} from ${recipe.name}`);
+      loadRecipeIntoUseReview(recipe);
     });
     buttons.appendChild(useBtn);
 
