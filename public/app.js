@@ -426,7 +426,13 @@
     }
 
     for (const [category, groupItems] of groups) {
-      const collapsed = !!collapsedCategories[category];
+      // A search in progress auto-expands every group with a match —
+      // otherwise a result sits behind a collapsed heading with no hint
+      // it's there (groups start collapsed by default; see
+      // loadCategories()). This doesn't touch the stored collapse state,
+      // so clearing the search reverts every group to however the user
+      // last left it.
+      const collapsed = !!collapsedCategories[category] && !searchTerm;
 
       const headingLi = document.createElement('li');
       headingLi.className = 'category-heading-row';
@@ -1096,9 +1102,16 @@
         api('/api/recipes'),
       ])
         .then(([bundled, userRecipes]) => {
+          // A stable, collision-proof key for the shopping-list Map
+          // (keyed by recipe, not by array position) — bundled entries
+          // have no id of their own, and two different recipes (a
+          // bundled one and one you saved, or two of your own) can
+          // share the same name, so the name alone isn't safe to key
+          // by. Namespaced by source so "bundled:Chicken Curry" and
+          // "user:Chicken Curry" never collide even with an identical name.
           const data = [
-            ...bundled.map((r) => ({ ...r, source: 'bundled' })),
-            ...userRecipes.map((r) => ({ ...r, source: 'user' })),
+            ...bundled.map((r) => ({ ...r, source: 'bundled', key: `bundled:${r.name}` })),
+            ...userRecipes.map((r) => ({ ...r, source: 'user', key: `user:${r.id}` })),
           ];
           recipesData = data;
           return data;
@@ -1263,7 +1276,7 @@
     try {
       await api(`/api/recipes/${recipe.id}`, { method: 'DELETE' });
       if (recipesData) recipesData = recipesData.filter((r) => !(r.source === 'user' && r.id === recipe.id));
-      shoppingListRecipes.delete(recipe.name);
+      shoppingListRecipes.delete(recipe.key);
       showToast(`Deleted ${recipe.name}`);
       return true;
     } catch (err) {
@@ -1350,16 +1363,16 @@
       shoppingBtn.type = 'button';
       shoppingBtn.className = 'btn btn-secondary';
       function refreshShoppingBtn() {
-        const added = shoppingListRecipes.has(recipe.name);
+        const added = shoppingListRecipes.has(recipe.key);
         shoppingBtn.textContent = added ? '✓ Added — remove' : 'Add missing to shopping list';
         shoppingBtn.classList.toggle('active', added);
       }
       refreshShoppingBtn();
       shoppingBtn.addEventListener('click', () => {
-        if (shoppingListRecipes.has(recipe.name)) {
-          shoppingListRecipes.delete(recipe.name);
+        if (shoppingListRecipes.has(recipe.key)) {
+          shoppingListRecipes.delete(recipe.key);
         } else {
-          shoppingListRecipes.set(recipe.name, recipe);
+          shoppingListRecipes.set(recipe.key, recipe);
         }
         refreshShoppingBtn();
         renderShoppingListSelectedRecipes();
@@ -1608,7 +1621,7 @@
         method: 'POST',
         body: JSON.stringify({ name, category, ingredients }),
       });
-      if (recipesData) recipesData.push({ ...saved, source: 'user' });
+      if (recipesData) recipesData.push({ ...saved, source: 'user', key: `user:${saved.id}` });
       closeAddRecipeForm();
       renderRecipeCategoryGroups();
       showToast(`Saved "${saved.name}"`);
@@ -1644,7 +1657,7 @@
       removeBtn.setAttribute('aria-label', `Remove ${recipe.name} from shopping list`);
       removeBtn.textContent = '✕';
       removeBtn.addEventListener('click', () => {
-        shoppingListRecipes.delete(recipe.name);
+        shoppingListRecipes.delete(recipe.key);
         renderShoppingListSelectedRecipes();
       });
       row.appendChild(removeBtn);
@@ -1938,6 +1951,13 @@
         // Expiration date only means something for stock you're adding —
         // using some of an item doesn't change when what's left expires.
         expRow.classList.toggle('hidden', !isAdd);
+        // Pack size is a property you set when adding a new pack, not
+        // something you interact with when using some of it.
+        packSizeRow.classList.toggle('hidden', !isAdd);
+        if (!isAdd) {
+          packSizeEl.value = '';
+          state.packSize = null;
+        }
         if (!isAdd) {
           expEl.value = '';
           state.expirationDate = null;
@@ -2141,6 +2161,37 @@
       weightVolRow.appendChild(weightVolInner);
       weightVolRow.appendChild(useModeToggleBtn);
 
+      // Pack size — Add-only (genuinely hidden on Use, unlike Weight/
+      // volume above): the count a "pack" started at, for items you'd
+      // rather track as "6 left of a 24-pack" than a single container's
+      // fullness — e.g. cans, snack bars, anything bought as a multi-
+      // unit case. Optional and never guessed from a parsed quantity
+      // ("add 24 cans of X" does NOT imply a 24-pack), since a quantity
+      // of 24 today doesn't mean every future restock is also 24 — this
+      // is a property of the item, set once, not re-derived from
+      // whatever happened to be added most recently.
+      const packSizeRow = document.createElement('div');
+      packSizeRow.className = 'field-row';
+      const packSizeLabel = document.createElement('label');
+      packSizeLabel.className = 'field-label';
+      packSizeLabel.textContent = 'Pack size (optional)';
+      const packSizeEl = document.createElement('input');
+      packSizeEl.type = 'number';
+      packSizeEl.min = '0';
+      packSizeEl.step = 'any';
+      packSizeEl.placeholder = 'e.g. 24 for a 24-pack';
+      packSizeEl.setAttribute('aria-label', 'Pack size');
+      if (state.packSize != null) packSizeEl.value = state.packSize;
+      packSizeEl.addEventListener('input', () => {
+        state.packSize = packSizeEl.value === '' ? null : packSizeEl.value;
+      });
+      const packSizeHint = document.createElement('p');
+      packSizeHint.className = 'mic-hint';
+      packSizeHint.textContent = 'Flags Low once it drops to 25% or less of this.';
+      packSizeRow.appendChild(packSizeLabel);
+      packSizeRow.appendChild(packSizeEl);
+      packSizeRow.appendChild(packSizeHint);
+
       // Once the name (and location) match an existing item, its own
       // unit/location/category/weight-volume-unit are already known —
       // no need to retype facts about an item the app already tracks.
@@ -2170,6 +2221,10 @@
         if (match.fullnessUnit) {
           state.fullnessUnit = match.fullnessUnit;
           setDropdownValue(wvUnitEl, match.fullnessUnit);
+        }
+        if (match.packSize != null) {
+          state.packSize = match.packSize;
+          packSizeEl.value = match.packSize;
         }
         refreshToggle(); // unit may have just changed — keep the "per <unit>" label in sync
       }
@@ -2271,6 +2326,7 @@
                 fullnessUnit: state.fullnessUnit,
                 fullnessAmount: state.fullnessAmount,
                 fullnessTotal: state.fullnessTotal,
+                packSize: state.packSize,
               }),
             });
             const i = items.findIndex((it) => it.id === saved.id);
@@ -2299,6 +2355,7 @@
       card.appendChild(header);
       card.appendChild(unitRow);
       card.appendChild(weightVolRow);
+      card.appendChild(packSizeRow);
       card.appendChild(qtyRow);
       card.appendChild(catLocRow);
       card.appendChild(expRow);
