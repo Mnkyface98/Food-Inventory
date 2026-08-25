@@ -31,14 +31,6 @@
   const receiptCameraBtn = document.getElementById('receipt-camera-btn');
   const receiptStatus = document.getElementById('receipt-status');
 
-  const recipeBtn = document.getElementById('recipe-btn');
-  const recipePanel = document.getElementById('recipe-panel');
-  const recipeTextInput = document.getElementById('recipe-text');
-  const recipeParseBtn = document.getElementById('recipe-parse-btn');
-  const recipeImageInput = document.getElementById('recipe-image-input');
-  const recipeCameraBtn = document.getElementById('recipe-camera-btn');
-  const recipeStatus = document.getElementById('recipe-status');
-
   const photoCaptureModal = document.getElementById('photo-capture-modal');
   const photoCaptureVideo = document.getElementById('photo-capture-video');
   const photoCaptureCanvas = document.getElementById('photo-capture-canvas');
@@ -279,10 +271,12 @@
   // The quick-input methods stay out of the way until a mode is picked.
   // Add reveals text/mic/submit, barcode scanning, and receipt scanning
   // — all ways of bringing a new product into inventory. Use reveals
-  // just text/mic/submit and recipe ingredients: finding an item to use
-  // is what the item-name suggestion list (see updateItemNameOptions())
-  // is for, not a fresh scan — scanning a barcode or receipt would only
-  // ever describe a product you're adding, never one you're using up.
+  // just text/mic/submit: finding an item to use is what the item-name
+  // suggestion list (see updateItemNameOptions()) is for, not a fresh
+  // scan — scanning a barcode or receipt would only ever describe a
+  // product you're adding, never one you're using up, and using up a
+  // recipe's worth of ingredients now goes through Search Recipes'
+  // "Use this recipe" instead of typing/scanning one by hand here.
   // Every method funnels into the same editable review card, which is
   // the only "entry form" in the app — see renderReview().
   function openEntryForm(mode) {
@@ -290,8 +284,6 @@
     const isAdd = mode === 'add';
     entryModeButtons.classList.add('hidden');
     quickInputPanel.classList.remove('hidden');
-    recipeBtn.classList.toggle('hidden', isAdd);
-    if (isAdd) recipePanel.classList.add('hidden'); // close it if it was left open from Use mode
     barcodeBtn.classList.toggle('hidden', !isAdd || !hasCamera || !hasZXing);
     barcodeHint.classList.toggle('hidden', !isAdd || (hasCamera && hasZXing));
     receiptLabel.classList.toggle('hidden', !isAdd);
@@ -955,78 +947,6 @@
   receiptCameraBtn.addEventListener('click', async () => {
     const blob = await captureFromCamera('Line up the receipt, then tap Capture');
     if (blob) await processReceiptFile(blob);
-  });
-
-  // --- Recipe ingredient entry --------------------------------------------
-  //
-  // The opposite direction of receipt scanning: a recipe's ingredients get
-  // USED from inventory, not added. Same review-card flow either way (with
-  // the Add/Use toggle available per line, in case one should go the other
-  // way). Text can be typed/pasted directly, or read from a photo via the
-  // same on-device OCR as receipt scanning.
-
-  if (!hasTesseract) {
-    recipeImageInput.disabled = true;
-  }
-
-  recipeBtn.addEventListener('click', () => {
-    recipePanel.classList.toggle('hidden');
-    if (!recipePanel.classList.contains('hidden')) recipeTextInput.focus();
-  });
-
-  async function parseRecipeText(text) {
-    const result = await api('/api/recipe/parse', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
-    voiceReviewEl.classList.remove('hidden');
-    renderReview(result.items);
-    showToast(`Found ${result.items.length} ingredient${result.items.length === 1 ? '' : 's'}`);
-  }
-
-  recipeParseBtn.addEventListener('click', async () => {
-    const text = recipeTextInput.value.trim();
-    if (!text) {
-      showToast('Type or paste some ingredients first.');
-      return;
-    }
-    recipeParseBtn.disabled = true;
-    try {
-      await parseRecipeText(text);
-      recipeTextInput.value = '';
-    } catch (err) {
-      showToast(err.message);
-    } finally {
-      recipeParseBtn.disabled = false;
-    }
-  });
-
-  async function processRecipeImageFile(file) {
-    if (!file) return;
-    try {
-      const text = await runOcr(file, recipeStatus);
-      recipeStatus.textContent = 'Finding ingredients…';
-      await parseRecipeText(text);
-    } catch (err) {
-      showToast(`Couldn't read that photo: ${err.message}`);
-    } finally {
-      recipeStatus.classList.add('hidden');
-    }
-  }
-
-  recipeImageInput.addEventListener('change', async () => {
-    const file = recipeImageInput.files && recipeImageInput.files[0];
-    if (!file) return;
-    await processRecipeImageFile(file);
-    recipeImageInput.value = ''; // allow re-selecting the same file
-  });
-
-  if (hasCamera && hasTesseract) {
-    recipeCameraBtn.classList.remove('hidden');
-  }
-  recipeCameraBtn.addEventListener('click', async () => {
-    const blob = await captureFromCamera('Line up the recipe, then tap Capture');
-    if (blob) await processRecipeImageFile(blob);
   });
 
   // Recipes span three top-level modes, separate from + Add item /

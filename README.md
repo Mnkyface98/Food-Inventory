@@ -138,15 +138,16 @@ type and sorted so what's expiring soon or running low surfaces first.
   card — not blocking anything, just a nudge to glance at that one
   number before confirming; it clears itself the moment you edit the
   quantity below that
-- **Recipe ingredients**: tap 📋, then either paste/type an ingredient list
-  or upload a photo of a recipe. Each ingredient is parsed and defaults to
-  **Use** instead of Add — a recipe consumes inventory, the opposite of a
-  receipt. Measurement-based ingredients (e.g. "200 g flour") deduct from a
-  matched item's tracked weight/volume when available (converting
-  compatible units — weight ↔ weight, volume ↔ volume — never guessing a
-  cups-to-ounces conversion, which needs an ingredient-specific density);
-  whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
-  You only ever say how much was used — the app works out what's left
+- **Recipe ingredients deduct, not add**: using a recipe (via **Use this
+  recipe** under Search Recipes — see below) always lands as **Use**, never
+  Add, since a recipe consumes inventory, the opposite of a receipt.
+  Measurement-based ingredients (e.g. "200 g flour") deduct from a matched
+  item's tracked weight/volume when available (converting compatible units
+  — weight ↔ weight, volume ↔ volume — never guessing a cups-to-ounces
+  conversion, which needs an ingredient-specific density); whole-count
+  ingredients (e.g. "3 eggs") just decrement the item's count. The amount
+  deducted is always what the recipe calls for, not what you happen to
+  have — the app works out what's left
 - **Recipes span three top-level buttons**, next to + Add item / − Use
   item, all sharing one recipe pool: a small bundled list
   (`public/recipes.json` — free and fully offline, same as everything
@@ -366,18 +367,19 @@ included, nothing saved until you confirm.
 
 ## Recipe ingredients
 
-Tap **− Use item** to reveal **📋 Enter recipe ingredients** (it's Use-only —
-a recipe consumes inventory, so it doesn't show up under + Add item), then
-tap it to reveal a text box (type or paste a list) and a photo option —
-upload a photo or use the same live in-browser camera capture as receipt
-scanning (same on-device OCR either way) — use any of them. Each
-recognized ingredient becomes a
-review card exactly like voice/barcode/receipt entry, except it defaults
-to **Use** instead of Add, since a recipe consumes what's in your
-inventory rather than restocking it. Switch any card to Add if one
-should go the other way.
+There's no separate "type or paste a recipe to use right now" flow
+anymore — instead, the ingredient text box under **⭐ Save Recipes**
+(type or paste a list) is where free-text ingredients get parsed, once,
+into a stored recipe; **actually using** one against your inventory
+happens by tapping **Use this recipe** on a card under **🔍 Search
+Recipes** (see above), which feeds the recipe's own stated ingredients
+and amounts straight into the same review-card flow as voice/barcode/
+receipt entry, defaulting to **Use** instead of Add, since a recipe
+consumes what's in your inventory rather than restocking it. Switch any
+card to Add if one should go the other way.
 
-- **Line parsing** (`recipeParser.js`) understands whole numbers,
+- **Line parsing** (`recipeParser.js`), used when you save a recipe,
+  understands whole numbers,
   decimals, fractions ("1/2"), and mixed numbers ("1 1/2"), plus common
   cooking units (cups, tbsp, tsp, oz, lb, g, kg, ml, L, pinch, dash,
   clove, can, package, ...). It drops parenthetical asides ("(such as
@@ -393,9 +395,9 @@ should go the other way.
   with no quantity of its own ("diced", "room temperature") is kept
   attached to the ingredient before it as a prep note, not split out as
   its own item.
-- **Deducting**: you only ever say how much was used (e.g. "200 g
-  flour") — the app works out what's left, never asking you to enter a
-  remaining amount yourself. If the matched inventory item tracks
+- **Deducting**: whatever amount the recipe states (e.g. "200 g
+  flour") is what gets deducted — the app works out what's left, never
+  asking you to enter a remaining amount yourself. If the matched inventory item tracks
   weight/volume (see below) and the recipe's unit is compatible
   (same family — weight ↔ weight, like oz/lb/g/kg, or volume ↔ volume,
   like cups/tbsp/tsp/ml/L), it deducts from that container's tracked
