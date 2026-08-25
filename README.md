@@ -75,8 +75,8 @@ type and sorted so what's expiring soon or running low surfaces first.
   instead"** link to switch: click it to grey out Quantity instead and
   type a partial amount there. The running total itself is never shown
   back to you either way, just the resulting Low/Out badge and, in the
-  edit form's collapsible "Low-stock tracking" section, the updated
-  Amount remaining. Both the top typed/spoken text box and the review
+  item's own read-only detail view (tap its name — see below), the
+  updated Amount remaining. Both the top typed/spoken text box and the review
   card's item-name field suggest matching names from your current
   inventory as you type a few letters, so picking one from the list —
   rather than retyping it slightly differently each time — keeps "Use"
@@ -272,7 +272,10 @@ type and sorted so what's expiring soon or running low surfaces first.
 - In the **All** view, category sections start **collapsed** by default
   (e.g. "▸ Dairy & Eggs (2)") — tap a heading to expand it, tap again to
   collapse. Handy once you've got a lot of categories in play; expanded
-  sections reset back to collapsed on a page reload
+  sections reset back to collapsed on a page reload. Searching
+  auto-expands any section with a match, so a result never sits hidden
+  behind a heading you haven't tapped — clearing the search reverts
+  every section to however you last left it
 - Responsive, large-tap-target layout designed for phone browsers
 - Persistent storage via SQLite (survives server restarts)
 
@@ -464,11 +467,18 @@ these rules, in order — the first one that applies wins:
    of that size." Only applies while quantity is exactly 1 *and* no
    pack size is set on the item, since it stops meaning anything with
    2+ items or once you're counting a pack instead.
-3. **Pack size tracking** — if you've set a "pack size" (the count it
-   started at, e.g. 24) by editing an item, it's flagged low once the
-   remaining quantity drops to **25% or less** of that (6 or fewer left
-   of a 24-pack). There's no pack-size field on + Add item / − Use item —
-   it's a one-time setup you do by tapping an item's name to edit it.
+3. **Pack size tracking** — set a "Pack size" (the count it started at,
+   e.g. 24) on **+ Add item**'s review card, next to Weight/volume;
+   it's flagged low once the remaining quantity drops to **25% or
+   less** of that (6 or fewer left of a 24-pack). It's never guessed
+   from a parsed quantity — adding "24 cans of X" doesn't by itself
+   set a pack size of 24, since a quantity of 24 today doesn't mean
+   every future restock is also 24. Restocking an already-tracked item
+   without retyping it leaves the existing pack size untouched (same
+   restock behavior as weight/volume above); typing a new one updates
+   it. Hidden on − Use item, same as Weight/volume's total-size field —
+   it's a property you set once when adding a pack, not something you
+   touch when using from it.
 4. **Canned food** (unit "can"/"cans" + category Canned Goods) — low at
    **2 or fewer** cans.
 5. **Canned beverages** (unit "can"/"cans" + category Beverages) — low at
