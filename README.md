@@ -156,15 +156,25 @@ type and sorted so what's expiring soon or running low surfaces first.
   shows up — search results, the saved-recipes list, the shopping-list
   selection) is the only thing that distinguishes yours from the
   bundled ones; matching and ranking treat them identically
-  - **⭐ Save Recipes**: save a recipe of your own — a name plus an
-    ingredient list typed or pasted the same free-text way as "Enter
-    recipe ingredients" (parsed the same way, then just the
-    name/quantity/unit kept; a recipe's location/category get resolved
-    fresh against whatever matches at suggestion time, not fixed when
-    you save it). It's stored in the database (not the bundled
-    recipes.json file). This panel also lists every recipe you've
-    saved so far, each with a **✕** to delete it (with a confirm, same
-    as deleting an item elsewhere in the app)
+  - **⭐ Save Recipes**: save a recipe of your own — a name, a meal-type
+    category (Breakfast, Sandwiches & Wraps, Soups & Salads, Main
+    Dishes, Sides & Snacks, Desserts & Baking, Beverages, or Other —
+    picked from a dropdown, defaulting to Other if you don't change
+    it) plus an ingredient list typed or pasted the same free-text way
+    as "Enter recipe ingredients" used to work (parsed the same way,
+    then just the name/quantity/unit kept; each ingredient's own
+    storage location/category — pantry vs. fridge, produce vs. dairy —
+    gets resolved fresh against whatever matches at suggestion time,
+    not fixed when you save it, which is a separate thing from the
+    recipe's own meal-type category). It's stored in the database (not
+    the bundled recipes.json file). Below the save form, every
+    available recipe — bundled and yours together — is browsable as a
+    collapsible list grouped by that meal-type category (same
+    collapsible-heading style as the main inventory list's "All"
+    view); a **⭐** marks the ones you added, each with a **✕** to
+    delete it (with a confirm, same as deleting an item elsewhere in
+    the app) — bundled recipes have neither, since they can't be
+    deleted
   - **🔍 Search Recipes**: two ways to find something —
     - Type a name and matching recipe names appear as you type (any
       recipe, any match percentage — a deliberate name lookup isn't a

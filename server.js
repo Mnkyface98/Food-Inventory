@@ -3,6 +3,7 @@ const path = require('path');
 const db = require('./db');
 const { parseTranscript } = require('./voiceParser');
 const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
+const { RECIPE_CATEGORY_IDS } = require('./recipeCategorize');
 const { lookupBarcode } = require('./barcode');
 const { parseReceiptText } = require('./receiptParser');
 const { parseRecipeText } = require('./recipeParser');
@@ -461,7 +462,7 @@ function serializeRecipe(row) {
   } catch {
     ingredients = [];
   }
-  return { id: row.id, name: row.name, ingredients };
+  return { id: row.id, name: row.name, ingredients, category: row.category || 'other' };
 }
 
 app.get('/api/recipes', (req, res) => {
@@ -470,7 +471,7 @@ app.get('/api/recipes', (req, res) => {
 });
 
 app.post('/api/recipes', (req, res) => {
-  const { name, ingredients } = req.body || {};
+  const { name, ingredients, category } = req.body || {};
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Recipe name is required.' });
   }
@@ -487,10 +488,11 @@ app.post('/api/recipes', (req, res) => {
   if (cleanedIngredients.length === 0) {
     return res.status(400).json({ error: 'At least one ingredient with a name is required.' });
   }
+  const cleanCategory = RECIPE_CATEGORY_IDS.has(category) ? category : 'other';
 
   const info = db
-    .prepare('INSERT INTO recipes (name, ingredients) VALUES (?, ?)')
-    .run(name.trim(), JSON.stringify(cleanedIngredients));
+    .prepare('INSERT INTO recipes (name, ingredients, category) VALUES (?, ?, ?)')
+    .run(name.trim(), JSON.stringify(cleanedIngredients), cleanCategory);
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(serializeRecipe(row));
 });

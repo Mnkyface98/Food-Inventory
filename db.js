@@ -67,4 +67,13 @@ db.exec(`
   );
 `);
 
+// category: meal-type grouping (see recipeCategorize.js) for the
+// collapsible category list under Save Recipes — added after the initial
+// release, so migrated in the same lightweight way as the items columns
+// above rather than baked into the CREATE TABLE.
+const existingRecipeColumns = new Set(db.prepare('PRAGMA table_info(recipes)').all().map((c) => c.name));
+if (!existingRecipeColumns.has('category')) {
+  db.exec("ALTER TABLE recipes ADD COLUMN category TEXT NOT NULL DEFAULT 'other'");
+}
+
 module.exports = db;

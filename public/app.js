@@ -47,6 +47,7 @@
   const saveRecipePanel = document.getElementById('save-recipe-panel');
   const saveRecipeCancelBtn = document.getElementById('save-recipe-cancel-btn');
   const newRecipeNameInput = document.getElementById('new-recipe-name');
+  const newRecipeCategorySelect = document.getElementById('new-recipe-category');
   const newRecipeIngredientsInput = document.getElementById('new-recipe-ingredients');
   const addRecipeNote = document.getElementById('add-recipe-note');
   const saveRecipeBtn = document.getElementById('save-recipe-btn');
@@ -1313,41 +1314,107 @@
 
   // Save Recipes — its own top-level panel now, not nested behind a
   // toggle button, since it's no longer a sub-feature of Search Recipes.
+  //
+  // Below the save form, every available recipe (bundled + yours) is
+  // browsable as a collapsible list grouped by category — same
+  // collapsible-heading pattern the main inventory list uses for its
+  // "All" view (see render()), just over recipes instead of items.
+  const RECIPE_CATEGORY_LABELS = {
+    breakfast: 'Breakfast',
+    sandwiches_wraps: 'Sandwiches & Wraps',
+    soups_salads: 'Soups & Salads',
+    main_dishes: 'Main Dishes',
+    sides_snacks: 'Sides & Snacks',
+    desserts_baking: 'Desserts & Baking',
+    beverages: 'Beverages',
+    other: 'Other',
+  };
+  const RECIPE_CATEGORY_ORDER = Object.keys(RECIPE_CATEGORY_LABELS);
+  // categoryId -> true if its section is collapsed; every section starts
+  // collapsed (same as the main list's "All" view) so the full ~40+ bundled
+  // recipes don't all dump onto the screen at once.
+  const collapsedRecipeCategories = Object.fromEntries(RECIPE_CATEGORY_ORDER.map((id) => [id, true]));
+
   function renderSavedRecipeRow(recipe) {
     const row = document.createElement('div');
     row.className = 'saved-recipe-row';
     const nameEl = document.createElement('span');
     const count = recipe.ingredients.length;
-    nameEl.textContent = `⭐ ${recipe.name} (${count} ingredient${count === 1 ? '' : 's'})`;
+    const isUserRecipe = recipe.source === 'user';
+    nameEl.textContent =
+      `${isUserRecipe ? '⭐ ' : ''}${recipe.name} (${count} ingredient${count === 1 ? '' : 's'})`;
     row.appendChild(nameEl);
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'recipe-delete-btn';
-    deleteBtn.setAttribute('aria-label', `Delete ${recipe.name}`);
-    deleteBtn.textContent = '✕';
-    deleteBtn.addEventListener('click', async () => {
-      if (await deleteUserRecipe(recipe)) {
-        renderSavedRecipesList();
-        renderShoppingListSelectedRecipes();
-      }
-    });
-    row.appendChild(deleteBtn);
+    if (isUserRecipe) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'recipe-delete-btn';
+      deleteBtn.setAttribute('aria-label', `Delete ${recipe.name}`);
+      deleteBtn.textContent = '✕';
+      deleteBtn.addEventListener('click', async () => {
+        if (await deleteUserRecipe(recipe)) {
+          renderRecipeCategoryGroups();
+          renderShoppingListSelectedRecipes();
+        }
+      });
+      row.appendChild(deleteBtn);
+    }
     return row;
   }
 
-  function renderSavedRecipesList() {
+  function renderRecipeCategoryGroups() {
     savedRecipesListEl.innerHTML = '';
     if (!recipesData) return;
-    const userRecipes = recipesData.filter((r) => r.source === 'user');
-    if (userRecipes.length === 0) {
-      savedRecipesListEl.innerHTML = '<p class="review-note">You haven\'t saved any recipes yet.</p>';
+    if (recipesData.length === 0) {
+      savedRecipesListEl.innerHTML = '<p class="review-note">No recipes available yet.</p>';
       return;
     }
-    for (const recipe of userRecipes) savedRecipesListEl.appendChild(renderSavedRecipeRow(recipe));
+
+    const groups = new Map();
+    for (const recipe of recipesData) {
+      const cat = recipe.category && RECIPE_CATEGORY_LABELS[recipe.category] ? recipe.category : 'other';
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(recipe);
+    }
+    for (const groupRecipes of groups.values()) {
+      groupRecipes.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Fixed category order (RECIPE_CATEGORY_ORDER), skipping any category
+    // with nothing in it — same as the main list only showing sections
+    // for categories that actually have items.
+    const orderedCats = RECIPE_CATEGORY_ORDER.filter((cat) => groups.has(cat));
+
+    for (const cat of orderedCats) {
+      const groupRecipes = groups.get(cat);
+      const collapsed = !!collapsedRecipeCategories[cat];
+
+      const headingRow = document.createElement('div');
+      headingRow.className = 'category-heading-row';
+      const headingBtn = document.createElement('button');
+      headingBtn.type = 'button';
+      headingBtn.className = 'category-heading';
+      const arrow = document.createElement('span');
+      arrow.className = 'category-heading-arrow';
+      arrow.textContent = collapsed ? '▸' : '▾';
+      const label = document.createElement('span');
+      label.textContent = `${RECIPE_CATEGORY_LABELS[cat]} (${groupRecipes.length})`;
+      headingBtn.appendChild(arrow);
+      headingBtn.appendChild(label);
+      headingBtn.addEventListener('click', () => {
+        collapsedRecipeCategories[cat] = !collapsed;
+        renderRecipeCategoryGroups();
+      });
+      headingRow.appendChild(headingBtn);
+      savedRecipesListEl.appendChild(headingRow);
+
+      if (!collapsed) {
+        for (const recipe of groupRecipes) savedRecipesListEl.appendChild(renderSavedRecipeRow(recipe));
+      }
+    }
   }
 
   function closeAddRecipeForm() {
     newRecipeNameInput.value = '';
+    newRecipeCategorySelect.value = 'other';
     newRecipeIngredientsInput.value = '';
     addRecipeNote.classList.add('hidden');
   }
@@ -1359,9 +1426,9 @@
     closeAddRecipeForm();
     savedRecipesListEl.innerHTML = '<p class="status-line">Loading…</p>';
     loadRecipesData()
-      .then(renderSavedRecipesList)
+      .then(renderRecipeCategoryGroups)
       .catch(() => {
-        savedRecipesListEl.innerHTML = '<p class="review-note">Couldn\'t load your saved recipes. Try again.</p>';
+        savedRecipesListEl.innerHTML = '<p class="review-note">Couldn\'t load recipes. Try again.</p>';
       });
   }
 
@@ -1381,6 +1448,7 @@
   // whatever matches at suggestion time, not fixed at save time.
   saveRecipeBtn.addEventListener('click', async () => {
     const name = newRecipeNameInput.value.trim();
+    const category = newRecipeCategorySelect.value;
     const ingredientsText = newRecipeIngredientsInput.value.trim();
     addRecipeNote.classList.add('hidden');
     if (!name) {
@@ -1402,11 +1470,11 @@
       const ingredients = parsed.items.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit }));
       const saved = await api('/api/recipes', {
         method: 'POST',
-        body: JSON.stringify({ name, ingredients }),
+        body: JSON.stringify({ name, category, ingredients }),
       });
       if (recipesData) recipesData.push({ ...saved, source: 'user' });
       closeAddRecipeForm();
-      renderSavedRecipesList();
+      renderRecipeCategoryGroups();
       showToast(`Saved "${saved.name}"`);
     } catch (err) {
       addRecipeNote.textContent = err.message;

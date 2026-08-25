@@ -1,6 +1,7 @@
 [
   {
     "name": "Scrambled Eggs on Toast",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Eggs", "quantity": 3, "unit": "" },
       { "name": "Butter", "quantity": 1, "unit": "tbsp" },
@@ -11,6 +12,7 @@
   },
   {
     "name": "Classic Pancakes",
+    "category": "breakfast",
     "ingredients": [
       { "name": "All-Purpose Flour", "quantity": 1.5, "unit": "cup" },
       { "name": "Milk", "quantity": 1.25, "unit": "cup" },
@@ -23,6 +25,7 @@
   },
   {
     "name": "Oatmeal with Banana",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Oats", "quantity": 1, "unit": "cup" },
       { "name": "Milk", "quantity": 2, "unit": "cup" },
@@ -33,6 +36,7 @@
   },
   {
     "name": "Greek Yogurt Parfait",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Greek Yogurt", "quantity": 1, "unit": "cup" },
       { "name": "Honey", "quantity": 1, "unit": "tbsp" },
@@ -42,6 +46,7 @@
   },
   {
     "name": "Peanut Butter Banana Toast",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Bread", "quantity": 2, "unit": "" },
       { "name": "Peanut Butter", "quantity": 2, "unit": "tbsp" },
@@ -51,6 +56,7 @@
   },
   {
     "name": "Classic Grilled Cheese",
+    "category": "sandwiches_wraps",
     "ingredients": [
       { "name": "Bread", "quantity": 2, "unit": "" },
       { "name": "Cheddar Cheese", "quantity": 2, "unit": "oz" },
@@ -59,6 +65,7 @@
   },
   {
     "name": "Turkey Sandwich",
+    "category": "sandwiches_wraps",
     "ingredients": [
       { "name": "Bread", "quantity": 2, "unit": "" },
       { "name": "Deli Turkey", "quantity": 4, "unit": "oz" },
@@ -70,6 +77,7 @@
   },
   {
     "name": "Tuna Salad",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Tuna", "quantity": 2, "unit": "can" },
       { "name": "Mayonnaise", "quantity": 3, "unit": "tbsp" },
@@ -80,6 +88,7 @@
   },
   {
     "name": "Chicken Caesar Salad",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
       { "name": "Romaine Lettuce", "quantity": 1, "unit": "head" },
@@ -90,6 +99,7 @@
   },
   {
     "name": "Black Bean Tacos",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Black Beans", "quantity": 1, "unit": "can" },
       { "name": "Tortillas", "quantity": 6, "unit": "" },
@@ -102,6 +112,7 @@
   },
   {
     "name": "Ground Beef Tacos",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
       { "name": "Tortillas", "quantity": 8, "unit": "" },
@@ -114,6 +125,7 @@
   },
   {
     "name": "Classic Spaghetti Marinara",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Pasta", "quantity": 1, "unit": "lb" },
       { "name": "Marinara Sauce", "quantity": 24, "unit": "oz" },
@@ -125,6 +137,7 @@
   },
   {
     "name": "Spaghetti and Meatballs",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Pasta", "quantity": 1, "unit": "lb" },
       { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
@@ -137,6 +150,7 @@
   },
   {
     "name": "Creamy Mac and Cheese",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Pasta", "quantity": 1, "unit": "lb" },
       { "name": "Cheddar Cheese", "quantity": 2, "unit": "cup" },
@@ -147,6 +161,7 @@
   },
   {
     "name": "Shrimp Scampi",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Shrimp", "quantity": 1, "unit": "lb" },
       { "name": "Pasta", "quantity": 12, "unit": "oz" },
@@ -159,6 +174,7 @@
   },
   {
     "name": "Baked Salmon",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Salmon", "quantity": 1, "unit": "lb" },
       { "name": "Olive Oil", "quantity": 2, "unit": "tbsp" },
@@ -170,6 +186,7 @@
   },
   {
     "name": "Roast Chicken Breast with Vegetables",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Chicken Breast", "quantity": 2, "unit": "lb" },
       { "name": "Potatoes", "quantity": 4, "unit": "" },
@@ -182,6 +199,7 @@
   },
   {
     "name": "Chicken Stir-Fry",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
       { "name": "Broccoli", "quantity": 2, "unit": "cup" },
@@ -196,6 +214,7 @@
   },
   {
     "name": "Beef and Broccoli",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
       { "name": "Broccoli", "quantity": 3, "unit": "cup" },
@@ -208,6 +227,7 @@
   },
   {
     "name": "Shrimp Fried Rice",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Shrimp", "quantity": 0.5, "unit": "lb" },
       { "name": "Rice", "quantity": 3, "unit": "cup" },
@@ -221,6 +241,7 @@
   },
   {
     "name": "Vegetable Fried Rice",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Rice", "quantity": 3, "unit": "cup" },
       { "name": "Eggs", "quantity": 2, "unit": "" },
@@ -233,6 +254,7 @@
   },
   {
     "name": "Chicken Curry",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Chicken Breast", "quantity": 1.5, "unit": "lb" },
       { "name": "Coconut Milk", "quantity": 1, "unit": "can" },
@@ -245,6 +267,7 @@
   },
   {
     "name": "Lentil Soup",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Lentils", "quantity": 1, "unit": "cup" },
       { "name": "Chicken Broth", "quantity": 4, "unit": "cup" },
@@ -258,6 +281,7 @@
   },
   {
     "name": "Chicken Noodle Soup",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Chicken Breast", "quantity": 1, "unit": "lb" },
       { "name": "Chicken Broth", "quantity": 6, "unit": "cup" },
@@ -270,6 +294,7 @@
   },
   {
     "name": "Tomato Soup",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Canned Diced Tomatoes", "quantity": 28, "unit": "oz" },
       { "name": "Chicken Broth", "quantity": 2, "unit": "cup" },
@@ -282,6 +307,7 @@
   },
   {
     "name": "Chili con Carne",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Ground Beef", "quantity": 1, "unit": "lb" },
       { "name": "Black Beans", "quantity": 1, "unit": "can" },
@@ -294,6 +320,7 @@
   },
   {
     "name": "Vegetable Chickpea Curry",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Chickpeas", "quantity": 2, "unit": "can" },
       { "name": "Coconut Milk", "quantity": 1, "unit": "can" },
@@ -307,6 +334,7 @@
   },
   {
     "name": "Quinoa Salad",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Quinoa", "quantity": 1, "unit": "cup" },
       { "name": "Chickpeas", "quantity": 1, "unit": "can" },
@@ -319,6 +347,7 @@
   },
   {
     "name": "Caprese Salad",
+    "category": "soups_salads",
     "ingredients": [
       { "name": "Tomatoes", "quantity": 3, "unit": "" },
       { "name": "Mozzarella Cheese", "quantity": 8, "unit": "oz" },
@@ -329,6 +358,7 @@
   },
   {
     "name": "Loaded Baked Potatoes",
+    "category": "sides_snacks",
     "ingredients": [
       { "name": "Potatoes", "quantity": 4, "unit": "" },
       { "name": "Cheddar Cheese", "quantity": 1, "unit": "cup" },
@@ -339,6 +369,7 @@
   },
   {
     "name": "Vegetable Omelet",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Eggs", "quantity": 3, "unit": "" },
       { "name": "Bell Pepper", "quantity": 0.5, "unit": "" },
@@ -350,6 +381,7 @@
   },
   {
     "name": "Zucchini Noodle Stir-Fry",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Zucchini", "quantity": 2, "unit": "" },
       { "name": "Garlic", "quantity": 2, "unit": "" },
@@ -360,6 +392,7 @@
   },
   {
     "name": "Banana Bread",
+    "category": "desserts_baking",
     "ingredients": [
       { "name": "Bananas", "quantity": 3, "unit": "" },
       { "name": "All-Purpose Flour", "quantity": 2, "unit": "cup" },
@@ -372,6 +405,7 @@
   },
   {
     "name": "Chocolate Chip Cookies",
+    "category": "desserts_baking",
     "ingredients": [
       { "name": "All-Purpose Flour", "quantity": 2.25, "unit": "cup" },
       { "name": "Butter", "quantity": 1, "unit": "cup" },
@@ -385,6 +419,7 @@
   },
   {
     "name": "Fluffy Pancake Waffles",
+    "category": "breakfast",
     "ingredients": [
       { "name": "All-Purpose Flour", "quantity": 2, "unit": "cup" },
       { "name": "Milk", "quantity": 1.75, "unit": "cup" },
@@ -397,6 +432,7 @@
   },
   {
     "name": "Apple Cinnamon Oatmeal",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Oats", "quantity": 1, "unit": "cup" },
       { "name": "Apples", "quantity": 1, "unit": "" },
@@ -408,6 +444,7 @@
   },
   {
     "name": "Bacon and Egg Breakfast Tacos",
+    "category": "breakfast",
     "ingredients": [
       { "name": "Eggs", "quantity": 4, "unit": "" },
       { "name": "Bacon", "quantity": 4, "unit": "" },
@@ -418,6 +455,7 @@
   },
   {
     "name": "Honey Garlic Salmon",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Salmon", "quantity": 1, "unit": "lb" },
       { "name": "Honey", "quantity": 3, "unit": "tbsp" },
@@ -428,6 +466,7 @@
   },
   {
     "name": "Garlic Butter Shrimp",
+    "category": "main_dishes",
     "ingredients": [
       { "name": "Shrimp", "quantity": 1, "unit": "lb" },
       { "name": "Butter", "quantity": 4, "unit": "tbsp" },
@@ -438,6 +477,7 @@
   },
   {
     "name": "Classic Coleslaw",
+    "category": "sides_snacks",
     "ingredients": [
       { "name": "Cabbage", "quantity": 1, "unit": "" },
       { "name": "Carrots", "quantity": 2, "unit": "" },
@@ -448,6 +488,7 @@
   },
   {
     "name": "Cheesy Broccoli Rice Casserole",
+    "category": "sides_snacks",
     "ingredients": [
       { "name": "Rice", "quantity": 2, "unit": "cup" },
       { "name": "Broccoli", "quantity": 3, "unit": "cup" },
