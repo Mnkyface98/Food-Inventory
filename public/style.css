@@ -647,8 +647,10 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   background: none;
   border: none;
   color: var(--green-dark);
+  font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
+  line-height: normal;
   cursor: pointer;
   padding: 0.2rem;
   text-decoration: none;
