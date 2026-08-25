@@ -128,6 +128,22 @@ function parseLeadingQuantity(text) {
 }
 
 function parseLeadingUnit(text) {
+  // Two-word units typed with a space ("table spoons", "tea spoon") —
+  // tried before the single-word case, by concatenating the two words
+  // and checking that against the same COOKING_UNITS set ("table" +
+  // "spoons" -> "tablespoons", already in the set). Without this, an
+  // unrecognized first word ("table") leaves the unit blank and glues
+  // the rest ("spoons of butter") onto the ingredient name instead —
+  // e.g. "2 table spoons of butter" parsing as a "Table Spoons Of
+  // Butter" ingredient that then fails to match an inventory item
+  // that's just called "Butter".
+  const twoWordMatch = text.match(/^([a-zA-Z]+)\s+([a-zA-Z]+)\.?\s+(.*)$/);
+  if (twoWordMatch) {
+    const combined = (twoWordMatch[1] + twoWordMatch[2]).toLowerCase();
+    if (COOKING_UNITS.has(combined)) {
+      return { unit: combined, rest: twoWordMatch[3] };
+    }
+  }
   const m = text.match(/^([a-zA-Z.]+)\.?\s+(.*)$/);
   if (m) {
     const word = m[1].toLowerCase().replace(/\.$/, '');
