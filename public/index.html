@@ -136,20 +136,22 @@
       </div>
     </section>
 
-    <nav class="tabs" id="category-tabs" aria-label="Filter by category">
-      <button class="tab active" data-category="all">All</button>
-      <!-- One tab per food category is added here once they load. -->
-    </nav>
+    <div id="inventory-browser">
+      <nav class="tabs" id="category-tabs" aria-label="Filter by category">
+        <button class="tab active" data-category="all">All</button>
+        <!-- One tab per food category is added here once they load. -->
+      </nav>
 
-    <div class="field-row search-row">
-      <input id="search" type="search" placeholder="Search items…" />
+      <div class="field-row search-row">
+        <input id="search" type="search" placeholder="Search items…" />
+      </div>
+
+      <section aria-label="Inventory list">
+        <p id="empty-state" class="empty-state hidden">Nothing here yet. Add your first item above.</p>
+        <p id="status-line" class="status-line hidden"></p>
+        <ul id="item-list" class="item-list"></ul>
+      </section>
     </div>
-
-    <section aria-label="Inventory list">
-      <p id="empty-state" class="empty-state hidden">Nothing here yet. Add your first item above.</p>
-      <p id="status-line" class="status-line hidden"></p>
-      <ul id="item-list" class="item-list"></ul>
-    </section>
   </main>
 
   <div id="barcode-modal" class="barcode-modal hidden" role="dialog" aria-label="Scan a barcode">

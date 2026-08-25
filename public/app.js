@@ -3,6 +3,11 @@
   const emptyStateEl = document.getElementById('empty-state');
   const statusLineEl = document.getElementById('status-line');
   const entryModeButtons = document.getElementById('entry-mode-buttons');
+  // The category tabs, search box, and item list — only relevant on the
+  // home view; every entry-mode panel (Add, Use, Save/Search Recipes,
+  // Create Shopping List) hides it the same way it hides
+  // entryModeButtons, and both come back together when a panel closes.
+  const inventoryBrowserEl = document.getElementById('inventory-browser');
   const modeAddBtn = document.getElementById('mode-add-btn');
   const modeUseBtn = document.getElementById('mode-use-btn');
   const quickInputPanel = document.getElementById('quick-input-panel');
@@ -283,6 +288,7 @@
     entryMode = mode;
     const isAdd = mode === 'add';
     entryModeButtons.classList.add('hidden');
+    inventoryBrowserEl.classList.add('hidden');
     quickInputPanel.classList.remove('hidden');
     barcodeBtn.classList.toggle('hidden', !isAdd || !hasCamera || !hasZXing);
     barcodeHint.classList.toggle('hidden', !isAdd || (hasCamera && hasZXing));
@@ -296,6 +302,7 @@
     entryMode = null;
     quickInputPanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
+    inventoryBrowserEl.classList.remove('hidden');
   }
 
   modeAddBtn.addEventListener('click', () => openEntryForm('add'));
@@ -1266,6 +1273,7 @@
 
   function openSearchRecipePanel() {
     entryModeButtons.classList.add('hidden');
+    inventoryBrowserEl.classList.add('hidden');
     searchRecipePanel.classList.remove('hidden');
     recipeSearchInput.value = '';
     recipeSearchMatchesEl.classList.add('hidden');
@@ -1284,6 +1292,7 @@
   function closeSearchRecipePanel() {
     searchRecipePanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
+    inventoryBrowserEl.classList.remove('hidden');
   }
 
   modeSearchRecipeBtn.addEventListener('click', openSearchRecipePanel);
@@ -1345,6 +1354,7 @@
 
   function openSaveRecipePanel() {
     entryModeButtons.classList.add('hidden');
+    inventoryBrowserEl.classList.add('hidden');
     saveRecipePanel.classList.remove('hidden');
     closeAddRecipeForm();
     savedRecipesListEl.innerHTML = '<p class="status-line">Loading…</p>';
@@ -1358,6 +1368,7 @@
   function closeSaveRecipePanel() {
     saveRecipePanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
+    inventoryBrowserEl.classList.remove('hidden');
   }
 
   modeSaveRecipeBtn.addEventListener('click', openSaveRecipePanel);
@@ -1461,6 +1472,7 @@
 
   function openShoppingListPanel() {
     entryModeButtons.classList.add('hidden');
+    inventoryBrowserEl.classList.add('hidden');
     shoppingListPanel.classList.remove('hidden');
     shoppingListOutputEl.classList.add('hidden');
     renderShoppingListSelectedRecipes();
@@ -1469,6 +1481,7 @@
   function closeShoppingListPanel() {
     shoppingListPanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
+    inventoryBrowserEl.classList.remove('hidden');
   }
 
   modeShoppingListBtn.addEventListener('click', openShoppingListPanel);
