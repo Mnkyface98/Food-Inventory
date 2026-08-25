@@ -756,10 +756,11 @@
   // A quick way to load a recipe's ingredients without leaving − Use item
   // for Search Recipes: type a few letters or say the name, pick it from
   // the live matches (or just leave the exact name typed/spoken), then
-  // Submit — reuses loadRecipeIntoUseReview(), the same in-stock-only,
-  // recipe-quantity deduction Search Recipes' "Use this recipe" uses.
-  // Bypasses the 65% match bar entirely, same as Search Recipes' own name
-  // search — a deliberate name lookup isn't a suggestion.
+  // Submit — reuses tryUseRecipe(), the same all-ingredients-in-stock
+  // rule (missing anything routes to the shopping list instead) Search
+  // Recipes' "Use this recipe" uses. Bypasses the 65% match bar
+  // entirely, same as Search Recipes' own name search — a deliberate
+  // name lookup isn't a suggestion.
 
   function findRecipeByExactName(name) {
     if (!recipesData) return null;
@@ -811,11 +812,11 @@
       showToast("Couldn't find a recipe by that name — pick one from the list as you type.");
       return;
     }
-    if (loadRecipeIntoUseReview(recipe)) {
-      useRecipeInput.value = '';
-      useRecipeMatchesEl.classList.add('hidden');
-      useRecipeMatchesEl.innerHTML = '';
-    }
+    // tryUseRecipe() closes this panel either way and navigates to
+    // wherever it decides — the Use item review (which resets this
+    // search box itself via openEntryForm) if every ingredient is in
+    // stock, Create Shopping List otherwise.
+    tryUseRecipe(recipe, closeEntryForm);
   }
 
   useRecipeSubmitBtn.addEventListener('click', submitUseRecipe);
@@ -1187,30 +1188,42 @@
     return { recipe, matches, matchedCount, total, matchRatio: total ? matchedCount / total : 0, urgencyScore };
   }
 
-  // Builds review cards from a recipe's ingredients that are actually in
-  // stock — at the recipe's own stated quantity, not what you have — and
-  // loads them into the current Use-mode review. Shared by "Use this
-  // recipe" (Search Recipes) and "Use Ingredients from Recipe" (the Use
-  // item panel) so both defer to the exact same in-stock-only, deduct-
-  // the-recipe's-amount logic. Returns false (and warns) if nothing in
-  // the recipe is currently in stock, rather than opening an empty review.
-  function loadRecipeIntoUseReview(recipe) {
-    const { matches } = scoreRecipe(recipe);
-    const reviewItems = matches
-      .filter((m) => m.matchedItem)
-      .map((m) => ({
-        name: m.matchedItem.name,
-        quantity: m.ingredient.quantity,
-        unit: m.ingredient.unit,
-        location: m.matchedItem.location,
-        category: m.matchedItem.category,
-        action: 'use',
-        expirationDate: null,
-      }));
-    if (reviewItems.length === 0) {
-      showToast(`None of ${recipe.name}'s ingredients are currently in stock.`);
+  // A recipe can only actually be Used once EVERY one of its ingredients
+  // is in stock — no more silently deducting just the ones you happen to
+  // have and quietly dropping the rest. If anything's missing, this adds
+  // the recipe to the shopping list (the same mechanism "Add missing to
+  // shopping list" uses) and takes you straight to Create Shopping List
+  // instead of opening a partial Use review. Shared by "Use this recipe"
+  // (Search Recipes) and "Use Ingredients from Recipe" (the Use item
+  // panel) so both apply the exact same all-or-nothing rule.
+  // `closeCurrentPanel` closes whichever panel this was called from —
+  // called either way, since the app always navigates somewhere next
+  // (the Use item review or the shopping list), never stays put.
+  function tryUseRecipe(recipe, closeCurrentPanel) {
+    const { matches, matchedCount, total } = scoreRecipe(recipe);
+    const missingCount = total - matchedCount;
+    closeCurrentPanel();
+
+    if (missingCount > 0) {
+      shoppingListRecipes.set(recipe.key, recipe);
+      openShoppingListPanel();
+      showToast(
+        `Missing ${missingCount} ingredient${missingCount === 1 ? '' : 's'} for ${recipe.name} — ` +
+        `added it to your shopping list instead.`
+      );
       return false;
     }
+
+    openEntryForm('use');
+    const reviewItems = matches.map((m) => ({
+      name: m.matchedItem.name,
+      quantity: m.ingredient.quantity,
+      unit: m.ingredient.unit,
+      location: m.matchedItem.location,
+      category: m.matchedItem.category,
+      action: 'use',
+      expirationDate: null,
+    }));
     voiceReviewEl.classList.remove('hidden');
     renderReview(reviewItems);
     showToast(`Loaded ${reviewItems.length} ingredient${reviewItems.length === 1 ? '' : 's'} from ${recipe.name}`);
@@ -1351,13 +1364,11 @@
     useBtn.className = 'btn btn-primary';
     useBtn.textContent = 'Use this recipe';
     useBtn.addEventListener('click', () => {
-      closeSearchRecipePanel();
-      // Reuses the same Use-mode review flow as every other entry
-      // method — openEntryForm('use') sets entryMode so the resulting
-      // cards are locked to Use, and shows the panel voiceReviewEl
-      // actually lives inside.
-      openEntryForm('use');
-      loadRecipeIntoUseReview(recipe);
+      // tryUseRecipe() decides where this actually goes: the Use item
+      // review (openEntryForm('use') sets entryMode so the resulting
+      // cards are locked to Use) if every ingredient is in stock, or
+      // straight to Create Shopping List otherwise — see its own comment.
+      tryUseRecipe(recipe, closeSearchRecipePanel);
     });
     buttons.appendChild(useBtn);
 

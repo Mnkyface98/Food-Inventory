@@ -199,19 +199,28 @@ type and sorted so what's expiring soon or running low surfaces first.
       this isn't presented as a bug
 
     Either way, each card lists every ingredient with a ✓ (have) or ✗
-    (missing) mark and how much the recipe calls for. **Use this
-    recipe** feeds just the ingredients you have — at the amount the
-    recipe calls for — into the same editable review-card flow as
-    every other entry method: same "used 3, not how much is left"
-    deduction, same Delete item button. When anything's missing, **Add
-    missing to shopping list** queues that recipe's gaps for the
-    Create Shopping List panel (toggles to **✓ Added — remove**; add
-    as many recipes as you like, they accumulate). Ingredient matching
-    uses a stricter version of the app's usual close-spelling matching
-    (since nothing here gets a human glancing at it character by
-    character the way typing a name does) — strict enough that "Bell
-    Pepper" won't get silently matched to a jar of "Black Pepper" just
-    because they share the word "pepper"
+    (missing) mark and how much the recipe calls for. **A recipe can
+    only be Used once every one of its ingredients is in stock** — no
+    more partial deductions that quietly skip whatever's missing. Tap
+    **Use this recipe** and one of two things happens:
+    - **Everything's on hand** → it feeds every ingredient, at the
+      amount the recipe calls for, into the same editable review-card
+      flow as every other entry method: same "used 3, not how much is
+      left" deduction, same Delete item button.
+    - **Anything's missing** → instead of a partial Use, it adds the
+      recipe straight to your **Create Shopping List** selection (the
+      same thing "Add missing to shopping list" does) and takes you
+      there — a toast says how many ingredients were missing. **Add
+      missing to shopping list** still works as its own separate
+      button too, for queuing a recipe's gaps without attempting to
+      use it at all (toggles to **✓ Added — remove**; add as many
+      recipes as you like, they accumulate).
+    
+    Ingredient matching uses a stricter version of the app's usual
+    close-spelling matching (since nothing here gets a human glancing
+    at it character by character the way typing a name does) — strict
+    enough that "Bell Pepper" won't get silently matched to a jar of
+    "Black Pepper" just because they share the word "pepper"
   - **− Use Ingredients from Recipe**: the same name-lookup-and-use
     flow as **Use this recipe** above, but reachable without leaving
     the − Use item panel — its own row below the main text/mic
@@ -220,10 +229,11 @@ type and sorted so what's expiring soon or running low surfaces first.
     recipe names appear as you type; tap one to fill in its exact
     name, or just type/say the full name yourself, then tap
     **Submit**. It looks up that recipe by exact name — any recipe,
-    any match percentage, same as the name search above — and loads
-    whatever ingredients you actually have in stock into the review
-    cards, at the recipe's own amounts. If nothing in that recipe is
-    currently in stock, it says so instead of opening an empty review
+    any match percentage, same as the name search above — and applies
+    the exact same all-or-nothing rule: every ingredient in stock
+    opens a real Use review at the recipe's own amounts; anything
+    missing sends you to Create Shopping List with the recipe already
+    added, instead of opening a partial review
   - **🛒 Create Shopping List**: builds one deduped, alphabetized list
     from three sources — missing ingredients from every recipe you
     added via "Add missing to shopping list," plus everything
@@ -402,11 +412,15 @@ anymore — instead, the ingredient text box under **⭐ Save Recipes**
 into a stored recipe; **actually using** one against your inventory
 happens by name lookup — either **Use this recipe** on a card under
 **🔍 Search Recipes**, or **− Use Ingredients from Recipe** right on
-the − Use item panel (see above for both) — which feeds the recipe's
-own stated ingredients and amounts straight into the same review-card
-flow as voice/barcode/receipt entry, defaulting to **Use** instead of
-Add, since a recipe consumes what's in your inventory rather than
-restocking it. Switch any card to Add if one should go the other way.
+the − Use item panel (see above for both). Both only actually open a
+Use review once every one of the recipe's ingredients is in stock —
+otherwise the recipe goes to your Create Shopping List selection
+instead of a partial deduction. Once it does open, it feeds the
+recipe's own stated ingredients and amounts straight into the same
+review-card flow as voice/barcode/receipt entry, defaulting to **Use**
+instead of Add, since a recipe consumes what's in your inventory
+rather than restocking it. Switch any card to Add if one should go the
+other way.
 
 - **Line parsing** (`recipeParser.js`), used when you save a recipe,
   understands whole numbers,
