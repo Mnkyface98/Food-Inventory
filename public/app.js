@@ -46,19 +46,33 @@
   const photoCaptureBtn = document.getElementById('photo-capture-btn');
   const photoCaptureCancelBtn = document.getElementById('photo-capture-cancel');
 
-  const modeSuggestBtn = document.getElementById('mode-suggest-btn');
-  const suggestPanel = document.getElementById('suggest-panel');
-  const suggestCancelBtn = document.getElementById('suggest-cancel-btn');
-  const suggestRankMatchBtn = document.getElementById('suggest-rank-match');
-  const suggestRankUrgentBtn = document.getElementById('suggest-rank-urgent');
-  const suggestResultsEl = document.getElementById('suggest-results');
-  const addRecipeBtn = document.getElementById('add-recipe-btn');
-  const addRecipeForm = document.getElementById('add-recipe-form');
+  const modeSaveRecipeBtn = document.getElementById('mode-save-recipe-btn');
+  const saveRecipePanel = document.getElementById('save-recipe-panel');
+  const saveRecipeCancelBtn = document.getElementById('save-recipe-cancel-btn');
   const newRecipeNameInput = document.getElementById('new-recipe-name');
   const newRecipeIngredientsInput = document.getElementById('new-recipe-ingredients');
   const addRecipeNote = document.getElementById('add-recipe-note');
   const saveRecipeBtn = document.getElementById('save-recipe-btn');
-  const cancelAddRecipeBtn = document.getElementById('cancel-add-recipe-btn');
+  const savedRecipesListEl = document.getElementById('saved-recipes-list');
+
+  const modeSearchRecipeBtn = document.getElementById('mode-search-recipe-btn');
+  const searchRecipePanel = document.getElementById('search-recipe-panel');
+  const searchRecipeCancelBtn = document.getElementById('search-recipe-cancel-btn');
+  const recipeSearchInput = document.getElementById('recipe-search-input');
+  const recipeSearchMatchesEl = document.getElementById('recipe-search-matches');
+  const searchRankMatchBtn = document.getElementById('search-rank-match');
+  const searchRankUrgentBtn = document.getElementById('search-rank-urgent');
+  const searchRecipeResultsEl = document.getElementById('search-recipe-results');
+
+  const modeShoppingListBtn = document.getElementById('mode-shopping-list-btn');
+  const shoppingListPanel = document.getElementById('shopping-list-panel');
+  const shoppingListCancelBtn = document.getElementById('shopping-list-cancel-btn');
+  const shoppingListSelectedRecipesEl = document.getElementById('shopping-list-selected-recipes');
+  const generateShoppingListBtn = document.getElementById('generate-shopping-list-btn');
+  const shoppingListOutputEl = document.getElementById('shopping-list-output');
+  const shoppingListTextEl = document.getElementById('shopping-list-text');
+  const copyShoppingListBtn = document.getElementById('copy-shopping-list-btn');
+  const shoppingListCopyNote = document.getElementById('shopping-list-copy-note');
 
   let items = [];
   let categories = []; // [{id, label}], loaded from the server
@@ -71,7 +85,7 @@
   let entryMode = null; // 'add' | 'use' | null (fields hidden until one is chosen)
   let recipesData = null; // loaded once from recipes.json, then cached
   let recipesLoadPromise = null;
-  let suggestRankMode = 'match'; // 'match' | 'urgent' — how the 3 suggestions are ranked
+  let searchRecipeRankMode = 'match'; // 'match' | 'urgent' — how the 3 suggestions are ranked
 
   // Low-stock rules, checked in priority order by getLowStockBadge() below:
   // an item's own pack-size/%-full tracking (if set) wins over the
@@ -1015,17 +1029,15 @@
     if (blob) await processRecipeImageFile(blob);
   });
 
-  // Suggest recipes: a third top-level mode, separate from + Add item /
-  // − Use item, that searches a small bundled recipe dataset
-  // (recipes.json — free, offline, no API key, same philosophy as the
-  // rest of this app's parsing) for the 3 recipes that best fit what's
-  // currently in stock. Fetched once and cached; ranking is picked by
-  // the user each time via suggestRankMode, not fixed by the app.
-  // Merges the bundled list (public/recipes.json, static — a source:
-  // 'bundled' tag) with whatever the user has added themselves (from the
-  // recipes table via the API — source: 'user'), so both are searched
-  // and ranked together as one pool, distinguished only by a ⭐ on the
-  // card (see renderRecipeSuggestionCard()).
+  // Recipes span three top-level modes, separate from + Add item /
+  // − Use item: Save Recipes (add your own), Search Recipes (find what
+  // you can make, browse any by name), Create Shopping List (assemble
+  // what's missing). All three share one recipe pool — the bundled
+  // dataset (public/recipes.json — free, offline, no API key, same
+  // philosophy as the rest of this app's parsing) merged with whatever
+  // the user has added themselves (recipes table via the API), tagged
+  // source: 'bundled' | 'user' and distinguished only by a ⭐ on the
+  // card (see renderRecipeSuggestionCard()). Fetched once and cached.
   function loadRecipesData() {
     if (recipesData) return Promise.resolve(recipesData);
     if (!recipesLoadPromise) {
@@ -1107,15 +1119,24 @@
     return { recipe, matches, matchedCount, total, matchRatio: total ? matchedCount / total : 0, urgencyScore };
   }
 
-  // A recipe only counts as suggestible once at least 80% of its
+  // A recipe only counts as suggestible once at least 65% of its
   // ingredients are actually on hand — no relaxing that if fewer than
   // 3 recipes clear it; better to show 0-2 real suggestions than pad
-  // the list with something you're missing a third of.
-  const RECIPE_MIN_MATCH_RATIO = 0.8;
+  // the list with something you're missing a third of. Searching by
+  // name (below) bypasses this entirely — a deliberate lookup isn't a
+  // suggestion, so it shows the recipe regardless of match %.
+  const RECIPE_MIN_MATCH_RATIO = 0.65;
   // Below this many total items in inventory, matches are naturally
   // sparse — a hint to that effect, not a hard block, shown alongside
   // whatever (if anything) still qualifies.
   const MIN_ITEMS_FOR_GOOD_RECIPE_MATCHES = 20;
+
+  // Recipes added to the shopping list via "Add missing to shopping
+  // list" (in Search Recipes) — keyed by recipe name, since bundled
+  // recipes.json entries have no id. Accumulates across multiple
+  // recipes; cleared only by removing them individually or a page
+  // reload — no server persistence, this is deliberately session-only.
+  const shoppingListRecipes = new Map();
 
   function pickTopRecipes(rankMode) {
     const scored = recipesData.map(scoreRecipe);
@@ -1129,10 +1150,10 @@
     return sorted.slice(0, 3);
   }
 
-  function renderSuggestResults() {
-    suggestResultsEl.innerHTML = '';
+  function renderSearchRecipeResults() {
+    searchRecipeResultsEl.innerHTML = '';
     if (!recipesData) {
-      suggestResultsEl.innerHTML = '<p class="status-line">Loading recipes…</p>';
+      searchRecipeResultsEl.innerHTML = '<p class="status-line">Loading recipes…</p>';
       return;
     }
     if (items.length < MIN_ITEMS_FOR_GOOD_RECIPE_MATCHES) {
@@ -1141,19 +1162,36 @@
       hint.textContent =
         `You have ${items.length} item${items.length === 1 ? '' : 's'} in your inventory — ` +
         `more inventory is needed for good recipe matches (a wider variety makes it much more ` +
-        `likely a recipe clears the 80% bar below).`;
-      suggestResultsEl.appendChild(hint);
+        `likely a recipe clears the 65% bar below).`;
+      searchRecipeResultsEl.appendChild(hint);
     }
-    const top = pickTopRecipes(suggestRankMode);
+    const top = pickTopRecipes(searchRecipeRankMode);
     if (top.length === 0) {
       const note = document.createElement('p');
       note.className = 'review-note';
-      note.textContent = "Nothing in the recipe list has 80% or more of its ingredients in your inventory right now.";
-      suggestResultsEl.appendChild(note);
+      note.textContent = "Nothing in the recipe list has 65% or more of its ingredients in your inventory right now.";
+      searchRecipeResultsEl.appendChild(note);
       return;
     }
     for (const scored of top) {
-      suggestResultsEl.appendChild(renderRecipeSuggestionCard(scored));
+      searchRecipeResultsEl.appendChild(renderRecipeSuggestionCard(scored));
+    }
+  }
+
+  // Deletes a user-added recipe (shared by every place a delete button
+  // for one appears — the Search Recipes card, the Save Recipes list).
+  // Returns true on success so callers know whether to re-render.
+  async function deleteUserRecipe(recipe) {
+    if (!confirm(`Delete your recipe "${recipe.name}"? This can't be undone.`)) return false;
+    try {
+      await api(`/api/recipes/${recipe.id}`, { method: 'DELETE' });
+      if (recipesData) recipesData = recipesData.filter((r) => !(r.source === 'user' && r.id === recipe.id));
+      shoppingListRecipes.delete(recipe.name);
+      showToast(`Deleted ${recipe.name}`);
+      return true;
+    } catch (err) {
+      showToast(`Couldn't delete: ${err.message}`);
+      return false;
     }
   }
 
@@ -1182,14 +1220,9 @@
       deleteRecipeBtn.setAttribute('aria-label', `Delete your recipe ${recipe.name}`);
       deleteRecipeBtn.textContent = '✕';
       deleteRecipeBtn.addEventListener('click', async () => {
-        if (!confirm(`Delete your recipe "${recipe.name}"? This can't be undone.`)) return;
-        try {
-          await api(`/api/recipes/${recipe.id}`, { method: 'DELETE' });
-          recipesData = recipesData.filter((r) => !(r.source === 'user' && r.id === recipe.id));
-          renderSuggestResults();
-          showToast(`Deleted ${recipe.name}`);
-        } catch (err) {
-          showToast(`Couldn't delete: ${err.message}`);
+        if (await deleteUserRecipe(recipe)) {
+          card.remove();
+          renderShoppingListSelectedRecipes();
         }
       });
       nameRow.appendChild(deleteRecipeBtn);
@@ -1212,9 +1245,12 @@
     }
     card.appendChild(list);
 
+    const buttons = document.createElement('div');
+    buttons.className = 'review-card-buttons';
+
     const useBtn = document.createElement('button');
     useBtn.type = 'button';
-    useBtn.className = 'btn btn-primary btn-full';
+    useBtn.className = 'btn btn-primary';
     useBtn.textContent = 'Use this recipe';
     useBtn.addEventListener('click', () => {
       const reviewItems = matches
@@ -1228,7 +1264,7 @@
           action: 'use',
           expirationDate: null,
         }));
-      closeSuggestPanel();
+      closeSearchRecipePanel();
       // Reuses the same Use-mode review flow as every other entry
       // method — openEntryForm('use') sets entryMode so the resulting
       // cards are locked to Use, and shows the panel voiceReviewEl
@@ -1238,60 +1274,174 @@
       renderReview(reviewItems);
       showToast(`Loaded ${reviewItems.length} ingredient${reviewItems.length === 1 ? '' : 's'} from ${recipe.name}`);
     });
-    card.appendChild(useBtn);
+    buttons.appendChild(useBtn);
+
+    // Toggle button: adds/removes this recipe's missing ingredients
+    // from the shopping list (see computeShoppingList()). A recipe
+    // with nothing missing has nothing useful to add — button stays
+    // hidden in that case.
+    const missingCount = total - matchedCount;
+    if (missingCount > 0) {
+      const shoppingBtn = document.createElement('button');
+      shoppingBtn.type = 'button';
+      shoppingBtn.className = 'btn btn-secondary';
+      function refreshShoppingBtn() {
+        const added = shoppingListRecipes.has(recipe.name);
+        shoppingBtn.textContent = added ? '✓ Added — remove' : 'Add missing to shopping list';
+        shoppingBtn.classList.toggle('active', added);
+      }
+      refreshShoppingBtn();
+      shoppingBtn.addEventListener('click', () => {
+        if (shoppingListRecipes.has(recipe.name)) {
+          shoppingListRecipes.delete(recipe.name);
+        } else {
+          shoppingListRecipes.set(recipe.name, recipe);
+        }
+        refreshShoppingBtn();
+        renderShoppingListSelectedRecipes();
+      });
+      buttons.appendChild(shoppingBtn);
+    }
+
+    card.appendChild(buttons);
 
     return card;
   }
 
-  function openSuggestPanel() {
+  // Live "recipe names appear as you type" search, independent of the
+  // 65% match bar — a deliberate name lookup, not a suggestion. Shows
+  // up to 8 matching names; clicking one replaces the results area
+  // with that single recipe's full card (any match %).
+  function renderRecipeSearchMatches() {
+    const term = recipeSearchInput.value.trim().toLowerCase();
+    if (!term) {
+      recipeSearchMatchesEl.classList.add('hidden');
+      recipeSearchMatchesEl.innerHTML = '';
+      renderSearchRecipeResults();
+      return;
+    }
+    if (!recipesData) return; // still loading; the input is inert until it resolves
+    const matches = recipesData.filter((r) => r.name.toLowerCase().includes(term)).slice(0, 8);
+    recipeSearchMatchesEl.innerHTML = '';
+    if (matches.length === 0) {
+      recipeSearchMatchesEl.classList.add('hidden');
+      searchRecipeResultsEl.innerHTML = '<p class="review-note">No recipe names match that.</p>';
+      return;
+    }
+    recipeSearchMatchesEl.classList.remove('hidden');
+    for (const recipe of matches) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'recipe-search-match-btn';
+      btn.textContent = recipe.source === 'user' ? `⭐ ${recipe.name}` : recipe.name;
+      btn.addEventListener('click', () => {
+        recipeSearchMatchesEl.classList.add('hidden');
+        recipeSearchMatchesEl.innerHTML = '';
+        searchRecipeResultsEl.innerHTML = '';
+        searchRecipeResultsEl.appendChild(renderRecipeSuggestionCard(scoreRecipe(recipe)));
+      });
+      recipeSearchMatchesEl.appendChild(btn);
+    }
+  }
+
+  function openSearchRecipePanel() {
     entryModeButtons.classList.add('hidden');
-    suggestPanel.classList.remove('hidden');
-    renderSuggestResults(); // renders real results if already cached, else the loading state
+    searchRecipePanel.classList.remove('hidden');
+    recipeSearchInput.value = '';
+    recipeSearchMatchesEl.classList.add('hidden');
+    recipeSearchMatchesEl.innerHTML = '';
+    renderSearchRecipeResults(); // renders real results if already cached, else the loading state
     if (!recipesData) {
       loadRecipesData()
-        .then(renderSuggestResults)
+        .then(renderSearchRecipeResults)
         .catch(() => {
-          suggestResultsEl.innerHTML =
+          searchRecipeResultsEl.innerHTML =
             '<p class="review-note">Couldn\'t load the recipe list. Try again.</p>';
         });
     }
   }
 
-  function closeSuggestPanel() {
-    suggestPanel.classList.add('hidden');
+  function closeSearchRecipePanel() {
+    searchRecipePanel.classList.add('hidden');
     entryModeButtons.classList.remove('hidden');
-    closeAddRecipeForm(); // don't leave a half-filled add-recipe form open for next time
   }
 
-  modeSuggestBtn.addEventListener('click', openSuggestPanel);
-  suggestCancelBtn.addEventListener('click', closeSuggestPanel);
-  suggestRankMatchBtn.addEventListener('click', () => {
-    suggestRankMode = 'match';
-    suggestRankMatchBtn.classList.add('active');
-    suggestRankUrgentBtn.classList.remove('active');
-    renderSuggestResults();
+  modeSearchRecipeBtn.addEventListener('click', openSearchRecipePanel);
+  searchRecipeCancelBtn.addEventListener('click', closeSearchRecipePanel);
+  recipeSearchInput.addEventListener('input', renderRecipeSearchMatches);
+  searchRankMatchBtn.addEventListener('click', () => {
+    searchRecipeRankMode = 'match';
+    searchRankMatchBtn.classList.add('active');
+    searchRankUrgentBtn.classList.remove('active');
+    renderSearchRecipeResults();
   });
-  suggestRankUrgentBtn.addEventListener('click', () => {
-    suggestRankMode = 'urgent';
-    suggestRankUrgentBtn.classList.add('active');
-    suggestRankMatchBtn.classList.remove('active');
-    renderSuggestResults();
+  searchRankUrgentBtn.addEventListener('click', () => {
+    searchRecipeRankMode = 'urgent';
+    searchRankUrgentBtn.classList.add('active');
+    searchRankMatchBtn.classList.remove('active');
+    renderSearchRecipeResults();
   });
 
+  // Save Recipes — its own top-level panel now, not nested behind a
+  // toggle button, since it's no longer a sub-feature of Search Recipes.
+  function renderSavedRecipeRow(recipe) {
+    const row = document.createElement('div');
+    row.className = 'saved-recipe-row';
+    const nameEl = document.createElement('span');
+    const count = recipe.ingredients.length;
+    nameEl.textContent = `⭐ ${recipe.name} (${count} ingredient${count === 1 ? '' : 's'})`;
+    row.appendChild(nameEl);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'recipe-delete-btn';
+    deleteBtn.setAttribute('aria-label', `Delete ${recipe.name}`);
+    deleteBtn.textContent = '✕';
+    deleteBtn.addEventListener('click', async () => {
+      if (await deleteUserRecipe(recipe)) {
+        renderSavedRecipesList();
+        renderShoppingListSelectedRecipes();
+      }
+    });
+    row.appendChild(deleteBtn);
+    return row;
+  }
+
+  function renderSavedRecipesList() {
+    savedRecipesListEl.innerHTML = '';
+    if (!recipesData) return;
+    const userRecipes = recipesData.filter((r) => r.source === 'user');
+    if (userRecipes.length === 0) {
+      savedRecipesListEl.innerHTML = '<p class="review-note">You haven\'t saved any recipes yet.</p>';
+      return;
+    }
+    for (const recipe of userRecipes) savedRecipesListEl.appendChild(renderSavedRecipeRow(recipe));
+  }
+
   function closeAddRecipeForm() {
-    addRecipeForm.classList.add('hidden');
-    addRecipeBtn.classList.remove('hidden');
     newRecipeNameInput.value = '';
     newRecipeIngredientsInput.value = '';
     addRecipeNote.classList.add('hidden');
   }
 
-  addRecipeBtn.addEventListener('click', () => {
-    addRecipeForm.classList.remove('hidden');
-    addRecipeBtn.classList.add('hidden');
-    newRecipeNameInput.focus();
-  });
-  cancelAddRecipeBtn.addEventListener('click', closeAddRecipeForm);
+  function openSaveRecipePanel() {
+    entryModeButtons.classList.add('hidden');
+    saveRecipePanel.classList.remove('hidden');
+    closeAddRecipeForm();
+    savedRecipesListEl.innerHTML = '<p class="status-line">Loading…</p>';
+    loadRecipesData()
+      .then(renderSavedRecipesList)
+      .catch(() => {
+        savedRecipesListEl.innerHTML = '<p class="review-note">Couldn\'t load your saved recipes. Try again.</p>';
+      });
+  }
+
+  function closeSaveRecipePanel() {
+    saveRecipePanel.classList.add('hidden');
+    entryModeButtons.classList.remove('hidden');
+  }
+
+  modeSaveRecipeBtn.addEventListener('click', openSaveRecipePanel);
+  saveRecipeCancelBtn.addEventListener('click', closeSaveRecipePanel);
 
   // Reuses /api/recipe/parse — the same free-text ingredient parser
   // "Enter recipe ingredients" already uses — so pasting a recipe here
@@ -1325,13 +1475,105 @@
       });
       if (recipesData) recipesData.push({ ...saved, source: 'user' });
       closeAddRecipeForm();
-      renderSuggestResults();
+      renderSavedRecipesList();
       showToast(`Saved "${saved.name}"`);
     } catch (err) {
       addRecipeNote.textContent = err.message;
       addRecipeNote.classList.remove('hidden');
     } finally {
       saveRecipeBtn.disabled = false;
+    }
+  });
+
+  // Create Shopping List — assembles one deduped list from: missing
+  // ingredients of every recipe added via "Add missing to shopping
+  // list" above, plus every item currently Low or Out, plus every item
+  // expiring soon (same tiers/thresholds the badges themselves use).
+  // Recomputed fresh each time — nothing here is saved server-side.
+  function renderShoppingListSelectedRecipes() {
+    shoppingListSelectedRecipesEl.innerHTML = '';
+    if (shoppingListRecipes.size === 0) {
+      shoppingListSelectedRecipesEl.innerHTML =
+        '<p class="review-note">No recipes added yet — in Search Recipes, tap "Add missing to shopping list" on one you want to make.</p>';
+      return;
+    }
+    for (const recipe of shoppingListRecipes.values()) {
+      const row = document.createElement('div');
+      row.className = 'saved-recipe-row';
+      const nameEl = document.createElement('span');
+      nameEl.textContent = recipe.source === 'user' ? `⭐ ${recipe.name}` : recipe.name;
+      row.appendChild(nameEl);
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'recipe-delete-btn';
+      removeBtn.setAttribute('aria-label', `Remove ${recipe.name} from shopping list`);
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => {
+        shoppingListRecipes.delete(recipe.name);
+        renderShoppingListSelectedRecipes();
+      });
+      row.appendChild(removeBtn);
+      shoppingListSelectedRecipesEl.appendChild(row);
+    }
+  }
+
+  function computeShoppingList() {
+    const seen = new Map(); // normalized name -> display text, so casing/whitespace doesn't duplicate an entry
+    function add(name) {
+      const key = normalizeForMatch(name);
+      if (key && !seen.has(key)) seen.set(key, name);
+    }
+    for (const recipe of shoppingListRecipes.values()) {
+      const { matches } = scoreRecipe(recipe);
+      for (const m of matches) {
+        if (!m.matchedItem) add(m.ingredient.name);
+      }
+    }
+    for (const item of items) {
+      const lowLabel = getLowStockBadge(item);
+      if (lowLabel === 'Low' || lowLabel === 'Out') add(item.name);
+    }
+    for (const item of items) {
+      if (item.expirationDate && daysUntil(item.expirationDate) <= EXPIRY_BADGE_VISIBLE_DAYS) add(item.name);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  function openShoppingListPanel() {
+    entryModeButtons.classList.add('hidden');
+    shoppingListPanel.classList.remove('hidden');
+    shoppingListOutputEl.classList.add('hidden');
+    renderShoppingListSelectedRecipes();
+  }
+
+  function closeShoppingListPanel() {
+    shoppingListPanel.classList.add('hidden');
+    entryModeButtons.classList.remove('hidden');
+  }
+
+  modeShoppingListBtn.addEventListener('click', openShoppingListPanel);
+  shoppingListCancelBtn.addEventListener('click', closeShoppingListPanel);
+
+  generateShoppingListBtn.addEventListener('click', () => {
+    const list = computeShoppingList();
+    shoppingListOutputEl.classList.remove('hidden');
+    shoppingListCopyNote.classList.add('hidden');
+    shoppingListTextEl.value =
+      list.length === 0 ? 'Nothing to shop for right now!' : list.map((name) => `- ${name}`).join('\n');
+  });
+
+  // navigator.clipboard needs a secure context; falls back to
+  // selecting the text so Ctrl/Cmd+C still works everywhere else.
+  copyShoppingListBtn.addEventListener('click', async () => {
+    shoppingListCopyNote.classList.add('hidden');
+    try {
+      await navigator.clipboard.writeText(shoppingListTextEl.value);
+      shoppingListCopyNote.textContent = 'Copied!';
+      shoppingListCopyNote.classList.remove('hidden');
+    } catch {
+      shoppingListTextEl.select();
+      shoppingListCopyNote.textContent = "Couldn't auto-copy — text is selected, press Ctrl+C (or Cmd+C).";
+      shoppingListCopyNote.classList.remove('hidden');
     }
   });
 

@@ -340,14 +340,19 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   color: #fff;
 }
 
-.suggest-rank-toggle {
+.search-rank-toggle {
   width: 100%;
   margin: 0.7rem 0;
 }
 
-.suggest-rank-toggle button {
+.search-rank-toggle button {
   flex: 1;
   text-align: center;
+}
+
+.btn-secondary.active {
+  background: var(--green);
+  color: #fff;
 }
 
 .suggest-results {
@@ -432,6 +437,59 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   flex: 1;
   padding: 0.5rem;
   font-size: 0.9rem;
+}
+
+.recipe-search-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0 0 0.7rem;
+}
+
+.recipe-search-match-btn {
+  text-align: left;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.recipe-search-match-btn:active {
+  background: #eef1ea;
+}
+
+.saved-recipes-list,
+.shopping-list-selected-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.saved-recipe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+#shopping-list-text {
+  width: 100%;
+  margin: 0.7rem 0;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  resize: vertical;
 }
 
 .review-note {

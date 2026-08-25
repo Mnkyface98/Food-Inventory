@@ -147,46 +147,72 @@ type and sorted so what's expiring soon or running low surfaces first.
   cups-to-ounces conversion, which needs an ingredient-specific density);
   whole-count ingredients (e.g. "3 eggs") just decrement the item's count.
   You only ever say how much was used — the app works out what's left
-- **🍳 Suggest recipes**: a third top-level button (next to + Add item /
-  − Use item) that searches a small bundled recipe list — free and
-  fully offline, same as everything else in this app, no API key or
-  network call — for recipes you can actually make. A recipe only
-  qualifies at all once **80% or more** of its ingredients are on
-  hand; below that it's never shown, no matter how few recipes clear
-  the bar (down to none, with a note saying so, rather than padding
-  the list with something you're a third short on). Among whatever
-  does qualify, toggle between two ranking modes any time: **Best
-  match** (the most complete matches first) or **Use up expiring/low**
-  (weighted toward recipes that use ingredients that are expiring soon
-  or already flagged Low, still only among 80%+ matches). Only items
-  with quantity above 0 count as "available" — Out items don't. Each
-  suggestion lists every
-  ingredient with a ✓ (have) or ✗ (missing) mark and how much the
-  recipe calls for; tapping **Use this recipe** feeds just the
-  ingredients you have into the same − Use item review flow as typing
-  or scanning a recipe by hand — same editable cards, same "used 3, not
-  how much is left" deduction, same Delete item button. Ingredient
-  matching uses a stricter version of the app's usual close-spelling
-  matching (since nothing here gets a human glancing at it character by
-  character the way typing a name does) — strict enough that "Bell
-  Pepper" won't get silently matched to a jar of "Black Pepper" just
-  because they share the word "pepper". With fewer than **20 items**
-  in inventory, a hint appears above the results (or the "nothing
-  qualifies" note) explaining that a wider variety makes it more
-  likely something clears the 80% bar — recipe matching is naturally
-  sparse against a small pantry, so this isn't presented as a bug
-- **⭐ Add your own recipe**: a button on the Suggest recipes panel
-  lets you save a recipe of your own — a name plus an ingredient list
-  typed or pasted the same free-text way as "Enter recipe ingredients"
-  (parsed the same way, then just the name/quantity/unit kept; a
-  recipe's location/category get resolved fresh against whatever
-  matches at suggestion time, not fixed when you save it). It's stored
-  in the database (not the bundled recipes.json file) and searched and
-  ranked alongside the bundled list the same way from then on — the
-  only difference is a **⭐** before its name on the suggestion card,
-  so you can always tell which recipes are yours, plus a **✕** to
-  delete it (with a confirm, since deleting an item elsewhere in the
-  app works the same way)
+- **Recipes span three top-level buttons**, next to + Add item / − Use
+  item, all sharing one recipe pool: a small bundled list
+  (`public/recipes.json` — free and fully offline, same as everything
+  else in this app, no API key or network call) merged with whatever
+  you've saved yourself. A **⭐** before a recipe's name (wherever one
+  shows up — search results, the saved-recipes list, the shopping-list
+  selection) is the only thing that distinguishes yours from the
+  bundled ones; matching and ranking treat them identically
+  - **⭐ Save Recipes**: save a recipe of your own — a name plus an
+    ingredient list typed or pasted the same free-text way as "Enter
+    recipe ingredients" (parsed the same way, then just the
+    name/quantity/unit kept; a recipe's location/category get resolved
+    fresh against whatever matches at suggestion time, not fixed when
+    you save it). It's stored in the database (not the bundled
+    recipes.json file). This panel also lists every recipe you've
+    saved so far, each with a **✕** to delete it (with a confirm, same
+    as deleting an item elsewhere in the app)
+  - **🔍 Search Recipes**: two ways to find something —
+    - Type a name and matching recipe names appear as you type (any
+      recipe, any match percentage — a deliberate name lookup isn't a
+      suggestion, so this bypasses the match bar below entirely).
+      Tapping one shows its full card regardless of how much you have
+      on hand
+    - Below that, ranked suggestions from what you can actually make
+      right now: a recipe only qualifies once **65% or more** of its
+      ingredients are on hand; below that it's never shown, no matter
+      how few recipes clear the bar (down to none, with a note saying
+      so, rather than padding the list with something you're a third
+      short on). Toggle between two ranking modes any time: **Best
+      match** (the most complete matches first) or **Use up
+      expiring/low** (weighted toward recipes that use ingredients
+      that are expiring soon or already flagged Low, still only among
+      65%+ matches). Only items with quantity above 0 count as
+      "available" — Out items don't. With fewer than **20 items** in
+      inventory, a hint appears above the results explaining that a
+      wider variety makes it more likely something clears the 65% bar
+      — recipe matching is naturally sparse against a small pantry, so
+      this isn't presented as a bug
+
+    Either way, each card lists every ingredient with a ✓ (have) or ✗
+    (missing) mark and how much the recipe calls for. **Use this
+    recipe** feeds just the ingredients you have into the same − Use
+    item review flow as typing or scanning a recipe by hand — same
+    editable cards, same "used 3, not how much is left" deduction,
+    same Delete item button. When anything's missing, **Add missing to
+    shopping list** queues that recipe's gaps for the Create Shopping
+    List panel (toggles to **✓ Added — remove**; add as many recipes
+    as you like, they accumulate). Ingredient matching uses a stricter
+    version of the app's usual close-spelling matching (since nothing
+    here gets a human glancing at it character by character the way
+    typing a name does) — strict enough that "Bell Pepper" won't get
+    silently matched to a jar of "Black Pepper" just because they share
+    the word "pepper"
+  - **🛒 Create Shopping List**: builds one deduped, alphabetized list
+    from three sources — missing ingredients from every recipe you
+    added via "Add missing to shopping list," plus everything
+    currently flagged Low or Out, plus everything expiring soon. Tap
+    **Generate shopping list** to build it fresh from whatever's
+    currently selected/flagged (nothing here is saved — recipes you
+    picked are lost on reload, by design, so the list always reflects
+    your inventory right now, not a stale snapshot). The result shows
+    on screen in a plain-text box you can **📋 Copy to clipboard** and
+    paste into a texting app, notes app, or anywhere else — this app
+    doesn't send texts itself, since actually delivering an SMS needs a
+    paid third-party service, which would break its free/fully-offline
+    design
 - **The main inventory list is entirely view-only**: each card shows
   just the item's name, a "Low"/"Out" flag if it's triggered, and its
   expiration badge — but only once expiration is within **2 weeks** (or
@@ -460,7 +486,7 @@ to full.
 | GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
 | POST   | `/api/receipt/parse`       | Parse OCR'd receipt text into candidate item(s) (read-only) |
 | POST   | `/api/recipe/parse`        | Parse typed/OCR'd recipe ingredients into candidate item(s) to use (read-only) |
-| GET    | `/api/recipes`             | List user-added recipes (name + ingredients) for Suggest recipes |
+| GET    | `/api/recipes`             | List user-added recipes (name + ingredients) for Search Recipes |
 | POST   | `/api/recipes`             | Save a new user recipe |
 | DELETE | `/api/recipes/:id`         | Delete a user recipe |
 
@@ -472,4 +498,5 @@ to full.
 - [x] Barcode scanning
 - [x] Receipt scanning / OCR import
 - [x] Recipe ingredients (text or photo) deduct from inventory
-- [x] Suggest recipes from what's currently in stock
+- [x] Search recipes from what's currently in stock, save your own, and
+      build a shopping list from what's missing
