@@ -201,19 +201,58 @@ function parseIngredientLine(rawLine) {
   };
 }
 
+// A pasted full recipe often starts with its own title line before the
+// ingredient list even begins ("Grandma's Chili\n\nIngredients:\n1 lb
+// ground beef..."). Unlike a section header ("Ingredients:") or a
+// numbered step, a title isn't otherwise recognizable as non-ingredient
+// text, so without this it would get parsed as a bogus "ingredient" of
+// its own (quantity 1, name "Grandma's Chili"). Detected narrowly: only
+// the very first content line, only when it has no leading quantity of
+// its own (a real ingredient almost always does — the same
+// LEADING_QUANTITY_RE check splitCommaGroups() above uses to spot "is
+// this the start of a new ingredient?"), and only when something a few
+// lines further down clearly looks like the real recipe content
+// starting (a quantity-led line, or a structural header) — so a short,
+// quantity-less ingredient list ("Salt\nPepper") is never mistaken for
+// one, since nothing after it would supply that evidence. This still
+// isn't foolproof (a title-less recipe made entirely of bare, unquantified
+// ingredients can slip through), which is exactly why the app shows a
+// review step before saving rather than relying on this alone.
+function stripLeadingTitleLine(lines) {
+  const firstIdx = lines.findIndex((l) => l.trim());
+  if (firstIdx === -1) return lines;
+  const candidate = lines[firstIdx].trim();
+  if (SKIP_LINE_RE.test(candidate) || NUMBERED_STEP_RE.test(candidate)) return lines;
+  if (LEADING_QUANTITY_RE.test(candidate)) return lines;
+
+  const LOOKAHEAD = 5;
+  const hasEvidence = lines
+    .slice(firstIdx + 1, firstIdx + 1 + LOOKAHEAD)
+    .some((l) => {
+      const trimmed = l.trim();
+      if (!trimmed) return false;
+      return LEADING_QUANTITY_RE.test(trimmed) || SKIP_LINE_RE.test(trimmed);
+    });
+  if (!hasEvidence) return lines;
+
+  const copy = [...lines];
+  copy.splice(firstIdx, 1);
+  return copy;
+}
+
 /**
  * Parse raw recipe-ingredient text (typed, pasted, or OCR'd from a photo)
  * into candidate items to use from inventory. Ingredients can be entered
  * one per line, comma-separated on a single line, or just space-separated
  * on a single line with no punctuation — any mix of the three is fine.
- * Non-ingredient lines (section headers, numbered instruction steps) are
- * dropped.
+ * Non-ingredient lines (a leading title, section headers, numbered
+ * instruction steps) are dropped.
  *
  * @param {string} rawText
  * @returns {{items: Array<object>}}
  */
 function parseRecipeText(rawText) {
-  const lines = String(rawText || '').split(/\r?\n/);
+  const lines = stripLeadingTitleLine(String(rawText || '').split(/\r?\n/));
   const candidates = lines.flatMap((line) => {
     const trimmed = line.trim();
     // Skip headers/steps before splitting so "1. Preheat the oven" isn't

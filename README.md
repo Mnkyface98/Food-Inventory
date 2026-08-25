@@ -167,10 +167,20 @@ type and sorted so what's expiring soon or running low surfaces first.
     storage location/category — pantry vs. fridge, produce vs. dairy —
     gets resolved fresh against whatever matches at suggestion time,
     not fixed when you save it, which is a separate thing from the
-    recipe's own meal-type category). It's stored in the database (not
-    the bundled recipes.json file). Below the save form, every
-    available recipe — bundled and yours together — is browsable as a
-    collapsible list grouped by that meal-type category (same
+    recipe's own meal-type category). You can paste a **whole recipe**
+    into that box, not just a bare ingredient list — a leading title
+    line is recognized and dropped automatically (see "Line parsing"
+    below), and section headers/numbered directions are already
+    skipped. Clicking **Save recipe** doesn't save right away: it
+    parses the text and opens a **review step** listing every line it
+    thinks is an ingredient, each with its own **✕** to strike it out
+    (useful for anything the parser couldn't tell apart from an
+    ingredient on its own, like a stray sentence in the directions).
+    **Confirm & save** stores whatever's left; **Back to edit** returns
+    to the text box without saving anything. It's stored in the
+    database (not the bundled recipes.json file). Below the save form,
+    every available recipe — bundled and yours together — is browsable
+    as a collapsible list grouped by that meal-type category (same
     collapsible-heading style as the main inventory list's "All"
     view); a **⭐** marks the ones you added, each with a **✕** to
     delete it (with a confirm, same as deleting an item elsewhere in
@@ -457,7 +467,16 @@ other way.
   clove, can, package, ...). It drops parenthetical asides ("(such as
   Roma)"), prep notes after a comma ("diced", "melted"), section headers
   ("Ingredients:"), and numbered instruction steps ("1. Preheat the
-  oven...") — keeping only plausible ingredient lines.
+  oven...") — keeping only plausible ingredient lines. It also
+  recognizes a **leading title line** (e.g. "Grandma's Chili" at the
+  very top of a pasted recipe) and drops it — but only when a line a
+  few rows down actually looks like real recipe content (has its own
+  quantity, or matches a header/step pattern), so a bare ingredient
+  list with no title never loses its first item by mistake. This is a
+  narrow, rule-based check, not foolproof against every kind of stray
+  text (an odd sentence buried in the directions, for instance) — the
+  **review step** in ⭐ Save Recipes (above) is the general-purpose
+  backstop for anything it doesn't catch.
 - **Flexible entry**: ingredients can go one per line, comma-separated
   on a single line ("2 cups flour, 1 tsp salt, 3 eggs"), or just spaced
   out on a single line with no punctuation at all ("2 cups flour 1 tsp

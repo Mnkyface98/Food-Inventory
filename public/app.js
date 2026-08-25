@@ -78,6 +78,10 @@
   const newRecipeIngredientsInput = document.getElementById('new-recipe-ingredients');
   const addRecipeNote = document.getElementById('add-recipe-note');
   const saveRecipeBtn = document.getElementById('save-recipe-btn');
+  const recipeReviewSection = document.getElementById('recipe-review-section');
+  const recipeReviewListEl = document.getElementById('recipe-review-list');
+  const recipeReviewConfirmBtn = document.getElementById('recipe-review-confirm-btn');
+  const recipeReviewBackBtn = document.getElementById('recipe-review-back-btn');
   const savedRecipesListEl = document.getElementById('saved-recipes-list');
 
   const modeSearchRecipeBtn = document.getElementById('mode-search-recipe-btn');
@@ -1525,6 +1529,52 @@
   // recipes don't all dump onto the screen at once.
   const collapsedRecipeCategories = Object.fromEntries(RECIPE_CATEGORY_ORDER.map((id) => [id, true]));
 
+  // Holds the parsed-but-not-yet-saved ingredients between "Save recipe"
+  // (which only parses) and "Confirm & save" (which actually POSTs) —
+  // lets the user strike out anything the parser got wrong, e.g. a title
+  // line or a stray sentence, before it's stored. Array of {name, quantity, unit}.
+  let pendingRecipeIngredients = null;
+
+  function renderRecipeReviewList() {
+    recipeReviewListEl.innerHTML = '';
+    if (!pendingRecipeIngredients || pendingRecipeIngredients.length === 0) {
+      recipeReviewListEl.innerHTML = '<p class="review-note">Nothing left to save — remove fewer, or go back to edit.</p>';
+      return;
+    }
+    pendingRecipeIngredients.forEach((ing, idx) => {
+      const row = document.createElement('div');
+      row.className = 'saved-recipe-row';
+      const nameEl = document.createElement('span');
+      const qtyText = ing.quantity ? `${ing.quantity}${ing.unit ? ' ' + ing.unit : ''} ` : '';
+      nameEl.textContent = `${qtyText}${ing.name}`;
+      row.appendChild(nameEl);
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'recipe-delete-btn';
+      removeBtn.setAttribute('aria-label', `Remove ${ing.name}`);
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => {
+        pendingRecipeIngredients.splice(idx, 1);
+        renderRecipeReviewList();
+      });
+      row.appendChild(removeBtn);
+      recipeReviewListEl.appendChild(row);
+    });
+  }
+
+  function showRecipeReview(ingredients) {
+    pendingRecipeIngredients = ingredients;
+    saveRecipeBtn.classList.add('hidden');
+    recipeReviewSection.classList.remove('hidden');
+    renderRecipeReviewList();
+  }
+
+  function hideRecipeReview() {
+    pendingRecipeIngredients = null;
+    recipeReviewSection.classList.add('hidden');
+    saveRecipeBtn.classList.remove('hidden');
+  }
+
   function renderSavedRecipeRow(recipe) {
     const row = document.createElement('div');
     row.className = 'saved-recipe-row';
@@ -1607,6 +1657,7 @@
     newRecipeCategorySelect.value = 'other';
     newRecipeIngredientsInput.value = '';
     addRecipeNote.classList.add('hidden');
+    hideRecipeReview();
   }
 
   function openSaveRecipePanel() {
@@ -1636,9 +1687,14 @@
   // works the same way; only name/quantity/unit are kept, since a
   // saved recipe's location/category get resolved fresh against
   // whatever matches at suggestion time, not fixed at save time.
+  //
+  // This button only parses and hands the result to the review step
+  // below — nothing is saved yet. That gives the user a chance to
+  // strike out anything the parser got wrong (a title line, a stray
+  // sentence from directions, etc.) before a full recipe paste is
+  // actually stored.
   saveRecipeBtn.addEventListener('click', async () => {
     const name = newRecipeNameInput.value.trim();
-    const category = newRecipeCategorySelect.value;
     const ingredientsText = newRecipeIngredientsInput.value.trim();
     addRecipeNote.classList.add('hidden');
     if (!name) {
@@ -1658,9 +1714,38 @@
         body: JSON.stringify({ text: ingredientsText }),
       });
       const ingredients = parsed.items.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit }));
+      if (ingredients.length === 0) {
+        addRecipeNote.textContent = "Couldn't find any ingredients in that text.";
+        addRecipeNote.classList.remove('hidden');
+        return;
+      }
+      showRecipeReview(ingredients);
+    } catch (err) {
+      addRecipeNote.textContent = err.message;
+      addRecipeNote.classList.remove('hidden');
+    } finally {
+      saveRecipeBtn.disabled = false;
+    }
+  });
+
+  recipeReviewBackBtn.addEventListener('click', () => {
+    hideRecipeReview();
+  });
+
+  recipeReviewConfirmBtn.addEventListener('click', async () => {
+    const name = newRecipeNameInput.value.trim();
+    const category = newRecipeCategorySelect.value;
+    addRecipeNote.classList.add('hidden');
+    if (!pendingRecipeIngredients || pendingRecipeIngredients.length === 0) {
+      addRecipeNote.textContent = 'Nothing left to save — remove fewer ingredients, or go back to edit.';
+      addRecipeNote.classList.remove('hidden');
+      return;
+    }
+    recipeReviewConfirmBtn.disabled = true;
+    try {
       const saved = await api('/api/recipes', {
         method: 'POST',
-        body: JSON.stringify({ name, category, ingredients }),
+        body: JSON.stringify({ name, category, ingredients: pendingRecipeIngredients }),
       });
       if (recipesData) recipesData.push({ ...saved, source: 'user', key: `user:${saved.id}` });
       closeAddRecipeForm();
@@ -1670,7 +1755,7 @@
       addRecipeNote.textContent = err.message;
       addRecipeNote.classList.remove('hidden');
     } finally {
-      saveRecipeBtn.disabled = false;
+      recipeReviewConfirmBtn.disabled = false;
     }
   });
 

@@ -82,11 +82,25 @@
           <textarea
             id="new-recipe-ingredients"
             rows="5"
-            placeholder="Type or paste ingredients — one per line, comma-separated, or just spaced out. e.g.&#10;2 cups flour, 1 tsp salt&#10;3 eggs"
+            placeholder="Paste a full recipe or just the ingredients — one per line, comma-separated, or just spaced out. e.g.&#10;2 cups flour, 1 tsp salt&#10;3 eggs"
           ></textarea>
         </div>
         <p id="add-recipe-note" class="review-note hidden"></p>
         <button type="button" id="save-recipe-btn" class="btn btn-primary btn-full">Save recipe</button>
+
+        <div id="recipe-review-section" class="hidden">
+          <p class="entry-section-label">Review ingredients</p>
+          <p class="mic-hint">
+            Remove anything that isn't really an ingredient (a title, a
+            stray line from directions, etc.), then confirm.
+          </p>
+          <div id="recipe-review-list" class="saved-recipes-list"></div>
+          <div class="review-card-buttons">
+            <button type="button" id="recipe-review-confirm-btn" class="btn btn-primary">Confirm &amp; save</button>
+            <button type="button" id="recipe-review-back-btn" class="btn btn-secondary">Back to edit</button>
+          </div>
+        </div>
+
         <div id="saved-recipes-list" class="saved-recipes-list"></div>
       </div>
 
