@@ -34,12 +34,102 @@ body {
   top: 0;
   z-index: 10;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
 .app-header h1 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.app-header-account {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.account-email {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 34vw;
+}
+
+.account-logout-btn {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.account-logout-btn:active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: var(--bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 1.6rem 1.4rem;
+}
+
+.auth-title {
+  margin: 0 0 1.1rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.auth-tabs {
+  display: flex;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 1.1rem;
+}
+
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: #fff;
+  color: var(--muted);
+  padding: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.auth-tab.active {
+  background: var(--green);
+  color: #fff;
 }
 
 main {

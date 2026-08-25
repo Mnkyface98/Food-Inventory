@@ -8,11 +8,43 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="app-header">
-    <h1>🥫 Pantry &amp; Fridge</h1>
-  </header>
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <h1 class="auth-title">🥫 Pantry &amp; Fridge</h1>
+      <div class="auth-tabs">
+        <button type="button" id="auth-tab-login" class="auth-tab active" data-mode="login">Log in</button>
+        <button type="button" id="auth-tab-signup" class="auth-tab" data-mode="signup">Sign up</button>
+      </div>
+      <form id="auth-form" autocomplete="on">
+        <div class="field-row">
+          <input id="auth-email" type="email" placeholder="Email" autocomplete="email" required />
+        </div>
+        <div class="field-row">
+          <input
+            id="auth-password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+        <p id="auth-password-hint" class="mic-hint hidden">At least 8 characters.</p>
+        <p id="auth-note" class="review-note hidden"></p>
+        <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-full">Log in</button>
+      </form>
+    </div>
+  </div>
 
-  <main>
+  <div id="app-screen" class="hidden">
+    <header class="app-header">
+      <h1>🥫 Pantry &amp; Fridge</h1>
+      <div class="app-header-account">
+        <span id="account-email" class="account-email"></span>
+        <button type="button" id="logout-btn" class="account-logout-btn">Log out</button>
+      </div>
+    </header>
+
+    <main>
     <section class="add-card" aria-label="Add or use an item">
       <div id="entry-mode-buttons" class="entry-mode-buttons">
         <button type="button" id="mode-add-btn" class="btn btn-primary btn-full">+ Add item</button>
@@ -188,6 +220,7 @@
       </section>
     </div>
   </main>
+  </div>
 
   <div id="barcode-modal" class="barcode-modal hidden" role="dialog" aria-label="Scan a barcode">
     <div class="barcode-modal-inner">

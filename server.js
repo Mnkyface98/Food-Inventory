@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 const db = require('./db');
+const auth = require('./auth');
 const { parseTranscript } = require('./voiceParser');
 const { CATEGORIES, CATEGORY_IDS, guessCategory } = require('./categorize');
 const { RECIPE_CATEGORY_IDS } = require('./recipeCategorize');
@@ -13,8 +15,74 @@ const { parseCsv, stringifyCsv } = require('./csvUtil');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trusts the proxy in front of the app (Render/Railway/Fly.io etc. all
+// terminate HTTPS at their edge and forward plain HTTP internally) so
+// the session cookie's `secure` flag is evaluated correctly instead of
+// always looking like a plain-http request.
+app.set('trust proxy', 1);
+
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// --- Accounts --------------------------------------------------------------
+//
+// Free, self-contained email/password accounts (see auth.js) — every
+// item and recipe belongs to whoever's signed in, and every route below
+// that reads or writes one requires a valid session. The stateless
+// parsing endpoints (voice/receipt/recipe text, barcode lookup) stay
+// open — they don't touch anyone's stored data, so there's nothing to
+// protect there.
+
+app.post('/api/auth/signup', (req, res) => {
+  const { email, password } = req.body || {};
+  const validated = auth.validateSignup(email, password);
+  if (validated.error) {
+    return res.status(400).json({ error: validated.error });
+  }
+  if (auth.findUserByEmail(validated.email)) {
+    return res.status(409).json({ error: 'An account with that email already exists.' });
+  }
+  let user;
+  try {
+    user = auth.createUser(validated.email, validated.password);
+  } catch (err) {
+    // A near-simultaneous signup with the same email can still race past
+    // the check above — the column's own UNIQUE constraint is the real
+    // guard; this just turns that into the same friendly error.
+    return res.status(409).json({ error: 'An account with that email already exists.' });
+  }
+  const token = auth.createSession(user.id);
+  auth.setSessionCookie(res, token);
+  res.status(201).json({ id: user.id, email: user.email });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body || {};
+  const user = auth.findUserByEmail(email);
+  if (!user || !auth.verifyPassword(user, password)) {
+    return res.status(401).json({ error: 'Incorrect email or password.' });
+  }
+  const token = auth.createSession(user.id);
+  auth.setSessionCookie(res, token);
+  res.json({ id: user.id, email: user.email });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  auth.destroySession(req.cookies && req.cookies[auth.SESSION_COOKIE]);
+  auth.clearSessionCookie(res);
+  res.status(204).end();
+});
+
+// Lets the client check "am I signed in" on load without triggering a
+// 401-driven redirect loop the way a requireAuth route would.
+app.get('/api/auth/me', (req, res) => {
+  const user = auth.getUserForToken(req.cookies && req.cookies[auth.SESSION_COOKIE]);
+  if (!user) {
+    return res.status(401).json({ error: 'Not signed in.' });
+  }
+  res.json({ id: user.id, email: user.email });
+});
 
 const VALID_LOCATIONS = new Set(['pantry', 'fridge', 'freezer']);
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -112,10 +180,11 @@ app.get('/api/categories', (req, res) => {
 // they're in); within a category, items with an expiration date sort
 // first (soonest first), then items without one sort by quantity
 // ascending (low-stock first).
-app.get('/api/items', (req, res) => {
+app.get('/api/items', auth.requireAuth, (req, res) => {
   const rows = db
     .prepare(
       `SELECT * FROM items
+       WHERE user_id = ?
        ORDER BY
          category,
          CASE WHEN expiration_date IS NOT NULL AND expiration_date != '' THEN 0 ELSE 1 END,
@@ -124,13 +193,14 @@ app.get('/api/items', (req, res) => {
          location,
          name COLLATE NOCASE`
     )
-    .all();
+    .all(req.user.id);
   res.json(rows.map(serializeItem));
 });
 
 // Create a new item, or if an item with the same name/unit/location already
-// exists, add to its quantity instead of creating a duplicate row.
-app.post('/api/items', (req, res) => {
+// exists FOR THIS ACCOUNT, add to its quantity instead of creating a
+// duplicate row.
+app.post('/api/items', auth.requireAuth, (req, res) => {
   const {
     name, quantity, unit, location, category, expirationDate,
     packSize, fullnessUnit, fullnessAmount, fullnessTotal,
@@ -156,9 +226,9 @@ app.post('/api/items', (req, res) => {
   const existing = db
     .prepare(
       `SELECT * FROM items
-       WHERE name = ? COLLATE NOCASE AND unit = ? COLLATE NOCASE AND location = ?`
+       WHERE user_id = ? AND name = ? COLLATE NOCASE AND unit = ? COLLATE NOCASE AND location = ?`
     )
-    .get(cleanName, cleanUnit, cleanLocation);
+    .get(req.user.id, cleanName, cleanUnit, cleanLocation);
 
   let row;
   if (existing) {
@@ -176,23 +246,23 @@ app.post('/api/items', (req, res) => {
     db.prepare(
       `UPDATE items SET quantity = ?, expiration_date = ?, pack_size = ?,
          fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
-         updated_at = datetime('now') WHERE id = ?`
+         updated_at = datetime('now') WHERE id = ? AND user_id = ?`
     ).run(
       newQty, mergedExpiration, mergedPack,
       clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull,
-      existing.id
+      existing.id, req.user.id
     );
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(existing.id);
   } else {
     const clamped = clampFullnessToQuantity(qty, cleanFullnessUnitVal, cleanFullnessAmount, cleanFullnessTotal);
     const info = db
       .prepare(
-        `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size,
+        `INSERT INTO items (user_id, name, quantity, unit, location, category, expiration_date, pack_size,
            fullness_unit, fullness_amount, fullness_total, percent_full)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
-        cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack,
+        req.user.id, cleanName, qty, cleanUnit, cleanLocation, cleanCategory, cleanExpiration, cleanPack,
         clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull
       );
     row = db.prepare('SELECT * FROM items WHERE id = ?').get(info.lastInsertRowid);
@@ -218,8 +288,10 @@ const CSV_EXPORT_HEADER = [
   'packSize', 'fullnessUnit', 'fullnessAmount', 'fullnessTotal',
 ];
 
-app.get('/api/items/export.csv', (req, res) => {
-  const rows = db.prepare('SELECT * FROM items ORDER BY category, name COLLATE NOCASE').all();
+app.get('/api/items/export.csv', auth.requireAuth, (req, res) => {
+  const rows = db
+    .prepare('SELECT * FROM items WHERE user_id = ? ORDER BY category, name COLLATE NOCASE')
+    .all(req.user.id);
   const csvRows = [CSV_EXPORT_HEADER];
   for (const row of rows) {
     const item = serializeItem(row);
@@ -306,10 +378,11 @@ function itemFieldsChanged(existing, fields) {
   );
 }
 
-// Parses + diffs an uploaded CSV against the current database. Read-only
-// — never writes. Shared by /preview and /commit so both run identically;
-// /commit just applies the result instead of only returning it.
-function computeImportPlan(text) {
+// Parses + diffs an uploaded CSV against the current database, scoped to
+// one account. Read-only — never writes. Shared by /preview and /commit
+// so both run identically; /commit just applies the result instead of
+// only returning it.
+function computeImportPlan(text, userId) {
   const rows = parseCsv(text);
   if (rows.length === 0) {
     return { error: 'The file is empty.' };
@@ -323,7 +396,7 @@ function computeImportPlan(text) {
     return { error: 'The file needs at least "name" and "quantity" columns.' };
   }
 
-  const existingItems = db.prepare('SELECT * FROM items').all();
+  const existingItems = db.prepare('SELECT * FROM items WHERE user_id = ?').all(userId);
   const existingById = new Map(existingItems.map((it) => [it.id, it]));
   const seenIds = new Set();
 
@@ -366,19 +439,19 @@ function computeImportPlan(text) {
   return { toAdd, toUpdate, toDelete, errors };
 }
 
-app.post('/api/items/import/preview', (req, res) => {
+app.post('/api/items/import/preview', auth.requireAuth, (req, res) => {
   const text = typeof req.body?.csv === 'string' ? req.body.csv : '';
   if (!text.trim()) {
     return res.status(400).json({ error: 'csv is required.' });
   }
-  const plan = computeImportPlan(text);
+  const plan = computeImportPlan(text, req.user.id);
   if (plan.error) {
     return res.status(400).json({ error: plan.error });
   }
   res.json(plan);
 });
 
-app.post('/api/items/import/commit', (req, res) => {
+app.post('/api/items/import/commit', auth.requireAuth, (req, res) => {
   const text = typeof req.body?.csv === 'string' ? req.body.csv : '';
   if (!text.trim()) {
     return res.status(400).json({ error: 'csv is required.' });
@@ -387,38 +460,38 @@ app.post('/api/items/import/commit', (req, res) => {
   // before writing, rather than trusting a plan computed moments earlier
   // during /preview — closes the (small but real) window where something
   // else could have changed the database in between.
-  const plan = computeImportPlan(text);
+  const plan = computeImportPlan(text, req.user.id);
   if (plan.error) {
     return res.status(400).json({ error: plan.error });
   }
 
   const insertStmt = db.prepare(
-    `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size,
+    `INSERT INTO items (user_id, name, quantity, unit, location, category, expiration_date, pack_size,
        fullness_unit, fullness_amount, fullness_total, percent_full)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const updateStmt = db.prepare(
     `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?,
        pack_size = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
-       updated_at = datetime('now') WHERE id = ?`
+       updated_at = datetime('now') WHERE id = ? AND user_id = ?`
   );
-  const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
+  const deleteStmt = db.prepare('DELETE FROM items WHERE id = ? AND user_id = ?');
 
   const applyImport = db.transaction(() => {
     for (const { fields: f } of plan.toAdd) {
       insertStmt.run(
-        f.name, f.quantity, f.unit, f.location, f.category, f.expirationDate, f.packSize,
+        req.user.id, f.name, f.quantity, f.unit, f.location, f.category, f.expirationDate, f.packSize,
         f.fullnessUnit, f.fullnessAmount, f.fullnessTotal, f.percentFull
       );
     }
     for (const { id, fields: f } of plan.toUpdate) {
       updateStmt.run(
         f.name, f.quantity, f.unit, f.location, f.category, f.expirationDate, f.packSize,
-        f.fullnessUnit, f.fullnessAmount, f.fullnessTotal, f.percentFull, id
+        f.fullnessUnit, f.fullnessAmount, f.fullnessTotal, f.percentFull, id, req.user.id
       );
     }
     for (const { id } of plan.toDelete) {
-      deleteStmt.run(id);
+      deleteStmt.run(id, req.user.id);
     }
   });
   applyImport();
@@ -427,14 +500,14 @@ app.post('/api/items/import/commit', (req, res) => {
 });
 
 // Adjust an item's quantity up or down (used by the +/- and "Use" buttons).
-app.post('/api/items/:id/adjust', (req, res) => {
+app.post('/api/items/:id/adjust', auth.requireAuth, (req, res) => {
   const { id } = req.params;
   const delta = Number(req.body && req.body.delta);
   if (!Number.isFinite(delta)) {
     return res.status(400).json({ error: 'delta must be a number.' });
   }
 
-  const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get(id, req.user.id);
   if (!existing) {
     return res.status(404).json({ error: 'Item not found.' });
   }
@@ -443,8 +516,8 @@ app.post('/api/items/:id/adjust', (req, res) => {
   const clamped = clampFullnessToQuantity(newQty, existing.fullness_unit, existing.fullness_amount, existing.fullness_total);
   db.prepare(
     `UPDATE items SET quantity = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?,
-       percent_full = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id);
+       percent_full = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`
+  ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id, req.user.id);
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
 });
@@ -459,7 +532,7 @@ app.post('/api/items/:id/adjust', (req, res) => {
 // unit — e.g. "3" eggs) it falls back to a plain quantity decrement, same
 // as /adjust. You only ever say how much was USED; the app computes
 // what's left.
-app.post('/api/items/:id/use', (req, res) => {
+app.post('/api/items/:id/use', auth.requireAuth, (req, res) => {
   const { id } = req.params;
   const amount = Number(req.body && req.body.amount);
   const unit = typeof req.body?.unit === 'string' ? req.body.unit.trim() : '';
@@ -467,7 +540,7 @@ app.post('/api/items/:id/use', (req, res) => {
     return res.status(400).json({ error: 'amount must be a non-negative number.' });
   }
 
-  const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get(id, req.user.id);
   if (!existing) {
     return res.status(404).json({ error: 'Item not found.' });
   }
@@ -485,15 +558,15 @@ app.post('/api/items/:id/use', (req, res) => {
     const newFullnessAmount = Math.max(0, existing.fullness_amount - converted);
     const newPercent = computePercentFull(newFullnessAmount, existing.fullness_total);
     db.prepare(
-      `UPDATE items SET fullness_amount = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(newFullnessAmount, newPercent, id);
+      `UPDATE items SET fullness_amount = ?, percent_full = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`
+    ).run(newFullnessAmount, newPercent, id, req.user.id);
   } else {
     const newQty = Math.max(0, existing.quantity - amount);
     const clamped = clampFullnessToQuantity(newQty, existing.fullness_unit, existing.fullness_amount, existing.fullness_total);
     db.prepare(
       `UPDATE items SET quantity = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?,
-         percent_full = ?, updated_at = datetime('now') WHERE id = ?`
-    ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id);
+         percent_full = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`
+    ).run(newQty, clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull, id, req.user.id);
   }
 
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
@@ -501,9 +574,9 @@ app.post('/api/items/:id/use', (req, res) => {
 });
 
 // Update an item's fields directly (rename, retype unit/location, set quantity).
-app.put('/api/items/:id', (req, res) => {
+app.put('/api/items/:id', auth.requireAuth, (req, res) => {
   const { id } = req.params;
-  const existing = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
+  const existing = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get(id, req.user.id);
   if (!existing) {
     return res.status(404).json({ error: 'Item not found.' });
   }
@@ -539,11 +612,11 @@ app.put('/api/items/:id', (req, res) => {
   db.prepare(
     `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?,
        pack_size = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
-       updated_at = datetime('now') WHERE id = ?`
+       updated_at = datetime('now') WHERE id = ? AND user_id = ?`
   ).run(
     name, qty, unit, location, category, expirationDate, packSize,
     clamped.fullnessUnit, clamped.fullnessAmount, clamped.fullnessTotal, clamped.percentFull,
-    id
+    id, req.user.id
   );
   const row = db.prepare('SELECT * FROM items WHERE id = ?').get(id);
   res.json(serializeItem(row));
@@ -691,12 +764,12 @@ function serializeRecipe(row) {
   return { id: row.id, name: row.name, ingredients, category: row.category || 'other' };
 }
 
-app.get('/api/recipes', (req, res) => {
-  const rows = db.prepare('SELECT * FROM recipes ORDER BY created_at DESC').all();
+app.get('/api/recipes', auth.requireAuth, (req, res) => {
+  const rows = db.prepare('SELECT * FROM recipes WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id);
   res.json(rows.map(serializeRecipe));
 });
 
-app.post('/api/recipes', (req, res) => {
+app.post('/api/recipes', auth.requireAuth, (req, res) => {
   const { name, ingredients, category } = req.body || {};
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Recipe name is required.' });
@@ -717,14 +790,14 @@ app.post('/api/recipes', (req, res) => {
   const cleanCategory = RECIPE_CATEGORY_IDS.has(category) ? category : 'other';
 
   const info = db
-    .prepare('INSERT INTO recipes (name, ingredients, category) VALUES (?, ?, ?)')
-    .run(name.trim(), JSON.stringify(cleanedIngredients), cleanCategory);
+    .prepare('INSERT INTO recipes (user_id, name, ingredients, category) VALUES (?, ?, ?, ?)')
+    .run(req.user.id, name.trim(), JSON.stringify(cleanedIngredients), cleanCategory);
   const row = db.prepare('SELECT * FROM recipes WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(serializeRecipe(row));
 });
 
-app.delete('/api/recipes/:id', (req, res) => {
-  const info = db.prepare('DELETE FROM recipes WHERE id = ?').run(req.params.id);
+app.delete('/api/recipes/:id', auth.requireAuth, (req, res) => {
+  const info = db.prepare('DELETE FROM recipes WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
   if (info.changes === 0) {
     return res.status(404).json({ error: 'Recipe not found.' });
   }
@@ -732,9 +805,9 @@ app.delete('/api/recipes/:id', (req, res) => {
 });
 
 // Delete an item entirely.
-app.delete('/api/items/:id', (req, res) => {
+app.delete('/api/items/:id', auth.requireAuth, (req, res) => {
   const { id } = req.params;
-  const info = db.prepare('DELETE FROM items WHERE id = ?').run(id);
+  const info = db.prepare('DELETE FROM items WHERE id = ? AND user_id = ?').run(id, req.user.id);
   if (info.changes === 0) {
     return res.status(404).json({ error: 'Item not found.' });
   }

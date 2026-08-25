@@ -14,6 +14,25 @@ const DB_PATH = path.join(DATA_DIR, 'inventory.db');
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
+// Accounts — see auth.js. Sessions are opaque tokens, not JWTs, so a
+// logout (or an admin revoking access) is just deleting the row.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,12 +66,19 @@ const MIGRATIONS = [
   ["ALTER TABLE items ADD COLUMN fullness_unit TEXT", 'fullness_unit'],
   ["ALTER TABLE items ADD COLUMN fullness_amount REAL", 'fullness_amount'],
   ["ALTER TABLE items ADD COLUMN fullness_total REAL", 'fullness_total'],
+  // user_id: which account this item belongs to — added once the app
+  // moved from one shared inventory to per-account ones. A row from
+  // before that (user_id NULL) belongs to no one and won't show up for
+  // anyone; there's no migration path for it since there was never a
+  // concept of "whose" it was.
+  ['ALTER TABLE items ADD COLUMN user_id INTEGER', 'user_id'],
 ];
 for (const [sql, column] of MIGRATIONS) {
   if (!existingColumns.has(column)) {
     db.exec(sql);
   }
 }
+db.exec('CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id)');
 
 // User-added recipes for the Suggest recipes feature — separate from the
 // bundled recipes.json list (which stays a static file, not DB rows), so
@@ -75,5 +101,12 @@ const existingRecipeColumns = new Set(db.prepare('PRAGMA table_info(recipes)').a
 if (!existingRecipeColumns.has('category')) {
   db.exec("ALTER TABLE recipes ADD COLUMN category TEXT NOT NULL DEFAULT 'other'");
 }
+// user_id: same per-account ownership as items.user_id above — the
+// bundled recipes.json list stays a shared, unowned static file, only
+// recipes saved through the app belong to whoever saved them.
+if (!existingRecipeColumns.has('user_id')) {
+  db.exec('ALTER TABLE recipes ADD COLUMN user_id INTEGER');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_recipes_user_id ON recipes(user_id)');
 
 module.exports = db;

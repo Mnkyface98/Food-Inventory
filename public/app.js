@@ -1,4 +1,17 @@
 (() => {
+  const authScreen = document.getElementById('auth-screen');
+  const appScreen = document.getElementById('app-screen');
+  const authTabLogin = document.getElementById('auth-tab-login');
+  const authTabSignup = document.getElementById('auth-tab-signup');
+  const authForm = document.getElementById('auth-form');
+  const authEmailInput = document.getElementById('auth-email');
+  const authPasswordInput = document.getElementById('auth-password');
+  const authPasswordHint = document.getElementById('auth-password-hint');
+  const authNote = document.getElementById('auth-note');
+  const authSubmitBtn = document.getElementById('auth-submit-btn');
+  const accountEmailEl = document.getElementById('account-email');
+  const logoutBtn = document.getElementById('logout-btn');
+
   const listEl = document.getElementById('item-list');
   const emptyStateEl = document.getElementById('empty-state');
   const statusLineEl = document.getElementById('status-line');
@@ -342,6 +355,15 @@
       headers: { 'Content-Type': 'application/json' },
       ...options,
     });
+    // A session can expire (or get signed out in another tab) mid-use.
+    // /api/auth/* routes handle their own 401s (a wrong password, or the
+    // "am I signed in" check on load) — everywhere else, a 401 means the
+    // session that was here a moment ago no longer is, so bounce back to
+    // the login screen instead of leaving the app up showing stale data.
+    if (res.status === 401 && !path.startsWith('/api/auth/')) {
+      showSessionExpired();
+      throw new Error('Signed out — please log in again.');
+    }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `Request failed (${res.status})`);
@@ -2504,5 +2526,83 @@
     }
   });
 
-  loadCategories().then(loadItems);
+  // --- Accounts ----------------------------------------------------------
+  //
+  // The whole app sits behind a login screen — every item/recipe belongs
+  // to whoever's signed in (see auth.js/server.js). On load, this checks
+  // whether a session cookie is already valid and shows the app or the
+  // login/signup form accordingly. A session expiring mid-use (see
+  // api()'s 401 handling above) reloads the page, which re-runs this
+  // same check from scratch — simpler and more robust than trying to
+  // partially reset in-memory state (items, recipesData, ...) by hand.
+
+  let authMode = 'login'; // 'login' | 'signup' — which the form currently submits as
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    authTabLogin.classList.toggle('active', mode === 'login');
+    authTabSignup.classList.toggle('active', mode === 'signup');
+    authSubmitBtn.textContent = mode === 'login' ? 'Log in' : 'Sign up';
+    authPasswordInput.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+    authPasswordHint.classList.toggle('hidden', mode === 'login');
+    authNote.classList.add('hidden');
+  }
+
+  authTabLogin.addEventListener('click', () => setAuthMode('login'));
+  authTabSignup.addEventListener('click', () => setAuthMode('signup'));
+
+  function showSessionExpired() {
+    appScreen.classList.add('hidden');
+    authScreen.classList.remove('hidden');
+    showToast('Signed out — please log in again.');
+    setTimeout(() => location.reload(), 1200);
+  }
+
+  async function startApp(user) {
+    authScreen.classList.add('hidden');
+    appScreen.classList.remove('hidden');
+    accountEmailEl.textContent = user.email;
+    await loadCategories();
+    await loadItems();
+  }
+
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      // Signing out locally regardless of whether the request succeeded
+      // — there's nothing useful to show the user if it didn't.
+    }
+    location.reload();
+  });
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value;
+    authNote.classList.add('hidden');
+    authSubmitBtn.disabled = true;
+    try {
+      const user = await api(authMode === 'login' ? '/api/auth/login' : '/api/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      authPasswordInput.value = '';
+      await startApp(user);
+    } catch (err) {
+      authNote.textContent = err.message;
+      authNote.classList.remove('hidden');
+    } finally {
+      authSubmitBtn.disabled = false;
+    }
+  });
+
+  (async function initAuth() {
+    try {
+      const user = await api('/api/auth/me');
+      await startApp(user);
+    } catch (err) {
+      authScreen.classList.remove('hidden');
+    }
+  })();
 })();

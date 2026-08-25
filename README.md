@@ -305,12 +305,40 @@ To use it from your phone on the same network, find your computer's LAN IP
 (e.g. `192.168.1.23`) and visit `http://<that-ip>:3000` from your phone's
 browser.
 
+The first thing you'll see is a login/signup screen (see **Accounts**
+below) — create an account with any email and an 8+ character password to
+get started; there's no email verification step.
+
+## Accounts
+
+The app sits behind a login screen, and every item and recipe belongs to
+whoever's signed in — sign up with anyone else (a family member, a
+friend you shared the link with) and they get their own separate,
+private inventory, not yours. There's no "household" or shared-inventory
+concept; if two people want to see the same list, they currently need to
+share one login.
+
+- **Sign up** with any email address and a password (8+ characters
+  minimum) — no email verification, no confirmation link, since this
+  is a self-hosted personal tool, not a service sending you email.
+- **Passwords are hashed** (bcrypt) before they're ever written to the
+  database — the app never stores or logs your actual password.
+- Signing in sets a secure, `httpOnly` session cookie (not a token
+  you'll ever see or need to copy) that stays signed in for 30 days.
+  **Log out** (top right, once signed in) ends that session
+  immediately; if it's ever missing or expired, you're bounced back to
+  the login screen instead of the app quietly failing.
+- There's currently no "forgot password" flow — if you lose a
+  password, someone with access to the server can reset it directly in
+  the database (there's no UI for this yet).
+
 ## Data storage
 
-Data is stored in `data/inventory.db` (created automatically on first run).
-This file is the source of truth for your inventory — back it up if you
+Data is stored in `data/inventory.db` (created automatically on first run)
+— accounts, sessions, and every item/recipe, all in one SQLite file. This
+file is the source of truth for everyone's inventory — back it up if you
 care about the data, and don't delete the `data/` directory unless you want
-to start fresh.
+to start fresh (which deletes every account along with it, not just one).
 
 If you deploy this app somewhere, make sure the `data/` directory (or
 whatever you set `DATA_DIR` to) is on a **persistent disk/volume** — on
@@ -570,8 +598,12 @@ to full.
 
 | Method | Path                     | Description                             |
 | ------ | ------------------------ | ---------------------------------------- |
+| POST   | `/api/auth/signup`         | Create an account (email + 8+ char password), signs you in |
+| POST   | `/api/auth/login`          | Sign in to an existing account          |
+| POST   | `/api/auth/logout`         | End the current session                 |
+| GET    | `/api/auth/me`              | Who's currently signed in (401 if no one) |
 | GET    | `/api/categories`          | List valid food categories              |
-| GET    | `/api/items`              | List all items (grouped by category, low-stock/expiring first) |
+| GET    | `/api/items`              | List the signed-in account's items (grouped by category, low-stock/expiring first) — **requires being signed in**, as do every other `/api/items*` and `/api/recipes*` route below |
 | POST   | `/api/items`               | Add an item (merges into an existing matching item; category auto-guessed if omitted; expiration date kept as the sooner of the two on merge) |
 | POST   | `/api/items/:id/adjust`    | Adjust quantity by a delta (+1 / -1)    |
 | POST   | `/api/items/:id/use`       | Deduct a used amount+unit — converts into the item's tracked weight/volume when compatible, otherwise decrements quantity |
@@ -599,3 +631,6 @@ to full.
 - [x] Search recipes from what's currently in stock, save your own, and
       build a shopping list from what's missing
 - [x] CSV export/import — full round trip through any spreadsheet app
+- [x] Accounts — everyone who signs up gets their own private inventory
+- [ ] Shared/household inventories (multiple accounts, one list)
+- [ ] Password reset flow
