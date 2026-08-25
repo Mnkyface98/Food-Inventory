@@ -278,6 +278,9 @@ type and sorted so what's expiring soon or running low surfaces first.
   every section to however you last left it
 - Responsive, large-tap-target layout designed for phone browsers
 - Persistent storage via SQLite (survives server restarts)
+- **⬇️ Export CSV / ⬆️ Import CSV** (below the search box): download your
+  whole inventory as a spreadsheet, edit it anywhere, and upload it back
+  — see below for exactly how the round trip works
 
 ## Getting started
 
@@ -436,6 +439,48 @@ restocking it. Switch any card to Add if one should go the other way.
   item's whole-number count instead — the same behavior as any other
   Use action in the app.
 
+## CSV export/import
+
+A full round trip between your inventory and any spreadsheet app —
+Excel, Google Sheets, Numbers, whatever you have. Both live below the
+search box on the home view.
+
+- **⬇️ Export CSV** downloads a snapshot of your whole inventory as-is
+  — every column the app tracks (name, quantity, unit, location,
+  category, expiration date, pack size, weight/volume) plus a hidden
+  `id` column that's how the app recognizes "this is the same item"
+  when you upload it back, even if you've retyped its name slightly.
+- Edit it however you like: fix quantities after a big shopping trip,
+  correct an expiration date, add a new row for something you just
+  bought — no app needed for any of that part.
+- **⬆️ Import CSV** uploads the edited file back. Nothing saves
+  immediately — first you get a review screen, the same "confirm
+  before anything's written" pattern every other entry method in this
+  app already uses, listing exactly what will happen:
+  - A row with an **id** matching an existing item **updates** it —
+    only if something on that row actually differs from what's
+    currently stored, so re-importing an unedited export shows no
+    changes at all.
+  - A row with a **blank id** is a **new item**.
+  - **The spreadsheet is treated as the complete picture, not a
+    partial patch**: any item currently in your inventory that isn't
+    in the file at all gets **deleted**. This is the one genuinely
+    destructive part of the whole app that isn't a single explicit
+    "delete this item" tap, so it gets its own clearly-marked section
+    in the review (styled like the delete button elsewhere) and a
+    second, explicit confirmation naming exactly what's about to be
+    removed before anything is actually applied.
+  - A row with a problem (a bad quantity, an id that no longer
+    exists, no name at all) is skipped and listed separately — it's
+    never applied, but **if it references an existing item, that
+    item still counts as "missing from the file" and gets deleted
+    unless you fix the row and re-upload**. Worth reading that
+    section of the review closely for exactly this reason.
+- The category column accepts the same ids used elsewhere in the app
+  (`dairy_eggs`, `beverages`, ...) — an unrecognized or blank category
+  falls back to guessing one from the name, the same as every other
+  entry method.
+
 ## What counts as "low stock"
 
 Rather than one flat number for every item, each item is checked against
@@ -518,6 +563,9 @@ to full.
 | POST   | `/api/items/:id/use`       | Deduct a used amount+unit — converts into the item's tracked weight/volume when compatible, otherwise decrements quantity |
 | PUT    | `/api/items/:id`           | Update an item's fields directly        |
 | DELETE | `/api/items/:id`           | Remove an item                          |
+| GET    | `/api/items/export.csv`    | Download the whole inventory as CSV (with an `id` column) |
+| POST   | `/api/items/import/preview` | Parse+diff an uploaded CSV against current inventory (read-only — returns what would change) |
+| POST   | `/api/items/import/commit` | Re-parses/re-diffs the same CSV and applies it: adds/updates matched rows, deletes anything missing from the file |
 | POST   | `/api/voice/parse`         | Parse a sentence into structured item(s) (read-only — doesn't write to the DB) |
 | GET    | `/api/barcode/:code`       | Look up a barcode via Open Food Facts (read-only) |
 | POST   | `/api/receipt/parse`       | Parse OCR'd receipt text into candidate item(s) (read-only) |
@@ -536,3 +584,4 @@ to full.
 - [x] Recipe ingredients (text or photo) deduct from inventory
 - [x] Search recipes from what's currently in stock, save your own, and
       build a shopping list from what's missing
+- [x] CSV export/import — full round trip through any spreadsheet app

@@ -8,6 +8,7 @@ const { lookupBarcode } = require('./barcode');
 const { parseReceiptText } = require('./receiptParser');
 const { parseRecipeText } = require('./recipeParser');
 const { convert: convertUnit } = require('./unitConvert');
+const { parseCsv, stringifyCsv } = require('./csvUtil');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -198,6 +199,231 @@ app.post('/api/items', (req, res) => {
   }
 
   res.status(201).json(serializeItem(row));
+});
+
+// --- CSV export/import ----------------------------------------------------
+//
+// Export: a full-fidelity snapshot (every column PUT /api/items/:id
+// understands, plus id) you can open and edit in any spreadsheet app.
+// Import mirrors the spreadsheet back onto the database: a row with an
+// existing id updates that item, a row with no id becomes a new item,
+// and — since the spreadsheet is treated as the full picture, not a
+// partial patch — any item whose id doesn't appear in the file at all
+// gets deleted. Preview and commit run the exact same parsing/diffing
+// logic (computeImportPlan), so what you review is exactly what gets
+// applied; nothing is written to the database until /commit is called.
+
+const CSV_EXPORT_HEADER = [
+  'id', 'name', 'quantity', 'unit', 'location', 'category', 'expirationDate',
+  'packSize', 'fullnessUnit', 'fullnessAmount', 'fullnessTotal',
+];
+
+app.get('/api/items/export.csv', (req, res) => {
+  const rows = db.prepare('SELECT * FROM items ORDER BY category, name COLLATE NOCASE').all();
+  const csvRows = [CSV_EXPORT_HEADER];
+  for (const row of rows) {
+    const item = serializeItem(row);
+    csvRows.push([
+      item.id, item.name, item.quantity, item.unit, item.location, item.category,
+      item.expirationDate ?? '', item.packSize ?? '', item.fullnessUnit ?? '',
+      item.fullnessAmount ?? '', item.fullnessTotal ?? '',
+    ]);
+  }
+  const filename = `pantry-inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(stringifyCsv(csvRows));
+});
+
+function csvCol(row, headerIndex, name) {
+  const idx = headerIndex[name.toLowerCase()];
+  return idx == null || idx >= row.length ? '' : (row[idx] || '').trim();
+}
+
+// Parses one data row into either a validated {id, fields} candidate or
+// an {error} — never throws, so one bad row doesn't abort the whole
+// import; it's just reported back and excluded, same tolerant spirit as
+// every other parser in this app (receipt/voice/recipe).
+function parseImportRow(headerIndex, row) {
+  const name = csvCol(row, headerIndex, 'name');
+  if (!name) return { error: 'Missing name' };
+
+  const quantityRaw = csvCol(row, headerIndex, 'quantity');
+  const quantity = quantityRaw === '' ? 0 : Number(quantityRaw);
+  if (!Number.isFinite(quantity) || quantity < 0) {
+    return { error: `Invalid quantity "${quantityRaw}"` };
+  }
+
+  const idRaw = csvCol(row, headerIndex, 'id');
+  let id = null;
+  if (idRaw) {
+    const n = Number(idRaw);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+      return { error: `Invalid id "${idRaw}"` };
+    }
+    id = n;
+  }
+
+  const unit = csvCol(row, headerIndex, 'unit');
+  const locationRaw = csvCol(row, headerIndex, 'location');
+  const location = VALID_LOCATIONS.has(locationRaw) ? locationRaw : 'pantry';
+  const categoryRaw = csvCol(row, headerIndex, 'category');
+  const category = CATEGORY_IDS.has(categoryRaw) ? categoryRaw : guessCategory(name);
+  const expirationDate = cleanExpirationDate(csvCol(row, headerIndex, 'expirationdate'));
+  const packSize = cleanPackSize(csvCol(row, headerIndex, 'packsize'));
+  const fullnessUnitVal = cleanFullnessUnit(csvCol(row, headerIndex, 'fullnessunit'));
+  const fullnessAmount = cleanPositiveAmount(csvCol(row, headerIndex, 'fullnessamount'));
+  const fullnessTotal = cleanPositiveAmount(csvCol(row, headerIndex, 'fullnesstotal'));
+  const clamped = clampFullnessToQuantity(quantity, fullnessUnitVal, fullnessAmount, fullnessTotal);
+
+  return {
+    id,
+    fields: {
+      name, quantity, unit, location, category, expirationDate, packSize,
+      fullnessUnit: clamped.fullnessUnit,
+      fullnessAmount: clamped.fullnessAmount,
+      fullnessTotal: clamped.fullnessTotal,
+      percentFull: clamped.percentFull,
+    },
+  };
+}
+
+// True if any field an import row can actually change is different from
+// what's currently stored — an unmodified row (re-exported, then
+// re-imported untouched) shouldn't show up as a no-op "update".
+function itemFieldsChanged(existing, fields) {
+  return (
+    existing.name !== fields.name ||
+    existing.quantity !== fields.quantity ||
+    existing.unit !== fields.unit ||
+    existing.location !== fields.location ||
+    existing.category !== fields.category ||
+    (existing.expiration_date || null) !== fields.expirationDate ||
+    (existing.pack_size ?? null) !== fields.packSize ||
+    (existing.fullness_unit ?? null) !== fields.fullnessUnit ||
+    (existing.fullness_amount ?? null) !== fields.fullnessAmount ||
+    (existing.fullness_total ?? null) !== fields.fullnessTotal
+  );
+}
+
+// Parses + diffs an uploaded CSV against the current database. Read-only
+// — never writes. Shared by /preview and /commit so both run identically;
+// /commit just applies the result instead of only returning it.
+function computeImportPlan(text) {
+  const rows = parseCsv(text);
+  if (rows.length === 0) {
+    return { error: 'The file is empty.' };
+  }
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const headerIndex = {};
+  header.forEach((h, i) => {
+    if (!(h in headerIndex)) headerIndex[h] = i;
+  });
+  if (headerIndex.name === undefined || headerIndex.quantity === undefined) {
+    return { error: 'The file needs at least "name" and "quantity" columns.' };
+  }
+
+  const existingItems = db.prepare('SELECT * FROM items').all();
+  const existingById = new Map(existingItems.map((it) => [it.id, it]));
+  const seenIds = new Set();
+
+  const toAdd = [];
+  const toUpdate = [];
+  const errors = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.length === 1 && row[0] === '') continue; // a genuinely blank line — skip silently
+    const rowNumber = i + 1; // 1-indexed and header-inclusive, matching what a spreadsheet shows
+    const parsed = parseImportRow(headerIndex, row);
+    if (parsed.error) {
+      errors.push({ rowNumber, error: parsed.error });
+      continue;
+    }
+    if (parsed.id != null) {
+      const existing = existingById.get(parsed.id);
+      if (!existing) {
+        errors.push({ rowNumber, error: `No item with id ${parsed.id} — it may already be gone.` });
+        continue;
+      }
+      seenIds.add(parsed.id);
+      if (itemFieldsChanged(existing, parsed.fields)) {
+        toUpdate.push({ id: parsed.id, name: parsed.fields.name, fields: parsed.fields });
+      }
+    } else {
+      toAdd.push({ fields: parsed.fields });
+    }
+  }
+
+  // The spreadsheet is treated as the complete picture — any existing
+  // item whose id never showed up in the file gets deleted, not just
+  // ones the user explicitly marked. This is the whole reason import
+  // shows a review before committing anything.
+  const toDelete = existingItems
+    .filter((it) => !seenIds.has(it.id))
+    .map((it) => ({ id: it.id, name: it.name }));
+
+  return { toAdd, toUpdate, toDelete, errors };
+}
+
+app.post('/api/items/import/preview', (req, res) => {
+  const text = typeof req.body?.csv === 'string' ? req.body.csv : '';
+  if (!text.trim()) {
+    return res.status(400).json({ error: 'csv is required.' });
+  }
+  const plan = computeImportPlan(text);
+  if (plan.error) {
+    return res.status(400).json({ error: plan.error });
+  }
+  res.json(plan);
+});
+
+app.post('/api/items/import/commit', (req, res) => {
+  const text = typeof req.body?.csv === 'string' ? req.body.csv : '';
+  if (!text.trim()) {
+    return res.status(400).json({ error: 'csv is required.' });
+  }
+  // Re-parses and re-diffs against the database's current state right
+  // before writing, rather than trusting a plan computed moments earlier
+  // during /preview — closes the (small but real) window where something
+  // else could have changed the database in between.
+  const plan = computeImportPlan(text);
+  if (plan.error) {
+    return res.status(400).json({ error: plan.error });
+  }
+
+  const insertStmt = db.prepare(
+    `INSERT INTO items (name, quantity, unit, location, category, expiration_date, pack_size,
+       fullness_unit, fullness_amount, fullness_total, percent_full)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const updateStmt = db.prepare(
+    `UPDATE items SET name = ?, quantity = ?, unit = ?, location = ?, category = ?, expiration_date = ?,
+       pack_size = ?, fullness_unit = ?, fullness_amount = ?, fullness_total = ?, percent_full = ?,
+       updated_at = datetime('now') WHERE id = ?`
+  );
+  const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
+
+  const applyImport = db.transaction(() => {
+    for (const { fields: f } of plan.toAdd) {
+      insertStmt.run(
+        f.name, f.quantity, f.unit, f.location, f.category, f.expirationDate, f.packSize,
+        f.fullnessUnit, f.fullnessAmount, f.fullnessTotal, f.percentFull
+      );
+    }
+    for (const { id, fields: f } of plan.toUpdate) {
+      updateStmt.run(
+        f.name, f.quantity, f.unit, f.location, f.category, f.expirationDate, f.packSize,
+        f.fullnessUnit, f.fullnessAmount, f.fullnessTotal, f.percentFull, id
+      );
+    }
+    for (const { id } of plan.toDelete) {
+      deleteStmt.run(id);
+    }
+  });
+  applyImport();
+
+  res.json({ added: plan.toAdd.length, updated: plan.toUpdate.length, deleted: plan.toDelete.length });
 });
 
 // Adjust an item's quantity up or down (used by the +/- and "Use" buttons).

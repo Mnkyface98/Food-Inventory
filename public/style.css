@@ -545,6 +545,86 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   margin-bottom: 0.8rem;
 }
 
+.csv-io-row {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: -0.3rem 0 0.9rem;
+}
+
+.csv-io-link {
+  background: none;
+  border: none;
+  color: var(--green-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.csv-io-link:active {
+  opacity: 0.7;
+}
+
+.import-review-modal-inner {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+}
+
+.import-review-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.import-review-scroll {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-height: 0;
+}
+
+.import-review-section-heading {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.import-review-section-heading.danger {
+  color: var(--danger);
+}
+
+.import-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.import-review-list li {
+  padding: 0.15rem 0;
+}
+
+.import-review-list.danger li {
+  color: var(--danger);
+}
+
 .item-list {
   list-style: none;
   margin: 0;

@@ -175,6 +175,12 @@
         <input id="search" type="search" placeholder="Search items…" />
       </div>
 
+      <div class="csv-io-row">
+        <a id="export-csv-link" href="/api/items/export.csv" class="csv-io-link">⬇️ Export CSV</a>
+        <button type="button" id="import-csv-btn" class="csv-io-link">⬆️ Import CSV</button>
+        <input id="import-csv-input" type="file" accept=".csv,text/csv" class="visually-hidden" />
+      </div>
+
       <section aria-label="Inventory list">
         <p id="empty-state" class="empty-state hidden">Nothing here yet. Add your first item above.</p>
         <p id="status-line" class="status-line hidden"></p>
@@ -198,6 +204,18 @@
       <p id="photo-capture-status" class="barcode-status">Line up the page, then tap Capture</p>
       <button type="button" id="photo-capture-btn" class="btn btn-primary btn-full">📸 Capture</button>
       <button type="button" id="photo-capture-cancel" class="btn btn-secondary btn-full">Cancel</button>
+    </div>
+  </div>
+
+  <div id="import-review-modal" class="barcode-modal hidden" role="dialog" aria-label="Review inventory import">
+    <div class="import-review-modal-inner">
+      <h2 class="import-review-title">Review import</h2>
+      <p id="import-review-summary" class="mic-hint"></p>
+      <div id="import-review-scroll" class="import-review-scroll"></div>
+      <div class="review-card-buttons">
+        <button type="button" id="import-confirm-btn" class="btn btn-primary">Apply changes</button>
+        <button type="button" id="import-cancel-btn" class="btn btn-secondary">Cancel</button>
+      </div>
     </div>
   </div>
 

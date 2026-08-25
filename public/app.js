@@ -17,6 +17,14 @@
   const searchInput = document.getElementById('search');
   const toastEl = document.getElementById('toast');
 
+  const importCsvBtn = document.getElementById('import-csv-btn');
+  const importCsvInput = document.getElementById('import-csv-input');
+  const importReviewModal = document.getElementById('import-review-modal');
+  const importReviewSummary = document.getElementById('import-review-summary');
+  const importReviewScroll = document.getElementById('import-review-scroll');
+  const importConfirmBtn = document.getElementById('import-confirm-btn');
+  const importCancelBtn = document.getElementById('import-cancel-btn');
+
   const voiceForm = document.getElementById('voice-form');
   const voiceTextInput = document.getElementById('voice-text');
   const micBtn = document.getElementById('mic-btn');
@@ -2368,6 +2376,122 @@
       voiceReviewEl.innerHTML = '<p class="review-note">Couldn\'t find any items in that. Try rephrasing.</p>';
     }
   }
+
+  // --- CSV export/import --------------------------------------------------
+  //
+  // Export is a plain link — the server sets a download header, so the
+  // browser just saves the file, no JS needed. Import is a two-step
+  // review-then-commit flow, the same "nothing saves until you confirm"
+  // spirit as every other entry method: pick a file, see exactly what
+  // will be added, changed, and deleted, then apply. The spreadsheet is
+  // treated as the complete picture, so anything missing from it gets
+  // deleted — the one destructive step in this app that isn't a single
+  // explicit "delete this item" tap, so it's called out in its own
+  // section (styled like the danger button elsewhere) rather than mixed
+  // in with ordinary changes, plus a second confirm() prompt right
+  // before it's applied.
+
+  let pendingImportCsv = null;
+  let pendingImportPlan = null;
+
+  function buildImportReviewSection(heading, names, danger) {
+    if (names.length === 0) return null;
+    const section = document.createElement('div');
+    const headingEl = document.createElement('p');
+    headingEl.className = danger ? 'import-review-section-heading danger' : 'import-review-section-heading';
+    headingEl.textContent = `${heading} (${names.length})`;
+    const list = document.createElement('ul');
+    list.className = danger ? 'import-review-list danger' : 'import-review-list';
+    for (const name of names) {
+      const li = document.createElement('li');
+      li.textContent = name;
+      list.appendChild(li);
+    }
+    section.appendChild(headingEl);
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderImportReview(plan) {
+    importReviewScroll.innerHTML = '';
+    const totalChanges = plan.toAdd.length + plan.toUpdate.length + plan.toDelete.length;
+    importReviewSummary.textContent =
+      totalChanges === 0 && plan.errors.length === 0
+        ? 'No changes — this file matches your inventory exactly.'
+        : `${plan.toAdd.length} to add, ${plan.toUpdate.length} to update, ${plan.toDelete.length} to delete.`;
+
+    const sections = [
+      buildImportReviewSection(
+        "Rows with problems — not applied, and if they reference an existing item, it'll still be deleted below unless you fix and re-upload",
+        plan.errors.map((e) => `Row ${e.rowNumber}: ${e.error}`),
+        true
+      ),
+      buildImportReviewSection('Will be deleted', plan.toDelete.map((i) => i.name), true),
+      buildImportReviewSection('Will be updated', plan.toUpdate.map((i) => i.name), false),
+      buildImportReviewSection('New items', plan.toAdd.map((i) => i.fields.name), false),
+    ];
+    for (const section of sections) {
+      if (section) importReviewScroll.appendChild(section);
+    }
+    importConfirmBtn.disabled = totalChanges === 0;
+  }
+
+  function closeImportReview() {
+    importReviewModal.classList.add('hidden');
+    pendingImportCsv = null;
+    pendingImportPlan = null;
+  }
+
+  importCsvBtn.addEventListener('click', () => importCsvInput.click());
+
+  importCsvInput.addEventListener('change', async () => {
+    const file = importCsvInput.files && importCsvInput.files[0];
+    importCsvInput.value = ''; // allow re-selecting the same file even after an error
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const plan = await api('/api/items/import/preview', {
+        method: 'POST',
+        body: JSON.stringify({ csv: text }),
+      });
+      pendingImportCsv = text;
+      pendingImportPlan = plan;
+      renderImportReview(plan);
+      importReviewModal.classList.remove('hidden');
+    } catch (err) {
+      showToast(`Couldn't read that file: ${err.message}`);
+    }
+  });
+
+  importCancelBtn.addEventListener('click', closeImportReview);
+
+  importConfirmBtn.addEventListener('click', async () => {
+    if (!pendingImportCsv || !pendingImportPlan) return;
+    const { toDelete } = pendingImportPlan;
+    if (toDelete.length > 0) {
+      const shown = toDelete.slice(0, 10).map((i) => i.name).join(', ');
+      const more = toDelete.length > 10 ? `, and ${toDelete.length - 10} more` : '';
+      const ok = confirm(
+        `This will DELETE ${toDelete.length} item${toDelete.length === 1 ? '' : 's'} not in the ` +
+        `file: ${shown}${more}. This can't be undone. Continue?`
+      );
+      if (!ok) return;
+    }
+    importConfirmBtn.disabled = true;
+    try {
+      const result = await api('/api/items/import/commit', {
+        method: 'POST',
+        body: JSON.stringify({ csv: pendingImportCsv }),
+      });
+      closeImportReview();
+      await loadItems();
+      showToast(`Import complete: ${result.added} added, ${result.updated} updated, ${result.deleted} deleted`);
+    } catch (err) {
+      showToast(`Import failed: ${err.message}`);
+    } finally {
+      importConfirmBtn.disabled = false;
+    }
+  });
 
   loadCategories().then(loadItems);
 })();
