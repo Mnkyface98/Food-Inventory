@@ -8,7 +8,8 @@
     "thrift-art-scout": "src/cli.js"
   },
   "scripts": {
-    "start": "node src/cli.js"
+    "start": "node src/cli.js",
+    "dashboard": "node src/dashboard.js"
   },
   "engines": {
     "node": ">=18"

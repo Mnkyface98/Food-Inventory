@@ -44,6 +44,21 @@ burying the interesting ones.
 API call re-reading something you've already gotten a writeup for. Delete
 it, or pass `--include-seen`, to re-analyze everything.
 
+## Dashboard
+
+```bash
+npm run dashboard
+# then open http://localhost:4000
+```
+
+A small local web UI (no external dependencies — just Node's built-in
+`http` server) for browsing past runs: a list of runs at `/`, and each run's
+listings at `/run/<filename>` grouped under the same three tier headings as
+the Markdown report, with photos inline and clickable links back to the
+original listing. Reads only the JSON files already written to `./reports/`
+— it doesn't call any external site or API itself. Set `DASHBOARD_PORT` to
+change the port (default `4000`).
+
 ## Sources — verification status
 
 | Source | Status |
