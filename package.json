@@ -1,0 +1,21 @@
+{
+  "name": "thrift-art-scout",
+  "version": "0.1.0",
+  "description": "Searches secondhand/thrift/estate-sale sites for wall art and uses Claude to flag pieces worth a closer look.",
+  "type": "module",
+  "main": "src/cli.js",
+  "bin": {
+    "thrift-art-scout": "src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5"
+  }
+}
