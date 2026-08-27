@@ -31,8 +31,18 @@ Options:
 | `-q, --query` | `"wall art"` | Search keywords |
 | `-s, --sources` | all three | Comma-separated: `ebay,shopgoodwill,estatesales` |
 | `-l, --limit` | `10` | Max listings pulled per source |
+| `--include-seen` | off | Re-analyze listings already recorded in `data/seen.json` (by default they're skipped) |
 
-Each run writes a Markdown report and a JSON dump to `./reports/`.
+Each run writes a Markdown report and a JSON dump to `./reports/`, with
+listings grouped under three headings — worth a professional look, unclear
+from photo alone, and almost certainly a reproduction — in that order, so
+the reproductions (most of what you'll find) sink to the bottom instead of
+burying the interesting ones.
+
+`./data/seen.json` tracks which listings have already been analyzed
+(by source + listing id) so re-running the same search doesn't re-spend an
+API call re-reading something you've already gotten a writeup for. Delete
+it, or pass `--include-seen`, to re-analyze everything.
 
 ## Sources — verification status
 

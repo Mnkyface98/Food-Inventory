@@ -6,6 +6,7 @@ import { searchShopGoodwill } from "./sources/shopgoodwill.js";
 import { searchEstateSales } from "./sources/estatesales.js";
 import { analyzeListing } from "./analyze.js";
 import { writeReport } from "./report.js";
+import { loadHistory, saveHistory, partitionSeen, recordSeen } from "./history.js";
 
 const SOURCES = {
   ebay: searchEbay,
@@ -18,12 +19,14 @@ function parseArgs(argv) {
     query: "wall art",
     sources: Object.keys(SOURCES),
     limit: 10,
+    skipSeen: true,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--query" || arg === "-q") args.query = argv[++i];
     else if (arg === "--sources" || arg === "-s") args.sources = argv[++i].split(",");
     else if (arg === "--limit" || arg === "-l") args.limit = Number(argv[++i]);
+    else if (arg === "--include-seen") args.skipSeen = false;
     else if (arg === "--help" || arg === "-h") args.help = true;
   }
   return args;
@@ -36,10 +39,14 @@ Options:
   -q, --query <text>       Search keywords (default: "wall art")
   -s, --sources <list>     Comma-separated: ${Object.keys(SOURCES).join(",")} (default: all)
   -l, --limit <n>          Max listings per source (default: 10)
+  --include-seen            Re-analyze listings already recorded in data/seen.json
+                             (by default, previously-seen listings are skipped)
   -h, --help               Show this help
 
 Requires a .env file — copy .env.example and fill in credentials.
-Output: a Markdown + JSON report written to ./reports/`);
+Output: a Markdown + JSON report written to ./reports/, grouped by tier
+(worth investigating first, reproductions last). History of what's already
+been analyzed is kept in ./data/seen.json.`);
 }
 
 async function main() {
@@ -81,18 +88,34 @@ async function main() {
     return;
   }
 
-  console.log(`Analyzing ${listings.length} listing(s) with Claude...`);
+  const history = await loadHistory();
+  let toAnalyze = listings;
+  if (args.skipSeen) {
+    const { seen, fresh } = partitionSeen(listings, history);
+    if (seen.length) console.log(`Skipping ${seen.length} already-seen listing(s) (use --include-seen to re-analyze).`);
+    toAnalyze = fresh;
+  }
+
+  if (!toAnalyze.length) {
+    console.log("Nothing new to analyze.");
+    return;
+  }
+
+  console.log(`Analyzing ${toAnalyze.length} listing(s) with Claude...`);
   const results = [];
-  for (const listing of listings) {
+  for (const listing of toAnalyze) {
     process.stdout.write(`  [${listing.source}] ${listing.title.slice(0, 60)} ... `);
     try {
       const analysis = await analyzeListing(listing, client);
       results.push({ listing, analysis });
-      console.log("done");
+      if (!analysis.skipped) recordSeen(history, listing, analysis.tier);
+      console.log(`done (${analysis.tier})`);
     } catch (err) {
       console.log(`failed (${err.message})`);
     }
   }
+
+  await saveHistory(history);
 
   const { mdPath, jsonPath } = await writeReport(results);
   console.log(`\nReport written to:\n  ${mdPath}\n  ${jsonPath}`);

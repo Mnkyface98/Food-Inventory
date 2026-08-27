@@ -23,16 +23,27 @@ original it would be worth appraising separately since originals aren't comparab
 State plainly when you don't have enough basis to estimate.
 
 Be honest about uncertainty throughout. This is a lead-generation aid — its job is to help \
-someone decide what's worth a second look, not to certify anything.`;
+someone decide what's worth a second look, not to certify anything.
+
+End your reply with exactly one final line, on its own, in this literal format so it can be \
+parsed by a program — do not add anything after it:
+TIER: reproduction|unclear|investigate
+
+Use "reproduction" for "almost certainly a print/reproduction", "unclear" for "unclear from \
+photo alone", and "investigate" for "signals worth a professional look".`;
+
+const VALID_TIERS = ["reproduction", "unclear", "investigate"];
+// Sort weight — lower sorts first, so "investigate" (most worth a human's time) leads the report.
+const TIER_ORDER = { investigate: 0, unclear: 1, reproduction: 2, unknown: 3 };
 
 /**
  * @param {import("./listing.js").Listing} listing
  * @param {Anthropic} client
- * @returns {Promise<string>} the analysis writeup
+ * @returns {Promise<{text: string, tier: string, skipped: boolean}>}
  */
 export async function analyzeListing(listing, client) {
   if (!listing.imageUrls.length) {
-    return "No image available for this listing — skipped.";
+    return { text: "No image available for this listing — skipped.", tier: "unknown", skipped: true };
   }
 
   const imageBlocks = [];
@@ -42,7 +53,7 @@ export async function analyzeListing(listing, client) {
   }
 
   if (!imageBlocks.length) {
-    return "Could not download any of this listing's images — skipped.";
+    return { text: "Could not download any of this listing's images — skipped.", tier: "unknown", skipped: true };
   }
 
   const contextText = [
@@ -67,10 +78,24 @@ export async function analyzeListing(listing, client) {
     ],
   });
 
-  return message.content
+  const raw = message.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("\n");
+
+  return parseTier(raw);
+}
+
+function parseTier(raw) {
+  const match = raw.match(/TIER:\s*(reproduction|unclear|investigate)\s*$/i);
+  const tier = match ? match[1].toLowerCase() : "unknown";
+  // Strip the machine line from the human-facing text either way.
+  const text = match ? raw.slice(0, match.index).trimEnd() : raw;
+  return { text, tier: VALID_TIERS.includes(tier) ? tier : "unknown", skipped: false };
+}
+
+export function tierSortValue(tier) {
+  return TIER_ORDER[tier] ?? TIER_ORDER.unknown;
 }
 
 async function fetchAsImageBlock(url) {
