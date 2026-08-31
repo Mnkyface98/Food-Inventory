@@ -1,0 +1,11 @@
+{
+  "name": "carnatic-western-translator",
+  "version": "1.0.0",
+  "description": "Translate Carnatic swara notation to Western note names and back.",
+  "main": "translator.js",
+  "private": true,
+  "scripts": {
+    "test": "node test.js"
+  },
+  "license": "MIT"
+}

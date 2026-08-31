@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Carnatic &harr; Western Note Translator</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Carnatic &harr; Western Note Translator</h1>
+    <p class="tagline">
+      Convert Carnatic swaras (S R G M P D N) to Western note names, and back &mdash;
+      so a phrase played on veena, violin or voice can be read out on piano, guitar or bass.
+    </p>
+  </header>
+
+  <main>
+    <section class="tonic-picker">
+      <label for="tonicNote">Tonic (Sa) =</label>
+      <select id="tonicNote"></select>
+      <label for="tonicOctave">octave</label>
+      <input id="tonicOctave" type="number" value="4" min="0" max="8" />
+      <span class="hint">Sa is the movable "do" of Carnatic music &mdash; pick whatever note your instrument's Sa is tuned to.</span>
+    </section>
+
+    <section class="panel">
+      <h2>Carnatic &rarr; Western</h2>
+      <p class="hint">
+        Enter swaras separated by spaces, e.g. <code>S R2 G3 M1 P D2 N3 S'</code>.
+        Use a trailing <code>'</code> for the upper octave (tara sthayi) and <code>,</code> for the lower octave (mandra sthayi).
+        A bare letter with no number (e.g. <code>R</code>) is read as its natural-scale variant.
+      </p>
+      <textarea id="carnaticInput" rows="3" placeholder="S R2 G3 M1 P D2 N3 S'"></textarea>
+      <button id="toWestern">Translate to Western</button>
+      <div class="output" id="westernOutput"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Western &rarr; Carnatic</h2>
+      <p class="hint">
+        Enter notes separated by spaces, e.g. <code>C4 D4 E4 F4 G4 A4 B4 C5</code>.
+        Sharps use <code>#</code>, flats use <code>b</code>. Octave number is optional (defaults to the tonic's octave).
+      </p>
+      <textarea id="westernInput" rows="3" placeholder="C4 D4 E4 F4 G4 A4 B4 C5"></textarea>
+      <button id="toCarnatic">Translate to Carnatic</button>
+      <div class="output" id="carnaticOutput"></div>
+    </section>
+
+    <section class="panel legend">
+      <h2>Swarasthana chart</h2>
+      <p class="hint">The 16 Carnatic swara names collapse onto 12 semitones (like Western chromatic notes) &mdash; R3/G2 and D3/N2 are enharmonic pairs.</p>
+      <table id="chartTable"></table>
+    </section>
+  </main>
+
+  <footer>
+    <p class="hint">This is a note-name translator, not a full raga/gamaka transcriber &mdash; it maps individual swara pitches to their Western equivalents relative to your chosen Sa. Ornamentation (gamakas) and microtonal shading used in Carnatic performance aren't represented in Western 12-tone notation.</p>
+  </footer>
+
+  <script src="translator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

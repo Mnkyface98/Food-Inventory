@@ -1,0 +1,56 @@
+# Carnatic &harr; Western Note Translator
+
+A small, dependency-free web app that translates Carnatic swara notation
+(S R G M P D N, with their variants) into Western note names (C D E F G A B,
+with octave), and back &mdash; so a phrase you have written down for veena,
+violin, flute or voice can be read off and played on piano, guitar, or bass.
+
+**Try it:** open `index.html` in a browser. No build step, no server, no
+dependencies.
+
+## How it works
+
+Carnatic music names 16 "swarasthanas" (S, R1, R2, R3, G1, G2, G3, M1, M2, P,
+D1, D2, D3, N1, N2, N3), but only 12 distinct pitches exist in an octave, the
+same 12 as the Western chromatic scale. Two pairs are enharmonic (R3 = G2,
+D3 = N2). `translator.js` encodes this mapping and does two things:
+
+- **Carnatic &rarr; Western**: given a tonic (where Sa is set on your
+  instrument, e.g. C4) and a swara phrase, computes each note's absolute
+  pitch and its Western name.
+- **Western &rarr; Carnatic**: the inverse, picking the conventional default
+  swara name for the two ambiguous positions (G2 and N2) and showing the
+  enharmonic alternate (R3 / D3) alongside it.
+
+### Notation
+
+- Swaras: space-separated, e.g. `S R2 G3 M1 P D2 N3 S'`. A bare letter with
+  no digit (`R`, `G`, `M`, `D`, `N`) is read as its natural-scale (Sankarabharanam)
+  variant.
+- Octave markers: a trailing `'` raises by an octave (tara sthayi), a
+  trailing `,` lowers by an octave (mandra sthayi). Repeat for multiple
+  octaves, e.g. `P,,`.
+- Western notes: space-separated, e.g. `C4 D#4 Gb5`. Octave number is
+  optional and defaults to the tonic's octave.
+
+## Scope and limitations
+
+This is a **note-name translator**, not a full transcription tool. It maps
+individual swara pitches to Western note names relative to a chosen tonic.
+It does not currently:
+
+- Parse a specific song's notation automatically from sheet music or audio
+  (you type the swara sequence in).
+- Represent gamakas (the oscillations/ornaments central to how Carnatic
+  music actually sounds) &mdash; Western 12-tone notation can't capture those.
+- Play audio.
+
+Those would be reasonable next steps if this becomes more than a note
+reference &mdash; e.g. Web Audio playback of the translated phrase, or a
+library of pre-entered songs (Vara Veena and others) to translate on load.
+
+## Tests
+
+```
+node test.js
+```
