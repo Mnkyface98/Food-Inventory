@@ -46,7 +46,7 @@
         </label>
         <label class="upload-btn">
           Upload document
-          <input type="file" id="carnaticDocUpload" accept=".txt,.md,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
+          <input type="file" id="carnaticDocUpload" accept=".txt,.md,text/plain,.doc,application/msword,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
         </label>
         <label class="upload-btn">
           Upload photo (OCR)
@@ -69,7 +69,7 @@
         <button id="toCarnatic">Translate to Carnatic</button>
         <label class="upload-btn">
           Upload document
-          <input type="file" id="westernDocUpload" accept=".txt,.md,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
+          <input type="file" id="westernDocUpload" accept=".txt,.md,text/plain,.doc,application/msword,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
         </label>
         <label class="upload-btn">
           Upload photo (OCR)
@@ -90,12 +90,14 @@
     <section class="panel">
       <h2>About uploading sheet music</h2>
       <p class="hint">
-        <strong>Document uploads</strong> (<code>.txt</code>, <code>.md</code>, <code>.docx</code>,
-        <code>.pdf</code>) load the file's text straight into the box &mdash; no recognition involved for
-        <code>.txt</code>/<code>.md</code>; <code>.docx</code> and <code>.pdf</code> have their text extracted
-        in your browser (via <a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a>
-        and <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">PDF.js</a>). A scanned
-        (image-only) PDF has no extractable text, so that still needs the photo/OCR path below.
+        <strong>Document uploads</strong> (<code>.txt</code>, <code>.md</code>, <code>.doc</code>,
+        <code>.docx</code>, <code>.pdf</code>) load the file's text straight into the box. No recognition
+        involved for <code>.txt</code>/<code>.md</code>; <code>.docx</code> and <code>.pdf</code> have their
+        text extracted in your browser (via <a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a>
+        and <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">PDF.js</a>). Legacy
+        <code>.doc</code> has no reliable browser parser, so it gets a best-effort text scrape instead &mdash;
+        always review it before translating. A scanned (image-only) PDF has no extractable text, so that
+        still needs the photo/OCR path below.
       </p>
       <p class="hint">
         <strong>Photo uploads</strong> run OCR (text recognition, via

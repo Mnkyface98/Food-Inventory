@@ -261,6 +261,36 @@
     const { value } = await mammoth.extractRawText({ arrayBuffer });
     return value;
   }
+  /**
+   * Legacy .doc (pre-2007, binary OLE format) has no lightweight browser
+   * parser like .docx does. Best-effort fallback: decode the file as
+   * UTF-16LE (how Word stores its text runs) and pull out the printable
+   * stretches, the same trick as the Unix `strings` tool. This is not a
+   * real .doc parser and can pick up stray fragments of formatting data
+   * as noise — always review the result before translating.
+   */
+  async function extractDoc(file) {
+    const buffer = await readAsArrayBuffer(file);
+    const bytes = new Uint8Array(buffer);
+    let raw = '';
+    for (let i = 0; i + 1 < bytes.length; i += 2) {
+      const code = bytes[i] | (bytes[i + 1] << 8);
+      if (code === 0x0d || code === 0x0a) raw += '\n';
+      else if (code === 0x09 || (code >= 0x20 && code < 0x7f)) raw += String.fromCharCode(code);
+      else raw += '\x00';
+    }
+    const text = raw
+      .split(/\x00+/)
+      .map((chunk) => chunk.trim())
+      .filter((chunk) => chunk.length > 1 && /[A-Za-z0-9]/.test(chunk))
+      .join(' ')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+    if (!text) {
+      throw new Error('Could not find readable text in this .doc file. Try re-saving it as .docx or .pdf, or copy/paste the notation directly.');
+    }
+    return text;
+  }
   async function extractPdf(file) {
     if (typeof pdfjsLib === 'undefined') throw new Error('.pdf reader failed to load — check your connection.');
     const arrayBuffer = await readAsArrayBuffer(file);
@@ -284,14 +314,18 @@
       const lower = file.name.toLowerCase();
       statusEl.textContent = 'Reading document…';
       let job;
+      let bestEffort = false;
       if (lower.endsWith('.docx')) job = extractDocx(file);
+      else if (lower.endsWith('.doc')) { job = extractDoc(file); bestEffort = true; }
       else if (lower.endsWith('.pdf')) job = extractPdf(file);
       else job = readAsText(file);
 
       job
         .then((text) => {
           textareaEl.value = text.trim();
-          statusEl.textContent = 'Loaded from document.';
+          statusEl.textContent = bestEffort
+            ? 'Loaded from .doc — this is best-effort text extraction (legacy .doc has no reliable browser parser); please review carefully before translating.'
+            : 'Loaded from document.';
         })
         .catch((err) => {
           statusEl.textContent = `Couldn't read that file: ${err.message}`;

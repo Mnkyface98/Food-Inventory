@@ -70,9 +70,13 @@ Three ways in, on both panels:
 
 - **Copy/paste.** Both text boxes are plain, unlimited-length textareas &mdash;
   paste in as much notation as you have, a whole piece at once if you like.
-- **Upload document.** Accepts `.txt`, `.md`, `.docx`, and `.pdf`. `.txt`/`.md`
-  load exactly as written; `.docx` and `.pdf` have their text extracted in
-  your browser (via Mammoth.js and PDF.js) and dropped into the box. A
+- **Upload document.** Accepts `.txt`, `.md`, `.doc`, `.docx`, and `.pdf`.
+  `.txt`/`.md` load exactly as written; `.docx` and `.pdf` have their text
+  extracted in your browser (via Mammoth.js and PDF.js) and dropped into the
+  box. Legacy `.doc` (the pre-2007 binary format) has no reliable browser
+  parser, so it gets a best-effort text scrape instead (the same trick as
+  the Unix `strings` tool) &mdash; always review the result carefully before
+  translating, and prefer re-saving as `.docx` when you can. A
   scanned/image-only PDF has no extractable text, so that falls back to the
   photo path below.
 - **Upload photo (OCR).** Runs OCR (text recognition) on a photo in your
