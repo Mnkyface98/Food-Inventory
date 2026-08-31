@@ -54,6 +54,16 @@ chosen (falling back to a wider span, then reporting the note as out of
 range with `x` if it's below every open string) &mdash; a whole phrase tends
 to land in roughly one hand position rather than jumping around the neck.
 
+### Hearing it played back
+
+Each output area has a **▶ Play** button (enabled once there's a translated
+result). It plays the notes in order as simple synthesized tones (Web Audio,
+no samples or external instrument needed) so you can hear what the phrase
+should sound like before you pick up an instrument. Click it again mid-way
+&mdash; it becomes **⏹ Stop** while playing &mdash; to stop immediately.
+Phrases separated by danda marks get a short pause between them, and the
+currently-sounding note is highlighted in the note-name view.
+
 ### Getting sheet music into the box
 
 Three ways in, on both panels:
@@ -85,12 +95,11 @@ It does not currently:
 
 - Recognize noteheads on a Western staff (see above).
 - Represent gamakas (the oscillations/ornaments central to how Carnatic
-  music actually sounds) &mdash; Western 12-tone notation can't capture those.
-- Play audio.
+  music actually sounds) &mdash; Western 12-tone notation can't capture those,
+  and playback is plain, even-tempered tones, not a performance.
 
-Those would be reasonable next steps if this becomes more than a note
-reference &mdash; e.g. Web Audio playback of the translated phrase, or a
-library of pre-entered songs (Vara Veena and others) to translate on load.
+A library of pre-entered songs (Vara Veena and others) to translate on load
+would be a reasonable next step if this becomes more than a note reference.
 
 ## Tests
 
