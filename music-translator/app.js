@@ -46,15 +46,40 @@
       .join('');
   }
 
+  const tabInstrumentSel = document.getElementById('tabInstrument');
+
+  function renderTabPhrases(container, result, tuningKey) {
+    if (result.phrases.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = result.phrases
+      .map((phrase) => {
+        const midis = phrase.notes.map((n) => n.midi);
+        const { lines, outOfRange } = buildTab(midis, tuningKey);
+        const warning = outOfRange.length
+          ? `<p class="tab-warning">${outOfRange.length} note${outOfRange.length > 1 ? 's' : ''} out of this instrument's range (shown as "x") — try a different tonic octave.</p>`
+          : '';
+        const block = `<pre class="tab-block">${lines.join('\n')}</pre>${warning}`;
+        if (phrase.marked) {
+          return `<div class="phrase-line-tab"><span class="danda">।</span>${block}<span class="danda">॥</span></div>`;
+        }
+        return block;
+      })
+      .join('');
+  }
+
   toWesternBtn.addEventListener('click', () => {
     const { name, octave } = currentTonic();
     try {
       const result = carnaticToWestern(carnaticInput.value, name, octave);
-      renderPhrases(
-        westernOutput,
-        result,
-        (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.western}</span></div>`
-      );
+      const tuningKey = tabInstrumentSel.value;
+      if (tuningKey) {
+        renderTabPhrases(westernOutput, result, tuningKey);
+      } else {
+        renderPhrases(
+          westernOutput,
+          result,
+          (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.western}</span></div>`
+        );
+      }
     } catch (err) {
       renderError(westernOutput, err);
     }

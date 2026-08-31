@@ -41,6 +41,16 @@ D3 = N2). `translator.js` encodes this mapping and does two things:
 - Western notes: `C4`, `D#4`, `Gb5`, etc. Octave number is optional and
   defaults to the tonic's octave.
 
+### Guitar / bass tablature
+
+The Carnatic &rarr; Western panel has a **Show as** selector: switch it from
+"Note names" to "Guitar tab" or "Bass tab" to get ASCII tablature instead of
+note-name chips, using each instrument's standard tuning. For each note, the
+highest-pitched string that can reach it within a comfortable fret span is
+chosen (falling back to a wider span, then reporting the note as out of
+range with `x` if it's below every open string) &mdash; a whole phrase tends
+to land in roughly one hand position rather than jumping around the neck.
+
 ### Loading sheet music
 
 Both panels have **Upload .txt** and **Upload photo (OCR)** buttons:

@@ -145,7 +145,7 @@ function carnaticToWestern(text, tonicName = 'C', tonicOctave = 4) {
       const semitone = SWARA_TO_SEMITONE[swara];
       const midi = tonicMidi + semitone + 12 * octaveShift;
       const { name, octave } = midiToNoteName(midi);
-      return { input: tok, swara, western: `${name}${octave}` };
+      return { input: tok, swara, western: `${name}${octave}`, midi };
     });
     return { marked, notes };
   });
@@ -188,16 +188,70 @@ function westernToCarnatic(text, tonicName = 'C', tonicOctave = 4) {
 
       const swara = swaraName + marks;
       const altSwara = alt ? alt + marks : null;
-      return { input: tok, western: `${name}${octave}`, swara, altSwara };
+      return { input: tok, western: `${name}${octave}`, swara, altSwara, midi };
     });
     return { marked, notes };
   });
   return { phrases };
 }
 
+/**
+ * Standard tunings, strings listed low to high. Each entry is a note name
+ * + octave for that open string.
+ */
+const TUNINGS = {
+  guitar: { label: 'Guitar (standard)', strings: [['E', 2], ['A', 2], ['D', 3], ['G', 3], ['B', 3], ['E', 4]] },
+  bass: { label: 'Bass (standard, 4-string)', strings: [['E', 1], ['A', 1], ['D', 2], ['G', 2]] },
+};
+
+/**
+ * For a MIDI note, pick which open string + fret plays it, preferring the
+ * highest-pitched string that can reach it within a comfortable fret range
+ * (keeps a whole phrase in roughly one hand position). Returns null if the
+ * note is below every open string.
+ */
+function pickStringFret(midi, tuningMidis, comfortableMaxFret = 12) {
+  for (let max of [comfortableMaxFret, 24]) {
+    for (let i = tuningMidis.length - 1; i >= 0; i--) {
+      const fret = midi - tuningMidis[i];
+      if (fret >= 0 && fret <= max) return { stringIndex: i, fret };
+    }
+  }
+  return null;
+}
+
+/**
+ * Build ASCII tablature for a sequence of MIDI notes on a given tuning
+ * ("guitar" or "bass"). Returns the tab as an array of lines (one per
+ * string, highest string first, as tab is conventionally written) plus
+ * the list of notes that fell outside the instrument's range.
+ */
+function buildTab(midiNotes, tuningKey) {
+  const tuning = TUNINGS[tuningKey];
+  if (!tuning) throw new Error(`Unknown tuning "${tuningKey}"`);
+  const tuningMidis = tuning.strings.map(([name, octave]) => noteNameToMidi(name, octave));
+
+  const positions = midiNotes.map((midi) => pickStringFret(midi, tuningMidis));
+  const outOfRange = midiNotes.filter((_, i) => positions[i] === null);
+
+  const colWidths = positions.map((pos) => (pos ? String(pos.fret).length : 1));
+  const rows = tuning.strings
+    .map(([name], stringIndex) => {
+      const cells = positions.map((pos, col) => {
+        const text = pos && pos.stringIndex === stringIndex ? String(pos.fret) : pos ? '' : 'x';
+        return text.padStart(colWidths[col], '-');
+      });
+      return `${name}|-${cells.join('-')}-|`;
+    })
+    .reverse(); // display highest string on top, as tab conventionally is
+
+  return { lines: rows, outOfRange };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     carnaticToWestern, westernToCarnatic, splitPhrases, tokenizePhrase,
     SWARA_TO_SEMITONE, SEMITONE_TO_SWARA, DANDA, DOUBLE_DANDA,
+    TUNINGS, buildTab, noteNameToMidi, midiToNoteName,
   };
 }

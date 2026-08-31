@@ -36,6 +36,13 @@
       <textarea id="carnaticInput" rows="4" placeholder="। S, R2, G3, M1, P, D2, N3, S' ॥"></textarea>
       <div class="panel-toolbar">
         <button id="toWestern">Translate to Western</button>
+        <label>Show as
+          <select id="tabInstrument">
+            <option value="">Note names</option>
+            <option value="guitar">Guitar tab</option>
+            <option value="bass">Bass tab</option>
+          </select>
+        </label>
         <label class="upload-btn">
           Upload .txt
           <input type="file" id="carnaticTxtUpload" accept=".txt,.md,text/plain" hidden />

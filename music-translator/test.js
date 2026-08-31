@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { carnaticToWestern, westernToCarnatic, splitPhrases } = require('./translator');
+const { carnaticToWestern, westernToCarnatic, splitPhrases, buildTab, noteNameToMidi } = require('./translator');
 
 function westernOf(text, tonic = 'C', octave = 4) {
   return carnaticToWestern(text, tonic, octave).phrases.flatMap((p) => p.notes.map((n) => n.western));
@@ -55,5 +55,22 @@ assert.deepStrictEqual(pasted.phrases[0].notes.map((n) => n.western), ['C4', 'D4
 
 // splitPhrases on empty input returns no phrases.
 assert.deepStrictEqual(splitPhrases('   '), []);
+
+// Guitar tab: an open-position C major scale from C4 lands on the top two strings.
+{
+  const midis = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'].map((n) => noteNameToMidi(n.slice(0, -1), Number(n.slice(-1))));
+  const { lines, outOfRange } = buildTab(midis, 'guitar');
+  assert.strictEqual(lines.length, 6); // one line per guitar string
+  assert.strictEqual(lines[0][0], 'E'); // highest string (E4) shown first
+  assert.strictEqual(lines[5][0], 'E'); // lowest string (E2) shown last
+  assert.deepStrictEqual(outOfRange, []);
+}
+
+// A note below every open string on bass (4-string, lowest open = E1) is reported out of range.
+{
+  const tooLow = noteNameToMidi('C', 0);
+  const { outOfRange } = buildTab([tooLow], 'bass');
+  assert.deepStrictEqual(outOfRange, [tooLow]);
+}
 
 console.log('All translator tests passed.');

@@ -156,6 +156,36 @@ button:hover { opacity: 0.9; }
   gap: 0.5rem;
 }
 
+.tab-block {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  overflow-x: auto;
+  margin: 0 0 0.4rem;
+}
+
+.tab-warning {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0 0 0.8rem;
+}
+
+.phrase-line-tab {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.phrase-line-tab .danda {
+  color: var(--muted);
+  font-size: 1.1rem;
+  padding-top: 0.6rem;
+}
+.phrase-line-tab .tab-block { flex: 1; }
+
 .note-chip {
   border: 1px solid var(--border);
   border-radius: 8px;
