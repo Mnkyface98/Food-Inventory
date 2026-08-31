@@ -115,15 +115,70 @@
   tonicOctaveInput.addEventListener('change', renderChart);
   renderChart();
 
-  // ---- file upload: plain text loads directly, images go through OCR ----
-  function wireTextUpload(inputEl, textareaEl) {
+  // ---- document upload: .txt/.md load directly, .docx/.pdf get their text
+  // extracted in-browser, images go through OCR ----
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+
+  function readAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+      reader.readAsText(file);
+    });
+  }
+  function readAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  async function extractDocx(file) {
+    if (typeof mammoth === 'undefined') throw new Error('.docx reader failed to load — check your connection.');
+    const arrayBuffer = await readAsArrayBuffer(file);
+    const { value } = await mammoth.extractRawText({ arrayBuffer });
+    return value;
+  }
+  async function extractPdf(file) {
+    if (typeof pdfjsLib === 'undefined') throw new Error('.pdf reader failed to load — check your connection.');
+    const arrayBuffer = await readAsArrayBuffer(file);
+    const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item) => item.str).join(' ') + '\n';
+    }
+    if (!text.trim()) {
+      throw new Error('No selectable text found — this looks like a scanned/image PDF. Try the photo (OCR) upload on individual pages instead.');
+    }
+    return text;
+  }
+
+  function wireDocumentUpload(inputEl, textareaEl, statusEl) {
     inputEl.addEventListener('change', () => {
       const file = inputEl.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => { textareaEl.value = String(reader.result).trim(); };
-      reader.readAsText(file);
-      inputEl.value = '';
+      const lower = file.name.toLowerCase();
+      statusEl.textContent = 'Reading document…';
+      let job;
+      if (lower.endsWith('.docx')) job = extractDocx(file);
+      else if (lower.endsWith('.pdf')) job = extractPdf(file);
+      else job = readAsText(file);
+
+      job
+        .then((text) => {
+          textareaEl.value = text.trim();
+          statusEl.textContent = 'Loaded from document.';
+        })
+        .catch((err) => {
+          statusEl.textContent = `Couldn't read that file: ${err.message}`;
+        })
+        .finally(() => { inputEl.value = ''; });
     });
   }
 
@@ -149,8 +204,8 @@
     });
   }
 
-  wireTextUpload(document.getElementById('carnaticTxtUpload'), carnaticInput);
-  wireTextUpload(document.getElementById('westernTxtUpload'), westernInput);
+  wireDocumentUpload(document.getElementById('carnaticDocUpload'), carnaticInput, document.getElementById('carnaticOcrStatus'));
+  wireDocumentUpload(document.getElementById('westernDocUpload'), westernInput, document.getElementById('westernOcrStatus'));
   wireImageUpload(document.getElementById('carnaticImgUpload'), carnaticInput, document.getElementById('carnaticOcrStatus'));
   wireImageUpload(document.getElementById('westernImgUpload'), westernInput, document.getElementById('westernOcrStatus'));
 })();

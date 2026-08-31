@@ -31,7 +31,8 @@
         A trailing <code>'</code> raises an octave (tara sthayi), a trailing <code>_</code> lowers one (mandra sthayi).
         A bare letter with no number (e.g. <code>R</code>) is read as its natural-scale variant.
         Wrap each phrase in <code>।</code> &hellip; <code>॥</code> to keep multi-line pieces grouped in the output &mdash;
-        or paste text without them and it's treated as one phrase.
+        or paste text without them and it's treated as one phrase. Paste as much as you like &mdash;
+        there's no length limit on this box.
       </p>
       <textarea id="carnaticInput" rows="4" placeholder="। S, R2, G3, M1, P, D2, N3, S' ॥"></textarea>
       <div class="panel-toolbar">
@@ -44,8 +45,8 @@
           </select>
         </label>
         <label class="upload-btn">
-          Upload .txt
-          <input type="file" id="carnaticTxtUpload" accept=".txt,.md,text/plain" hidden />
+          Upload document
+          <input type="file" id="carnaticDocUpload" accept=".txt,.md,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
         </label>
         <label class="upload-btn">
           Upload photo (OCR)
@@ -66,8 +67,8 @@
       <div class="panel-toolbar">
         <button id="toCarnatic">Translate to Carnatic</button>
         <label class="upload-btn">
-          Upload .txt
-          <input type="file" id="westernTxtUpload" accept=".txt,.md,text/plain" hidden />
+          Upload document
+          <input type="file" id="westernDocUpload" accept=".txt,.md,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" hidden />
         </label>
         <label class="upload-btn">
           Upload photo (OCR)
@@ -87,8 +88,12 @@
     <section class="panel">
       <h2>About uploading sheet music</h2>
       <p class="hint">
-        <strong>.txt files</strong> load exactly as written &mdash; no recognition involved, just drops the file's
-        text into the box for you to translate.
+        <strong>Document uploads</strong> (<code>.txt</code>, <code>.md</code>, <code>.docx</code>,
+        <code>.pdf</code>) load the file's text straight into the box &mdash; no recognition involved for
+        <code>.txt</code>/<code>.md</code>; <code>.docx</code> and <code>.pdf</code> have their text extracted
+        in your browser (via <a href="https://github.com/mwilliamson/mammoth.js" target="_blank" rel="noopener">Mammoth.js</a>
+        and <a href="https://mozilla.github.io/pdf.js/" target="_blank" rel="noopener">PDF.js</a>). A scanned
+        (image-only) PDF has no extractable text, so that still needs the photo/OCR path below.
       </p>
       <p class="hint">
         <strong>Photo uploads</strong> run OCR (text recognition, via
@@ -110,6 +115,8 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="translator.js"></script>
   <script src="app.js"></script>
 </body>

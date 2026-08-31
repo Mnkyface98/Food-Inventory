@@ -5,10 +5,13 @@ their variants) into Western note names (C D E F G A B, with octave), and
 back &mdash; so a phrase you have written down for veena, violin, flute or
 voice can be read off and played on piano, guitar, or bass.
 
-**Try it:** open `index.html` in a browser. No build step, no server. The
-photo-upload OCR feature loads [Tesseract.js](https://github.com/naptha/tesseract.js)
-from a CDN, so that one feature needs an internet connection; everything else
-works offline.
+**Try it:** open `index.html` in a browser. No build step, no server. Paste
+directly into either text box (no length limit), or use the upload buttons.
+Document/photo uploads load [Tesseract.js](https://github.com/naptha/tesseract.js),
+[Mammoth.js](https://github.com/mwilliamson/mammoth.js), and
+[PDF.js](https://mozilla.github.io/pdf.js/) from a CDN, so those need an
+internet connection the first time; typing/pasting and `.txt`/`.md` uploads
+work fully offline.
 
 ## How it works
 
@@ -51,19 +54,28 @@ chosen (falling back to a wider span, then reporting the note as out of
 range with `x` if it's below every open string) &mdash; a whole phrase tends
 to land in roughly one hand position rather than jumping around the neck.
 
-### Loading sheet music
+### Getting sheet music into the box
 
-Both panels have **Upload .txt** and **Upload photo (OCR)** buttons:
+Three ways in, on both panels:
 
-- A `.txt`/`.md` file loads exactly as written into the text box.
-- A photo runs OCR (text recognition) in your browser and drops the result
-  into the box for you to review and correct before translating. This works
-  reasonably well on a clear photo of *printed swara text* (like a notation
-  booklet); handwriting and low-contrast scans will need more correction.
-- **It cannot read actual Western staff notation** &mdash; a photo of notes
-  on a five-line staff. That's optical music recognition, a much harder and
-  separate problem from text OCR, and isn't supported. For staff notation,
-  type in the note names by hand as you read them off the page.
+- **Copy/paste.** Both text boxes are plain, unlimited-length textareas &mdash;
+  paste in as much notation as you have, a whole piece at once if you like.
+- **Upload document.** Accepts `.txt`, `.md`, `.docx`, and `.pdf`. `.txt`/`.md`
+  load exactly as written; `.docx` and `.pdf` have their text extracted in
+  your browser (via Mammoth.js and PDF.js) and dropped into the box. A
+  scanned/image-only PDF has no extractable text, so that falls back to the
+  photo path below.
+- **Upload photo (OCR).** Runs OCR (text recognition) on a photo in your
+  browser and drops the result into the box for you to review and correct
+  before translating. Works reasonably well on a clear photo of *printed
+  swara text* (like a notation booklet); handwriting and low-contrast scans
+  will need more correction.
+
+**It cannot read actual Western staff notation** &mdash; a photo or scan of
+notes sitting on a five-line staff. That's optical music recognition, a
+much harder and separate problem from text OCR/extraction, and isn't
+supported. For staff notation, type in the note names by hand as you read
+them off the page.
 
 ## Scope and limitations
 
