@@ -108,9 +108,46 @@ button {
 }
 button:hover { opacity: 0.9; }
 
+.panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.upload-btn {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent, var(--fg));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  background: var(--bg);
+}
+.upload-btn:hover { background: rgba(163, 84, 30, 0.08); }
+
+.ocr-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.5rem 0 0;
+  min-height: 1.2em;
+}
+
 .output {
   margin-top: 0.9rem;
   min-height: 1.5rem;
+}
+
+.phrase-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.phrase-line .danda {
+  color: var(--muted);
+  font-size: 1.1rem;
 }
 
 .output-grid {

@@ -30,21 +30,31 @@
     container.innerHTML = `<div class="error">${err.message}</div>`;
   }
 
+  function renderPhrases(container, result, toChip) {
+    if (result.phrases.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = result.phrases
+      .map((phrase) => {
+        const chips = phrase.notes.map(toChip).join('');
+        if (phrase.marked) {
+          return `<div class="phrase-line"><span class="danda">।</span><div class="output-grid">${chips}</div><span class="danda">॥</span></div>`;
+        }
+        return `<div class="phrase-line"><div class="output-grid">${chips}</div></div>`;
+      })
+      .join('');
+  }
+
   toWesternBtn.addEventListener('click', () => {
     const { name, octave } = currentTonic();
     try {
-      const results = carnaticToWestern(carnaticInput.value, name, octave);
-      westernOutput.innerHTML =
-        '<div class="output-grid">' +
-        results
-          .map(
-            (r) => `<div class="note-chip">
-              <span class="from">${r.input}</span>
-              <span class="to">${r.western}</span>
-            </div>`
-          )
-          .join('') +
-        '</div>';
+      const result = carnaticToWestern(carnaticInput.value, name, octave);
+      renderPhrases(
+        westernOutput,
+        result,
+        (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.western}</span></div>`
+      );
     } catch (err) {
       renderError(westernOutput, err);
     }
@@ -53,19 +63,12 @@
   toCarnaticBtn.addEventListener('click', () => {
     const { name, octave } = currentTonic();
     try {
-      const results = westernToCarnatic(westernInput.value, name, octave);
-      carnaticOutput.innerHTML =
-        '<div class="output-grid">' +
-        results
-          .map(
-            (r) => `<div class="note-chip">
-              <span class="from">${r.input}</span>
-              <span class="to">${r.swara}</span>
-              ${r.altSwara ? `<span class="alt">or ${r.altSwara}</span>` : ''}
-            </div>`
-          )
-          .join('') +
-        '</div>';
+      const result = westernToCarnatic(westernInput.value, name, octave);
+      renderPhrases(
+        carnaticOutput,
+        result,
+        (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.swara}</span>${n.altSwara ? `<span class="alt">or ${n.altSwara}</span>` : ''}</div>`
+      );
     } catch (err) {
       renderError(carnaticOutput, err);
     }
@@ -73,7 +76,7 @@
 
   // Static reference chart, always relative to whichever tonic is selected.
   function renderChart() {
-    const { name, octave } = currentTonic();
+    const { name } = currentTonic();
     const header = '<tr><th>Semitone</th><th>Swara</th><th>Western</th></tr>';
     const rows = SEMITONE_TO_SWARA.map((entry, i) => {
       const western = ALL_NOTE_NAMES[(ALL_NOTE_NAMES.indexOf(name) + i) % 12];
@@ -86,4 +89,43 @@
   tonicNoteSel.addEventListener('change', renderChart);
   tonicOctaveInput.addEventListener('change', renderChart);
   renderChart();
+
+  // ---- file upload: plain text loads directly, images go through OCR ----
+  function wireTextUpload(inputEl, textareaEl) {
+    inputEl.addEventListener('change', () => {
+      const file = inputEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { textareaEl.value = String(reader.result).trim(); };
+      reader.readAsText(file);
+      inputEl.value = '';
+    });
+  }
+
+  function wireImageUpload(inputEl, textareaEl, statusEl) {
+    inputEl.addEventListener('change', () => {
+      const file = inputEl.files[0];
+      if (!file) return;
+      if (typeof Tesseract === 'undefined') {
+        statusEl.textContent = 'OCR library failed to load — check your connection and try again.';
+        inputEl.value = '';
+        return;
+      }
+      statusEl.textContent = 'Reading photo… this can take a few seconds.';
+      Tesseract.recognize(file, 'eng')
+        .then(({ data: { text } }) => {
+          textareaEl.value = text.trim();
+          statusEl.textContent = 'Loaded from photo — please review for OCR mistakes before translating.';
+        })
+        .catch((err) => {
+          statusEl.textContent = `Couldn't read that photo: ${err.message}`;
+        })
+        .finally(() => { inputEl.value = ''; });
+    });
+  }
+
+  wireTextUpload(document.getElementById('carnaticTxtUpload'), carnaticInput);
+  wireTextUpload(document.getElementById('westernTxtUpload'), westernInput);
+  wireImageUpload(document.getElementById('carnaticImgUpload'), carnaticInput, document.getElementById('carnaticOcrStatus'));
+  wireImageUpload(document.getElementById('westernImgUpload'), westernInput, document.getElementById('westernOcrStatus'));
 })();

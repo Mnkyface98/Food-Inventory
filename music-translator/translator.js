@@ -10,6 +10,17 @@
  * for those two positions. We resolve that ambiguity with a sensible
  * default (G2 and N2, the pair used by Sankarabharanam / the major
  * scale) and show the alternate name alongside it.
+ *
+ * Notation accepted (so a whole line of written sheet music can be
+ * pasted in as-is):
+ *   - notes are separated by commas and/or whitespace: "S, R2, G3" or "S R2 G3"
+ *   - a trailing "'" raises a note an octave (tara sthayi), "_" lowers
+ *     it an octave (mandra sthayi); both can repeat, e.g. "P__"
+ *   - a phrase can be wrapped in danda marks, "। ... ॥", the
+ *     beginning/end-of-phrase punctuation used in Indian notation.
+ *     Multiple ।...॥ phrases in one paste are each translated and
+ *     shown on their own line. Text with no danda marks at all is
+ *     just treated as one phrase.
  */
 
 // swara name -> semitone offset from Shadja (S = 0)
@@ -46,6 +57,9 @@ const SEMITONE_TO_SWARA = [
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const FLAT_TO_SHARP = { Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#' };
 
+const DANDA = '।'; // ।
+const DOUBLE_DANDA = '॥'; // ॥
+
 function noteNameToSemitone(name) {
   const norm = FLAT_TO_SHARP[name] || name;
   const idx = SHARP_NAMES.indexOf(norm);
@@ -64,12 +78,36 @@ function midiToNoteName(midi) {
 }
 
 /**
- * Parse one Carnatic swara token, e.g. "G3", "R", "S'", "P,,"
+ * Split pasted text into phrases. If it contains danda marks, each
+ * ।...॥ span becomes one phrase (shown on its own line in the output).
+ * Otherwise the whole input is treated as a single, unmarked phrase.
+ */
+function splitPhrases(text) {
+  const dandaPattern = new RegExp(`${DANDA}\\s*([^${DANDA}${DOUBLE_DANDA}]*?)\\s*${DOUBLE_DANDA}`, 'g');
+  const phrases = [];
+  let match;
+  while ((match = dandaPattern.exec(text)) !== null) {
+    phrases.push({ text: match[1].trim(), marked: true });
+  }
+  if (phrases.length === 0) {
+    const trimmed = text.trim();
+    return trimmed ? [{ text: trimmed, marked: false }] : [];
+  }
+  return phrases;
+}
+
+/** Split one phrase's text into note tokens on commas and/or whitespace. */
+function tokenizePhrase(text) {
+  return text.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean);
+}
+
+/**
+ * Parse one Carnatic swara token, e.g. "G3", "R", "S'", "P__"
  * Trailing "'" marks raise by one octave (tara sthayi) each,
- * trailing "," marks lower by one octave (mandra sthayi) each.
+ * trailing "_" marks lower by one octave (mandra sthayi) each.
  */
 function parseSwaraToken(token) {
-  const m = token.match(/^([SRGMPDN])([123]?)([',]*)$/i);
+  const m = token.match(/^([SRGMPDN])([123]?)(['_]*)$/i);
   if (!m) throw new Error(`Unrecognized swara "${token}"`);
   const letter = m[1].toUpperCase();
   const digit = m[2];
@@ -86,27 +124,32 @@ function parseSwaraToken(token) {
   let octaveShift = 0;
   for (const ch of marks) {
     if (ch === "'") octaveShift += 1;
-    else if (ch === ',') octaveShift -= 1;
+    else if (ch === '_') octaveShift -= 1;
   }
 
   return { swara, octaveShift };
 }
 
 /**
- * Translate a space-separated Carnatic swara phrase into Western note
- * names + octaves, relative to a chosen tonic (Sa).
+ * Translate pasted Carnatic notation (one or more comma/space-separated,
+ * optionally danda-marked phrases) into Western note names + octaves,
+ * relative to a chosen tonic (Sa).
+ *
+ * Returns { phrases: [{ marked, notes: [{input, swara, western}] }] }
  */
-function carnaticToWestern(phrase, tonicName = 'C', tonicOctave = 4) {
+function carnaticToWestern(text, tonicName = 'C', tonicOctave = 4) {
   const tonicMidi = noteNameToMidi(tonicName, tonicOctave);
-  const tokens = phrase.trim().split(/\s+/).filter(Boolean);
-
-  return tokens.map((tok) => {
-    const { swara, octaveShift } = parseSwaraToken(tok);
-    const semitone = SWARA_TO_SEMITONE[swara];
-    const midi = tonicMidi + semitone + 12 * octaveShift;
-    const { name, octave } = midiToNoteName(midi);
-    return { input: tok, swara, western: `${name}${octave}` };
+  const phrases = splitPhrases(text).map(({ text: phraseText, marked }) => {
+    const notes = tokenizePhrase(phraseText).map((tok) => {
+      const { swara, octaveShift } = parseSwaraToken(tok);
+      const semitone = SWARA_TO_SEMITONE[swara];
+      const midi = tonicMidi + semitone + 12 * octaveShift;
+      const { name, octave } = midiToNoteName(midi);
+      return { input: tok, swara, western: `${name}${octave}` };
+    });
+    return { marked, notes };
   });
+  return { phrases };
 }
 
 /**
@@ -122,31 +165,39 @@ function parseWesternToken(token, defaultOctave) {
 }
 
 /**
- * Translate a space-separated Western note phrase into Carnatic
- * swaras, relative to a chosen tonic (Sa).
+ * Translate pasted Western notation (one or more comma/space-separated,
+ * optionally danda-marked phrases) into Carnatic swaras, relative to a
+ * chosen tonic (Sa).
+ *
+ * Returns { phrases: [{ marked, notes: [{input, western, swara, altSwara}] }] }
  */
-function westernToCarnatic(phrase, tonicName = 'C', tonicOctave = 4) {
+function westernToCarnatic(text, tonicName = 'C', tonicOctave = 4) {
   const tonicMidi = noteNameToMidi(tonicName, tonicOctave);
-  const tokens = phrase.trim().split(/\s+/).filter(Boolean);
+  const phrases = splitPhrases(text).map(({ text: phraseText, marked }) => {
+    const notes = tokenizePhrase(phraseText).map((tok) => {
+      const { name, octave } = parseWesternToken(tok, tonicOctave);
+      const midi = noteNameToMidi(name, octave);
+      const diff = midi - tonicMidi;
+      const semitone = ((diff % 12) + 12) % 12;
+      const octaveShift = Math.floor(diff / 12);
 
-  return tokens.map((tok) => {
-    const { name, octave } = parseWesternToken(tok, tonicOctave);
-    const midi = noteNameToMidi(name, octave);
-    const diff = midi - tonicMidi;
-    const semitone = ((diff % 12) + 12) % 12;
-    const octaveShift = Math.floor(diff / 12);
+      const { name: swaraName, alt } = SEMITONE_TO_SWARA[semitone];
+      let marks = '';
+      if (octaveShift > 0) marks = "'".repeat(octaveShift);
+      else if (octaveShift < 0) marks = '_'.repeat(-octaveShift);
 
-    const { name: swaraName, alt } = SEMITONE_TO_SWARA[semitone];
-    let marks = '';
-    if (octaveShift > 0) marks = "'".repeat(octaveShift);
-    else if (octaveShift < 0) marks = ','.repeat(-octaveShift);
-
-    const swara = swaraName + marks;
-    const altSwara = alt ? alt + marks : null;
-    return { input: tok, western: `${name}${octave}`, swara, altSwara };
+      const swara = swaraName + marks;
+      const altSwara = alt ? alt + marks : null;
+      return { input: tok, western: `${name}${octave}`, swara, altSwara };
+    });
+    return { marked, notes };
   });
+  return { phrases };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { carnaticToWestern, westernToCarnatic, SWARA_TO_SEMITONE, SEMITONE_TO_SWARA };
+  module.exports = {
+    carnaticToWestern, westernToCarnatic, splitPhrases, tokenizePhrase,
+    SWARA_TO_SEMITONE, SEMITONE_TO_SWARA, DANDA, DOUBLE_DANDA,
+  };
 }

@@ -1,12 +1,14 @@
 # Carnatic &harr; Western Note Translator
 
-A small, dependency-free web app that translates Carnatic swara notation
-(S R G M P D N, with their variants) into Western note names (C D E F G A B,
-with octave), and back &mdash; so a phrase you have written down for veena,
-violin, flute or voice can be read off and played on piano, guitar, or bass.
+A small web app that translates Carnatic swara notation (S R G M P D N, with
+their variants) into Western note names (C D E F G A B, with octave), and
+back &mdash; so a phrase you have written down for veena, violin, flute or
+voice can be read off and played on piano, guitar, or bass.
 
-**Try it:** open `index.html` in a browser. No build step, no server, no
-dependencies.
+**Try it:** open `index.html` in a browser. No build step, no server. The
+photo-upload OCR feature loads [Tesseract.js](https://github.com/naptha/tesseract.js)
+from a CDN, so that one feature needs an internet connection; everything else
+works offline.
 
 ## How it works
 
@@ -24,14 +26,34 @@ D3 = N2). `translator.js` encodes this mapping and does two things:
 
 ### Notation
 
-- Swaras: space-separated, e.g. `S R2 G3 M1 P D2 N3 S'`. A bare letter with
-  no digit (`R`, `G`, `M`, `D`, `N`) is read as its natural-scale (Sankarabharanam)
-  variant.
+- Notes are separated by commas and/or whitespace (any mix), e.g.
+  `S, R2, G3` or `S R2 G3` or a whole line pasted straight out of a notation
+  booklet.
+- A bare letter with no digit (`R`, `G`, `M`, `D`, `N`) is read as its
+  natural-scale (Sankarabharanam) variant.
 - Octave markers: a trailing `'` raises by an octave (tara sthayi), a
-  trailing `,` lowers by an octave (mandra sthayi). Repeat for multiple
-  octaves, e.g. `P,,`.
-- Western notes: space-separated, e.g. `C4 D#4 Gb5`. Octave number is
-  optional and defaults to the tonic's octave.
+  trailing `_` lowers by an octave (mandra sthayi). Repeat for multiple
+  octaves, e.g. `P__`.
+- Phrase markers: wrap a phrase in `।` &hellip; `॥` (danda / double danda,
+  the beginning/end-of-phrase marks used in Indian notation) to keep it
+  grouped on its own line in the output. Text with no danda marks at all is
+  just translated as one phrase &mdash; you don't need them for simple input.
+- Western notes: `C4`, `D#4`, `Gb5`, etc. Octave number is optional and
+  defaults to the tonic's octave.
+
+### Loading sheet music
+
+Both panels have **Upload .txt** and **Upload photo (OCR)** buttons:
+
+- A `.txt`/`.md` file loads exactly as written into the text box.
+- A photo runs OCR (text recognition) in your browser and drops the result
+  into the box for you to review and correct before translating. This works
+  reasonably well on a clear photo of *printed swara text* (like a notation
+  booklet); handwriting and low-contrast scans will need more correction.
+- **It cannot read actual Western staff notation** &mdash; a photo of notes
+  on a five-line staff. That's optical music recognition, a much harder and
+  separate problem from text OCR, and isn't supported. For staff notation,
+  type in the note names by hand as you read them off the page.
 
 ## Scope and limitations
 
@@ -39,8 +61,7 @@ This is a **note-name translator**, not a full transcription tool. It maps
 individual swara pitches to Western note names relative to a chosen tonic.
 It does not currently:
 
-- Parse a specific song's notation automatically from sheet music or audio
-  (you type the swara sequence in).
+- Recognize noteheads on a Western staff (see above).
 - Represent gamakas (the oscillations/ornaments central to how Carnatic
   music actually sounds) &mdash; Western 12-tone notation can't capture those.
 - Play audio.

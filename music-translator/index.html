@@ -27,23 +27,47 @@
     <section class="panel">
       <h2>Carnatic &rarr; Western</h2>
       <p class="hint">
-        Enter swaras separated by spaces, e.g. <code>S R2 G3 M1 P D2 N3 S'</code>.
-        Use a trailing <code>'</code> for the upper octave (tara sthayi) and <code>,</code> for the lower octave (mandra sthayi).
+        Notes separated by commas and/or spaces, e.g. <code>S, R2, G3, M1, P, D2, N3, S'</code>.
+        A trailing <code>'</code> raises an octave (tara sthayi), a trailing <code>_</code> lowers one (mandra sthayi).
         A bare letter with no number (e.g. <code>R</code>) is read as its natural-scale variant.
+        Wrap each phrase in <code>।</code> &hellip; <code>॥</code> to keep multi-line pieces grouped in the output &mdash;
+        or paste text without them and it's treated as one phrase.
       </p>
-      <textarea id="carnaticInput" rows="3" placeholder="S R2 G3 M1 P D2 N3 S'"></textarea>
-      <button id="toWestern">Translate to Western</button>
+      <textarea id="carnaticInput" rows="4" placeholder="। S, R2, G3, M1, P, D2, N3, S' ॥"></textarea>
+      <div class="panel-toolbar">
+        <button id="toWestern">Translate to Western</button>
+        <label class="upload-btn">
+          Upload .txt
+          <input type="file" id="carnaticTxtUpload" accept=".txt,.md,text/plain" hidden />
+        </label>
+        <label class="upload-btn">
+          Upload photo (OCR)
+          <input type="file" id="carnaticImgUpload" accept="image/*" hidden />
+        </label>
+      </div>
+      <p class="ocr-status" id="carnaticOcrStatus"></p>
       <div class="output" id="westernOutput"></div>
     </section>
 
     <section class="panel">
       <h2>Western &rarr; Carnatic</h2>
       <p class="hint">
-        Enter notes separated by spaces, e.g. <code>C4 D4 E4 F4 G4 A4 B4 C5</code>.
+        Notes separated by commas and/or spaces, e.g. <code>C4, D4, E4, F4, G4, A4, B4, C5</code>.
         Sharps use <code>#</code>, flats use <code>b</code>. Octave number is optional (defaults to the tonic's octave).
       </p>
-      <textarea id="westernInput" rows="3" placeholder="C4 D4 E4 F4 G4 A4 B4 C5"></textarea>
-      <button id="toCarnatic">Translate to Carnatic</button>
+      <textarea id="westernInput" rows="4" placeholder="C4, D4, E4, F4, G4, A4, B4, C5"></textarea>
+      <div class="panel-toolbar">
+        <button id="toCarnatic">Translate to Carnatic</button>
+        <label class="upload-btn">
+          Upload .txt
+          <input type="file" id="westernTxtUpload" accept=".txt,.md,text/plain" hidden />
+        </label>
+        <label class="upload-btn">
+          Upload photo (OCR)
+          <input type="file" id="westernImgUpload" accept="image/*" hidden />
+        </label>
+      </div>
+      <p class="ocr-status" id="westernOcrStatus"></p>
       <div class="output" id="carnaticOutput"></div>
     </section>
 
@@ -52,12 +76,33 @@
       <p class="hint">The 16 Carnatic swara names collapse onto 12 semitones (like Western chromatic notes) &mdash; R3/G2 and D3/N2 are enharmonic pairs.</p>
       <table id="chartTable"></table>
     </section>
+
+    <section class="panel">
+      <h2>About uploading sheet music</h2>
+      <p class="hint">
+        <strong>.txt files</strong> load exactly as written &mdash; no recognition involved, just drops the file's
+        text into the box for you to translate.
+      </p>
+      <p class="hint">
+        <strong>Photo uploads</strong> run OCR (text recognition, via
+        <a href="https://github.com/naptha/tesseract.js" target="_blank" rel="noopener">Tesseract.js</a>) in your
+        browser. That works reasonably well on a clear photo of <em>printed swara text</em> (like a notation
+        booklet) &mdash; always review the result before translating, since OCR makes mistakes, especially on
+        handwriting or low-contrast scans.
+      </p>
+      <p class="hint">
+        <strong>It cannot read actual Western staff notation</strong> &mdash; a photo of notes sitting on a
+        five-line staff. That's a different, much harder problem (optical music recognition, not text OCR), and
+        isn't supported here. For staff notation, type the note names in by hand as you read them off the page.
+      </p>
+    </section>
   </main>
 
   <footer>
     <p class="hint">This is a note-name translator, not a full raga/gamaka transcriber &mdash; it maps individual swara pitches to their Western equivalents relative to your chosen Sa. Ornamentation (gamakas) and microtonal shading used in Carnatic performance aren't represented in Western 12-tone notation.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="translator.js"></script>
   <script src="app.js"></script>
 </body>
