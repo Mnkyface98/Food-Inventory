@@ -1,106 +1,115 @@
-# Thrift Art Scout
+# Balcony Garden Planner
 
-A CLI tool that searches secondhand/thrift/estate-sale sites for wall art,
-then uses Claude to review each listing's photo(s) and write up: what the
-piece looks like, whether it resembles anything recognizable, signals for
-reproduction-vs-original, and a rough resale value estimate.
+A private, local tool that recommends what to plant in a balcony container
+based on real environmental conditions — sun hours, USDA zone, salt-water
+proximity, wind exposure, and container size — rather than compass direction
+alone. It grew out of a real conversation about a 49th-floor, SE-facing,
+Zone 11 balcony in Miami with recurring aphid problems, and generalizes that
+reasoning into a tool for any balcony gardener at any altitude, orientation,
+or zone.
 
-**This is a lead-generation aid, not an appraisal tool.** It's designed to
-help you decide what's worth a closer look — it does not and cannot
-authenticate art. See "What this can't do" below before relying on it.
+**There is no crowd-sourced or shared dataset.** Everything is local to your
+own machine (`./data`, gitignored) — the recommendation engine runs entirely
+on seeded, documented horticultural data plus whatever you add yourself.
+
+## Why sun hours, not compass direction
+
+Direction is only ever a rough proxy for how much sun a spot actually gets —
+"SE" means very different things in December versus June, and nearby
+buildings can shade away a lot of it. This tool asks for (or lets you
+measure) actual sun hours per container instead, and uses that as the
+primary environmental score. Zone is a hard filter; salt and wind tolerance
+are conditional penalties; pest pressure is weighted up for floor-standing
+containers, which lose the wind-driven knockback on soft-bodied pests and
+gain easier crawling-pest access that a railing box several feet up doesn't
+have to deal with.
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# then edit .env and fill in ANTHROPIC_API_KEY (required) and
-# EBAY_CLIENT_ID / EBAY_CLIENT_SECRET (required for the eBay source)
+# ANTHROPIC_API_KEY is optional — only needed for the "Add a plant" AI lookup.
+# Without it, "Add a plant" hands back a blank template for manual entry.
+npm start
+# then open http://localhost:4100 (or the PORT you set)
 ```
 
-## Usage
+## What it does
 
-```bash
-node src/cli.js --query "vintage oil painting" --sources ebay,shopgoodwill,estatesales --limit 10
-```
+- **Site profile** — floor, building height, orientation, USDA zone, salt
+  proximity, humidity band, and a self-rated wind-exposure score, saved
+  once for the whole balcony.
+- **Containers** — add rail boxes or floor-standing planters with length
+  and width (required) and optional depth, plus their own sun-hours and
+  wind-exposure reading (a wall-sheltered floor spot can genuinely see less
+  of both than a railing box).
+- **Recommend** — fills a container with plants that:
+  - pass hard filters: USDA zone, minimum container depth, and whatever
+    personal rules you have on (exclude toxic-to-pets, exclude vines,
+    exclude hot peppers, and/or only show plants in season this month);
+  - fit the container's actual remaining length using each species' real
+    mature spread, not a guess;
+  - don't clash with what's already planted (companion compatibility);
+  - can be focused on "mix" (one herb + one vegetable + one flower + one
+    foliage pick before filling freely) or a single category only.
+  - Also supports "suggest what's missing" — rank candidates for whatever
+    space is left in a partially-planted box, rather than committing to a
+    full greedy fill.
+- **Companion check** — pairwise compatibility from a small trait system
+  (nitrogen-fixer, pest-repellent, trap-crop, pollinator-magnet,
+  heavy-feeder, allelopathic, water need) plus a short curated-exception
+  table for well-documented cases the traits alone wouldn't catch (e.g.
+  fennel's near-universal suppression effect on neighbors).
+- **Floor load calculator** — a structural safety check kept deliberately
+  separate from the horticultural recommendations. It estimates a
+  floor-standing container's wet weight (soil + container + plants) and
+  the load per square foot that implies. **The pass/fail threshold is only
+  as good as the rated capacity you give it** — that number has to come
+  from your building (management or condo documents), never a guess. A
+  commonly-cited residential minimum (40 lb/sq ft) is used as a fallback if
+  you don't supply one, and the result says so explicitly.
+- **Add a plant** — look up a species not in the built-in list. With
+  `ANTHROPIC_API_KEY` set, this asks Claude to draft a full profile,
+  tagged unverified; without a key (or without the dependency installed),
+  it hands back a blank template instead. Either way, an added plant only
+  ever affects your own recommendations — it's stored separately from the
+  seed data and never overwrites or outranks it. Duplicate names are
+  detected against both the seed list and anything you've already added.
+- **Journal** — a private log per container/species (status, issue tags,
+  notes). Never shared anywhere; it's just for your own record.
 
-Options:
+## Data model
 
-| Flag | Default | Meaning |
-|---|---|---|
-| `-q, --query` | `"wall art"` | Search keywords |
-| `-s, --sources` | all three | Comma-separated: `ebay,shopgoodwill,estatesales` |
-| `-l, --limit` | `10` | Max listings pulled per source |
-| `--include-seen` | off | Re-analyze listings already recorded in `data/seen.json` (by default they're skipped) |
+`src/data/species.js` holds the seed `species_reference` data — one entry
+per plant, sourced from documented horticultural and ASPCA toxicity
+references, not assumed. Key fields: `category`, `origin`/`exotic`,
+`sunHours`, `zone`, `saltTolerance`, `windTolerance`,
+`aphidSusceptibility`, `toxicity` (`status` + `confidence` + `source` —
+common names collide across genuinely different species, so this is never
+a flat boolean), `vine`, `matureSpreadIn`, `minDepthIn`, `startMethod`,
+`traits`, `waterNeed`, `fertilizerLean`, `heatLevel`, and `bestMonths`.
 
-Each run writes a Markdown report and a JSON dump to `./reports/`, with
-listings grouped under three headings — worth a professional look, unclear
-from photo alone, and almost certainly a reproduction — in that order, so
-the reproductions (most of what you'll find) sink to the bottom instead of
-burying the interesting ones.
+`src/lib/` holds the pure-function engine (`scoring.js`, `companions.js`,
+`packing.js`, `floorLoad.js`, `fertilizer.js`, `addPlant.js`) — all
+independently unit tested in `test/` with Node's built-in test runner
+(`npm test`). `src/server.js` is a small dependency-free HTTP server (no
+framework) exposing that engine as a JSON API to the static frontend in
+`public/`. `src/lib/store.js` persists site/container/journal/user-species
+data to local JSON files under `./data` (gitignored — nothing here is
+committed or shared).
 
-`./data/seen.json` tracks which listings have already been analyzed
-(by source + listing id) so re-running the same search doesn't re-spend an
-API call re-reading something you've already gotten a writeup for. Delete
-it, or pass `--include-seen`, to re-analyze everything.
+## Known simplifications
 
-## Dashboard
-
-```bash
-npm run dashboard
-# then open http://localhost:4000
-```
-
-A small local web UI (no external dependencies — just Node's built-in
-`http` server) for browsing past runs: a list of runs at `/`, and each run's
-listings at `/run/<filename>` grouped under the same three tier headings as
-the Markdown report, with photos inline and clickable links back to the
-original listing. Reads only the JSON files already written to `./reports/`
-— it doesn't call any external site or API itself. Set `DASHBOARD_PORT` to
-change the port (default `4000`).
-
-## Sources — verification status
-
-| Source | Status |
-|---|---|
-| `ebay` (`src/sources/ebay.js`) | Built against eBay's official, documented [Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html). Requires your own app credentials from https://developer.ebay.com/my/keys. |
-| `shopgoodwill` (`src/sources/shopgoodwill.js`) | **Unverified.** ShopGoodwill has no public API; this calls the internal JSON endpoint their own site uses, reconstructed from public knowledge of how it works. Not exercised against the live endpoint — the environment this was built in can't reach shopgoodwill.com. Before trusting it: open the site, search in DevTools' Network tab, and confirm the request/response shape matches what's in the code. |
-| `estatesales` (`src/sources/estatesales.js`) | **Unverified.** EstateSales.net has no API at all; this scrapes search-result HTML with best-guess CSS selectors. Very likely needs real selectors swapped in once you view the actual page source — it was not tested against the live site for the same network-access reason as above. |
-
-I could not test the ShopGoodwill or EstateSales.net integrations end-to-end
-because outbound network access in the environment this was built in is
-restricted to an allowlist (npm registry, the Anthropic API, etc.) that
-doesn't include those sites. Treat both as a starting point to debug against
-the real site, not as working out of the box.
-
-## Legal/ToS note
-
-- eBay's Browse API is sanctioned, official access — use it under eBay's
-  developer terms.
-- ShopGoodwill and EstateSales.net do **not** offer a sanctioned API for
-  this kind of use. Scraping/calling their internal endpoints is a gray
-  area: review each site's Terms of Service and `robots.txt` yourself, keep
-  request volume low (this tool does one request per run per source, not a
-  crawl), and identify yourself honestly in request headers rather than
-  spoofing a browser. Stop if either site tells you not to do this.
-
-## What this can't do
-
-- **No real reverse image search.** Claude can recognize famous works and
-  reason about style from training knowledge, but it can't crawl the web to
-  find "this exact photo also appears at this other URL" the way a
-  dedicated reverse-image-search API (Google Vision Web Detection, TinEye,
-  Bing Visual Search) can. Wiring one of those in as an extra signal before
-  the Claude analysis step would meaningfully strengthen this.
-- **No authenticity percentage, on purpose.** True authentication is a
-  physical, expert-driven process (provenance research, material/pigment
-  analysis, signature comparison) — nothing a photo and a thrift listing
-  can support. The tool reports a coarse tier ("almost certainly a
-  reproduction" / "unclear from photo alone" / "worth a professional look")
-  with reasoning, never a fabricated number like "73% authentic."
-- **Value estimates are rough ranges**, reasoned from what's visible and
-  what Claude knows about comparable pieces — not a market data feed. For
-  anything the tool flags as promising, treat it as "worth researching
-  further" (sold-listing comps, an appraiser), not a number to trade on.
-- Most wall art at thrift/estate sales is a mass-produced print. The tool
-  is tuned to say so plainly rather than oversell borderline cases.
+- **Single-row greedy packing.** Container fill is a best-fit-first pass
+  with no backtracking — it can end a few inches short of optimal the way
+  a human filling a shelf left-to-right would, and it only handles one row.
+  A wider planter needing real 2D packing isn't modeled.
+- **No live species lookup without an API key.** The built-in list is
+  fixed seed data; "Add a plant" either asks Claude for a draft profile or
+  falls back to a manual template — neither is a live botanical database
+  call.
+- **Companion logic is trait-based plus a short curated list**, not an
+  exhaustive hand-written compatibility chart — it'll miss specific,
+  undocumented interactions that aren't captured by the trait set or the
+  exception table.

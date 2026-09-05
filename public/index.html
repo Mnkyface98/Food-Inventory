@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Balcony Garden Planner</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🌿 Balcony Garden Planner</h1>
+    <p>Plant recommendations for high-rise, wind-, salt-, and sun-exposed balconies — a private, local tool, no shared/crowd data.</p>
+  </header>
+
+  <nav id="tabs">
+    <button data-tab="site" class="active">Site profile</button>
+    <button data-tab="containers">Containers</button>
+    <button data-tab="recommend">Recommend</button>
+    <button data-tab="companions">Companion check</button>
+    <button data-tab="floorload">Floor load</button>
+    <button data-tab="addplant">Add a plant</button>
+    <button data-tab="journal">Journal</button>
+  </nav>
+
+  <main>
+    <!-- SITE PROFILE -->
+    <section id="tab-site" class="tab">
+      <div class="panel">
+        <h2>Site profile</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">
+          Describe the balcony as a whole. Sun hours and wind exposure can also be set per-container
+          (a wall-sheltered floor spot can get meaningfully less of both than a railing box a few feet up).
+        </p>
+        <div class="grid">
+          <div class="field">
+            <label>Floor number</label>
+            <input type="number" id="site-floor" placeholder="49" />
+          </div>
+          <div class="field">
+            <label>Building height (floors)</label>
+            <input type="number" id="site-buildingHeight" placeholder="52" />
+          </div>
+          <div class="field">
+            <label>Compass orientation</label>
+            <select id="site-orientation">
+              <option>N</option><option>NE</option><option>E</option><option selected>SE</option>
+              <option>S</option><option>SW</option><option>W</option><option>NW</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>USDA zone</label>
+            <input type="number" id="site-zone" placeholder="11" />
+          </div>
+          <div class="field">
+            <label>Salt-water proximity</label>
+            <select id="site-saltProximity">
+              <option value="inland">Inland</option>
+              <option value="coastal">Coastal</option>
+              <option value="near-coastal" selected>Near-coastal</option>
+              <option value="waterfront">Waterfront</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Typical humidity band</label>
+            <select id="site-humidityBand">
+              <option value="low">Low</option>
+              <option value="moderate">Moderate</option>
+              <option value="high" selected>High</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Self-rated wind exposure (1 sheltered – 5 very exposed)</label>
+            <input type="number" min="1" max="5" id="site-windExposure" placeholder="4" />
+          </div>
+          <div class="field">
+            <label>Current month</label>
+            <select id="site-month"></select>
+          </div>
+        </div>
+        <button class="primary" id="save-site">Save site profile</button>
+        <span id="site-saved" class="pill hidden">Saved</span>
+      </div>
+    </section>
+
+    <!-- CONTAINERS -->
+    <section id="tab-containers" class="tab hidden">
+      <div class="panel">
+        <h2>Add a container</h2>
+        <div class="grid">
+          <div class="field"><label>Name</label><input id="c-name" placeholder="Box 1" /></div>
+          <div class="field"><label>Type</label>
+            <select id="c-position"><option value="rail_box">Railing box</option><option value="floor_standing">Floor-standing</option></select>
+          </div>
+          <div class="field"><label>Length (in) — required</label><input type="number" id="c-length" placeholder="48" /></div>
+          <div class="field"><label>Width (in) — required</label><input type="number" id="c-width" placeholder="12" /></div>
+          <div class="field"><label>Depth (in) — optional</label><input type="number" id="c-depth" placeholder="12" /></div>
+          <div class="field"><label>Sun hours/day at this spot</label><input type="number" id="c-sunHours" placeholder="7" /></div>
+          <div class="field"><label>Wind exposure here (1-5)</label><input type="number" min="1" max="5" id="c-windExposure" placeholder="4" /></div>
+        </div>
+        <button class="primary" id="add-container">Add container</button>
+      </div>
+      <div class="panel">
+        <h2>Your containers</h2>
+        <div id="container-list"></div>
+      </div>
+    </section>
+
+    <!-- RECOMMEND -->
+    <section id="tab-recommend" class="tab hidden">
+      <div class="panel">
+        <h2>Build or extend a box</h2>
+        <div class="grid">
+          <div class="field"><label>Container</label><select id="rec-container"></select></div>
+          <div class="field"><label>Focus</label>
+            <select id="rec-focus">
+              <option value="mix">Mix (herb + vegetable + flower + foliage)</option>
+              <option value="herb">All herbs</option>
+              <option value="vegetable">All vegetables</option>
+              <option value="flower">All flowers</option>
+              <option value="foliage">All foliage</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid">
+          <label class="checkbox-row"><input type="checkbox" id="opt-preferExotic" checked /> Prefer exotic/foreign origin</label>
+          <label class="checkbox-row"><input type="checkbox" id="opt-excludeToxic" checked /> Exclude toxic-to-pets plants</label>
+          <label class="checkbox-row"><input type="checkbox" id="opt-excludeVines" checked /> Exclude vines</label>
+          <label class="checkbox-row"><input type="checkbox" id="opt-excludeHot" /> Exclude hot peppers</label>
+          <label class="checkbox-row"><input type="checkbox" id="opt-seasonalOnly" /> Only plants in-season this month</label>
+        </div>
+        <div class="field" style="margin-top:0.75rem;">
+          <label>Already planted in this box (existing selections)</label>
+          <select id="rec-existing" multiple size="6"></select>
+        </div>
+        <button class="primary" id="run-recommend">Recommend a full box</button>
+        <button class="ghost" id="run-suggest">Suggest what's missing</button>
+      </div>
+      <div class="panel" id="recommend-results-panel" hidden>
+        <h2>Results</h2>
+        <div id="recommend-results"></div>
+      </div>
+    </section>
+
+    <!-- COMPANIONS -->
+    <section id="tab-companions" class="tab hidden">
+      <div class="panel">
+        <h2>Companion compatibility checker</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">Pick two or more plants to check how well they'd share a box.</p>
+        <div class="field"><label>Plants</label><select id="comp-plants" multiple size="10"></select></div>
+        <button class="primary" id="run-companions">Check compatibility</button>
+        <div id="companion-results" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- FLOOR LOAD -->
+    <section id="tab-floorload" class="tab hidden">
+      <div class="panel">
+        <h2>Floor load calculator</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">
+          A structural safety check, separate from the horticultural recommendations. This tool can estimate the
+          load your setup would create — the pass/fail threshold has to come from your building's actual rated
+          capacity, not a guess.
+        </p>
+        <div class="grid">
+          <div class="field"><label>Length (in)</label><input type="number" id="fl-length" placeholder="48" /></div>
+          <div class="field"><label>Width (in)</label><input type="number" id="fl-width" placeholder="24" /></div>
+          <div class="field"><label>Depth (in)</label><input type="number" id="fl-depth" placeholder="14" /></div>
+          <div class="field"><label>Container tare weight (lb)</label><input type="number" id="fl-tare" placeholder="15" /></div>
+          <div class="field"><label>Estimated plant weight (lb)</label><input type="number" id="fl-plants" placeholder="10" /></div>
+          <div class="field"><label>Building's rated capacity (lb/sq ft) — if known</label><input type="number" id="fl-rated" placeholder="leave blank if unknown" /></div>
+        </div>
+        <button class="primary" id="run-floorload">Calculate</button>
+        <div id="floorload-results" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- ADD PLANT -->
+    <section id="tab-addplant" class="tab hidden">
+      <div class="panel">
+        <h2>Add a plant</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">
+          Type a species not in the built-in list. With an ANTHROPIC_API_KEY configured, this drafts a full profile
+          for you to review; without one, you get a blank template to fill in yourself. Either way it's tagged
+          unverified until you confirm it, and it's usable right away for your own recommendations only — it never
+          gets treated as more authoritative than the built-in seed data.
+        </p>
+        <div class="field"><label>Common name</label><input id="ap-name" placeholder="e.g. Lavender" /></div>
+        <button class="primary" id="run-addplant">Look up</button>
+        <div id="addplant-results" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+
+    <!-- JOURNAL -->
+    <section id="tab-journal" class="tab hidden">
+      <div class="panel">
+        <h2>Add a journal entry</h2>
+        <p style="color:var(--muted); font-size:0.85rem;">Private log only — nothing here is shared anywhere.</p>
+        <div class="grid">
+          <div class="field"><label>Container</label><select id="j-container"></select></div>
+          <div class="field"><label>Species</label><select id="j-species"></select></div>
+          <div class="field"><label>Status</label>
+            <select id="j-status">
+              <option value="thriving">Thriving</option>
+              <option value="struggling">Struggling</option>
+              <option value="failed">Failed</option>
+              <option value="removed">Removed</option>
+            </select>
+          </div>
+          <div class="field"><label>Issue tags (comma-separated)</label><input id="j-tags" placeholder="aphids, wind damage, salt burn" /></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea id="j-notes" rows="3"></textarea></div>
+        <button class="primary" id="save-journal">Save entry</button>
+      </div>
+      <div class="panel">
+        <h2>Journal history</h2>
+        <div id="journal-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Seed data drawn from documented horticultural sources (ASPCA toxicity data included) — not a live feed. Verify anything safety-critical (toxicity, structural load) yourself.</footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
