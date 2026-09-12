@@ -79,6 +79,85 @@
     return audioCtx;
   }
 
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  // ---- tambura: a continuous drone on Sa, independent of translation/playback ----
+  const tamburaBtn = document.getElementById('tamburaBtn');
+  let tambura = null; // { oscillators, lfo, masterGain } while droning, else null
+
+  function startTambura() {
+    const ctx = getAudioCtx();
+    const { name, octave } = currentTonic();
+    const freq = midiToFreq(noteNameToMidi(name, octave));
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.6);
+    masterGain.connect(ctx.destination);
+
+    // A few slightly detuned partials plus a quiet octave-up overtone give
+    // the drone some of a tanpura's characteristic shimmer instead of a
+    // flat, single-oscillator tone.
+    const partials = [
+      { cents: 0, type: 'triangle', level: 0.34 },
+      { cents: -5, type: 'triangle', level: 0.28 },
+      { cents: 5, type: 'triangle', level: 0.28 },
+      { cents: 1200, type: 'sine', level: 0.12 },
+    ];
+    const oscillators = partials.map(({ cents, type, level }) => {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.detune.value = cents;
+      const levelGain = ctx.createGain();
+      levelGain.gain.value = level;
+      osc.connect(levelGain).connect(masterGain);
+      osc.start();
+      return osc;
+    });
+
+    // Slow tremolo so the drone breathes rather than sitting dead-flat.
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.15;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.02;
+    lfo.connect(lfoGain).connect(masterGain.gain);
+    lfo.start();
+
+    tambura = { oscillators, lfo, masterGain };
+    tamburaBtn.textContent = '⏹ Stop Tambura';
+    tamburaBtn.classList.add('droning');
+  }
+
+  function stopTambura() {
+    if (!tambura) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    tambura.masterGain.gain.cancelScheduledValues(now);
+    tambura.masterGain.gain.setTargetAtTime(0, now, 0.15);
+    const nodes = [...tambura.oscillators, tambura.lfo];
+    setTimeout(() => nodes.forEach((n) => { try { n.stop(); } catch (e) { /* already stopped */ } }), 500);
+    tambura = null;
+    tamburaBtn.textContent = '♫ Start Tambura';
+    tamburaBtn.classList.remove('droning');
+  }
+
+  tamburaBtn.addEventListener('click', () => { tambura ? stopTambura() : startTambura(); });
+
+  // If the tonic changes while the drone is running, retune it live rather
+  // than requiring a stop/restart.
+  function retuneTamburaIfRunning() {
+    if (!tambura) return;
+    const { name, octave } = currentTonic();
+    const freq = midiToFreq(noteNameToMidi(name, octave));
+    const ctx = getAudioCtx();
+    tambura.oscillators.forEach((osc) => osc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.08));
+  }
+  tonicNoteSel.addEventListener('change', retuneTamburaIfRunning);
+  tonicOctaveInput.addEventListener('change', retuneTamburaIfRunning);
+
   function buildPlaybackEvents(result) {
     const events = [];
     result.phrases.forEach((phrase, pIdx) => {
@@ -105,7 +184,7 @@
     const ctx = getAudioCtx();
     const duration = Math.min(0.6, getTempoSeconds());
     const t = ctx.currentTime + 0.02;
-    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const freq = midiToFreq(midi);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'triangle';
@@ -145,7 +224,7 @@
 
     events.forEach((ev, idx) => {
       if (ev.gapBefore) t += phraseGap;
-      const freq = 440 * Math.pow(2, (ev.midi - 69) / 12);
+      const freq = midiToFreq(ev.midi);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';

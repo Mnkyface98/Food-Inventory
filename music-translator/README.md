@@ -79,6 +79,16 @@ etc.) are ignored as filler rather than interpreted, and multi-measure tab
 with bar lines mid-block or unusual layouts may not parse cleanly &mdash;
 review the Carnatic output before relying on it.
 
+### Tambura drone
+
+A **♫ Start Tambura** button next to the tonic picker plays a continuous
+drone on Sa (a few slightly detuned partials plus a quiet octave-up
+overtone and slow tremolo, so it has some of a real tanpura's shimmer
+rather than one flat tone) &mdash; the traditional backdrop for Carnatic
+practice and performance. It runs independently of translation/playback,
+follows the tonic live if you change it while droning, and stops on
+**⏹ Stop Tambura**.
+
 ### Tempo, and hearing it played back
 
 A **Tempo** field next to the tonic picker sets a BPM (like a metronome),
