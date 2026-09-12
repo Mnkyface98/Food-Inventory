@@ -192,7 +192,9 @@ button:hover { opacity: 0.9; }
   padding: 0.4rem 0.6rem;
   text-align: center;
   min-width: 3.2rem;
+  cursor: pointer;
 }
+.note-chip:hover { border-color: var(--accent); }
 .note-chip .from { display: block; font-size: 0.75rem; color: var(--muted); }
 .note-chip .to { display: block; font-weight: 700; }
 .note-chip .alt { display: block; font-size: 0.72rem; color: var(--muted); }

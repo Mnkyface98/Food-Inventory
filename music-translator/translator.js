@@ -248,10 +248,94 @@ function buildTab(midiNotes, tuningKey) {
   return { lines: rows, outOfRange };
 }
 
+/**
+ * Recognize one line of ASCII guitar/bass tab: an optional short string
+ * label, a "|", a body of dashes/fret numbers/technique letters, and an
+ * optional closing "|". Requires a run of dashes so a note-name line like
+ * "S, R2, G3" (which has no "|") never matches.
+ */
+const TAB_LINE_RE = /^\s*[A-Za-z0-9#]{0,3}\|(.*?)\|?\s*$/;
+function looksLikeTabLine(line) {
+  return TAB_LINE_RE.test(line) && /-{2,}/.test(line);
+}
+
+/**
+ * Find contiguous runs of 2+ tab-like lines in pasted text (blocks
+ * separated by blank/non-tab lines become separate phrases). Only runs
+ * whose length matches a known tuning's string count (6 = guitar, 4 =
+ * bass) are usable tab; other run lengths are returned too, so the caller
+ * can report exactly what didn't parse rather than silently ignoring it.
+ */
+function extractTabBlocks(text) {
+  const lines = text.split(/\r?\n/);
+  const blocks = [];
+  let current = [];
+  for (const line of lines) {
+    if (looksLikeTabLine(line)) {
+      current.push(line);
+    } else if (current.length) {
+      blocks.push(current);
+      current = [];
+    }
+  }
+  if (current.length) blocks.push(current);
+  return blocks.filter((b) => b.length >= 2);
+}
+
+/** Tuning key ("guitar"/"bass") for a block's line count, or null. */
+function tuningForLineCount(count) {
+  return Object.keys(TUNINGS).find((key) => TUNINGS[key].strings.length === count) || null;
+}
+
+/**
+ * Parse one tab block (array of line strings, top line = highest-pitched
+ * string, matching conventional tab layout and this app's own buildTab
+ * output) into an ordered array of Western note tokens like "G4".
+ */
+function parseTabBlock(lines) {
+  const tuningKey = tuningForLineCount(lines.length);
+  if (!tuningKey) {
+    throw new Error(`A ${lines.length}-line tab block doesn't match guitar (6 strings) or bass (4 strings) — check the paste.`);
+  }
+  const tuningHighToLow = TUNINGS[tuningKey].strings.slice().reverse();
+  const bodies = lines.map((line) => (line.match(TAB_LINE_RE) || [, line])[1]);
+
+  const events = [];
+  bodies.forEach((body, rowIndex) => {
+    const re = /\d+/g;
+    let m;
+    while ((m = re.exec(body)) !== null) {
+      events.push({ col: m.index, rowIndex, fret: parseInt(m[0], 10) });
+    }
+  });
+  events.sort((a, b) => a.col - b.col || a.rowIndex - b.rowIndex);
+
+  return events.map(({ rowIndex, fret }) => {
+    const [name, octave] = tuningHighToLow[rowIndex];
+    const midi = noteNameToMidi(name, octave) + fret;
+    const note = midiToNoteName(midi);
+    return `${note.name}${note.octave}`;
+  });
+}
+
+/**
+ * Scan pasted text for ASCII tab blocks and rewrite it as plain,
+ * danda-wrapped Western note tokens (one phrase per block) that
+ * `westernToCarnatic` can already parse. Returns null if no tab-like
+ * lines were found at all, so the caller can fall back to treating the
+ * text as plain note names unchanged.
+ */
+function tabTextToNoteText(text) {
+  const blocks = extractTabBlocks(text);
+  if (blocks.length === 0) return null;
+  return blocks.map((block) => `${DANDA} ${parseTabBlock(block).join(', ')} ${DOUBLE_DANDA}`).join('\n');
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     carnaticToWestern, westernToCarnatic, splitPhrases, tokenizePhrase,
     SWARA_TO_SEMITONE, SEMITONE_TO_SWARA, DANDA, DOUBLE_DANDA,
     TUNINGS, buildTab, noteNameToMidi, midiToNoteName,
+    extractTabBlocks, parseTabBlock, tabTextToNoteText, looksLikeTabLine,
   };
 }

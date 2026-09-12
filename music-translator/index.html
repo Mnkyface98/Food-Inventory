@@ -21,6 +21,9 @@
       <select id="tonicNote"></select>
       <label for="tonicOctave">octave</label>
       <input id="tonicOctave" type="number" value="4" min="0" max="8" />
+      <label for="tempoBpm">Tempo</label>
+      <input id="tempoBpm" type="number" value="96" min="30" max="240" step="1" />
+      <span class="hint" id="tempoHint">BPM</span>
       <span class="hint">Sa is the movable "do" of Carnatic music &mdash; pick whatever note your instrument's Sa is tuned to.</span>
     </section>
 
@@ -63,6 +66,9 @@
       <p class="hint">
         Notes separated by commas and/or spaces, e.g. <code>C4, D4, E4, F4, G4, A4, B4, C5</code>.
         Sharps use <code>#</code>, flats use <code>b</code>. Octave number is optional (defaults to the tonic's octave).
+        You can also paste (or upload) <strong>ASCII guitar/bass tab</strong> &mdash; 6 lines for guitar, 4 for
+        bass, each starting with a string label and <code>|</code>, e.g. <code>e|--0--3--|</code> &mdash; it's
+        detected automatically and converted the same way.
       </p>
       <textarea id="westernInput" rows="4" placeholder="C4, D4, E4, F4, G4, A4, B4, C5"></textarea>
       <div class="panel-toolbar">

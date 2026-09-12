@@ -54,15 +54,47 @@ chosen (falling back to a wider span, then reporting the note as out of
 range with `x` if it's below every open string) &mdash; a whole phrase tends
 to land in roughly one hand position rather than jumping around the neck.
 
-### Hearing it played back
+### Guitar / bass tab input
+
+The Western &rarr; Carnatic panel also accepts pasted or uploaded **ASCII
+tab**, not just note names. Paste in 6 lines for guitar or 4 for bass, each
+starting with a string label and `|` (the ordinary way tab looks on any tab
+site or Guitar Pro text export), e.g.:
+
+```
+e|--------------0--|
+B|-----------1------|
+G|--------0---------|
+D|-----2------------|
+A|--3----------------|
+E|-------------------|
+```
+
+It's detected automatically (no mode switch needed) and read column by
+column into a note sequence, using the frets against each instrument's
+standard tuning, before running through the same Carnatic conversion.
+Multiple tab blocks (separated by a blank line) become separate phrases.
+This handles plain fret-number tab; technique marks (`h` `p` `b` `/` `~`
+etc.) are ignored as filler rather than interpreted, and multi-measure tab
+with bar lines mid-block or unusual layouts may not parse cleanly &mdash;
+review the Carnatic output before relying on it.
+
+### Tempo, and hearing it played back
+
+A **Tempo** field next to the tonic picker sets a BPM (like a metronome),
+30&ndash;240, default 96 &mdash; it sets the pace for both the quarter-note
+tick used by playback and the gap between danda-marked phrases.
 
 Each output area has a **▶ Play** button (enabled once there's a translated
 result). It plays the notes in order as simple synthesized tones (Web Audio,
 no samples or external instrument needed) so you can hear what the phrase
-should sound like before you pick up an instrument. Click it again mid-way
-&mdash; it becomes **⏹ Stop** while playing &mdash; to stop immediately.
-Phrases separated by danda marks get a short pause between them, and the
-currently-sounding note is highlighted in the note-name view.
+should sound like before you pick up an instrument, at the tempo above.
+Click it again mid-way &mdash; it becomes **⏹ Stop** while playing &mdash;
+to stop immediately. The currently-sounding note is highlighted.
+
+You can also click **any individual note chip** at any time (playing or
+not) to hear just that one note &mdash; useful for checking a single
+swara/note before committing to the whole phrase.
 
 ### Getting sheet music into the box
 
@@ -97,7 +129,8 @@ This is a **note-name translator**, not a full transcription tool. It maps
 individual swara pitches to Western note names relative to a chosen tonic.
 It does not currently:
 
-- Recognize noteheads on a Western staff (see above).
+- Recognize noteheads on a Western staff (see above) &mdash; tab is
+  supported, standard 5-line staff notation is not.
 - Represent gamakas (the oscillations/ornaments central to how Carnatic
   music actually sounds) &mdash; Western 12-tone notation can't capture those,
   and playback is plain, even-tempered tones, not a performance.

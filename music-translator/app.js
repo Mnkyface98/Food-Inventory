@@ -3,6 +3,7 @@
 
   const tonicNoteSel = document.getElementById('tonicNote');
   const tonicOctaveInput = document.getElementById('tonicOctave');
+  const tempoBpmInput = document.getElementById('tempoBpm');
   const carnaticInput = document.getElementById('carnaticInput');
   const westernInput = document.getElementById('westernInput');
   const westernOutput = document.getElementById('westernOutput');
@@ -92,14 +93,50 @@
     if (activePlayback) activePlayback.stop();
   }
 
+  // Tempo, like a metronome: quarter notes at the given BPM. Clamped to a
+  // sane range so a stray blank/zero input can't divide by zero or produce
+  // an unusably fast/slow playback.
+  function getTempoSeconds() {
+    const bpm = Math.min(240, Math.max(30, parseInt(tempoBpmInput.value, 10) || 96));
+    return 60 / bpm;
+  }
+
+  function playSingleNote(midi) {
+    const ctx = getAudioCtx();
+    const duration = Math.min(0.6, getTempoSeconds());
+    const t = ctx.currentTime + 0.02;
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.25, t + 0.015);
+    gain.gain.setValueAtTime(0.25, t + duration - 0.06);
+    gain.gain.linearRampToValueAtTime(0, t + duration - 0.01);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
+  function wireChipClickToPlay(container) {
+    container.addEventListener('click', (e) => {
+      const chip = e.target.closest('.note-chip');
+      if (!chip || !chip.dataset.midi) return;
+      playSingleNote(Number(chip.dataset.midi));
+    });
+  }
+  wireChipClickToPlay(westernOutput);
+  wireChipClickToPlay(carnaticOutput);
+
   function playResult(result, button, outputEl) {
     stopPlayback();
     const events = buildPlaybackEvents(result);
     if (events.length === 0) return;
 
     const ctx = getAudioCtx();
-    const noteDuration = 0.42;
-    const phraseGap = 0.16;
+    const noteDuration = getTempoSeconds();
+    const phraseGap = noteDuration * 0.4;
     const chips = outputEl.querySelectorAll('.note-chip');
     const oscillators = [];
     const timeouts = [];
@@ -182,7 +219,7 @@
         renderPhrases(
           westernOutput,
           result,
-          (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.western}</span></div>`
+          (n) => `<div class="note-chip" data-midi="${n.midi}" title="Click to hear this note"><span class="from">${n.input}</span><span class="to">${n.western}</span></div>`
         );
       }
       const hasNotes = result.phrases.some((p) => p.notes.length > 0);
@@ -201,11 +238,12 @@
     lastCarnaticResult = null;
     playCarnaticBtn.disabled = true;
     try {
-      const result = westernToCarnatic(westernInput.value, name, octave);
+      const tabConverted = tabTextToNoteText(westernInput.value);
+      const result = westernToCarnatic(tabConverted !== null ? tabConverted : westernInput.value, name, octave);
       renderPhrases(
         carnaticOutput,
         result,
-        (n) => `<div class="note-chip"><span class="from">${n.input}</span><span class="to">${n.swara}</span>${n.altSwara ? `<span class="alt">or ${n.altSwara}</span>` : ''}</div>`
+        (n) => `<div class="note-chip" data-midi="${n.midi}" title="Click to hear this note"><span class="from">${n.input}</span><span class="to">${n.swara}</span>${n.altSwara ? `<span class="alt">or ${n.altSwara}</span>` : ''}</div>`
       );
       const hasNotes = result.phrases.some((p) => p.notes.length > 0);
       if (hasNotes) {

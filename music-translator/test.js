@@ -1,5 +1,8 @@
 const assert = require('assert');
-const { carnaticToWestern, westernToCarnatic, splitPhrases, buildTab, noteNameToMidi } = require('./translator');
+const {
+  carnaticToWestern, westernToCarnatic, splitPhrases, buildTab, noteNameToMidi,
+  extractTabBlocks, parseTabBlock, tabTextToNoteText,
+} = require('./translator');
 
 function westernOf(text, tonic = 'C', octave = 4) {
   return carnaticToWestern(text, tonic, octave).phrases.flatMap((p) => p.notes.map((n) => n.western));
@@ -72,5 +75,51 @@ assert.deepStrictEqual(splitPhrases('   '), []);
   const { outOfRange } = buildTab([tooLow], 'bass');
   assert.deepStrictEqual(outOfRange, [tooLow]);
 }
+
+// Round trip: buildTab's own output parses back to the same note sequence.
+{
+  const notes = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+  const midis = notes.map((n) => noteNameToMidi(n.slice(0, -1), Number(n.slice(-1))));
+  const { lines } = buildTab(midis, 'guitar');
+  assert.deepStrictEqual(parseTabBlock(lines), notes);
+}
+
+// A hand-typed guitar tab, laid out the way a person copying off a tab site
+// actually would (uneven spacing, extra padding), still parses correctly.
+{
+  const tab = [
+    'E|-----0-1-3-|',
+    'B|-1-3-------|',
+    'G|-----------|',
+    'D|-----------|',
+    'A|-----------|',
+    'E|-----------|',
+  ].join('\n');
+  const blocks = extractTabBlocks(tab);
+  assert.strictEqual(blocks.length, 1);
+  assert.deepStrictEqual(parseTabBlock(blocks[0]), ['C4', 'D4', 'E4', 'F4', 'G4']);
+}
+
+// tabTextToNoteText wraps each detected block in danda marks so it flows
+// straight into westernToCarnatic as its own phrase.
+{
+  const tab = [
+    'e|--0--|',
+    'B|-----|',
+    'G|-----|',
+    'D|-----|',
+    'A|-----|',
+    'E|-----|',
+  ].join('\n');
+  const wrapped = tabTextToNoteText(tab);
+  const result = westernToCarnatic(wrapped, 'C', 4);
+  assert.strictEqual(result.phrases.length, 1);
+  assert.strictEqual(result.phrases[0].marked, true);
+  // Fret 0 on the open high E string is E4, which is G3 relative to a C4 tonic.
+  assert.deepStrictEqual(result.phrases[0].notes.map((n) => n.swara), ['G3']);
+}
+
+// Plain note-name text (no "|") is not mistaken for tab.
+assert.strictEqual(tabTextToNoteText('S, R2, G3'), null);
 
 console.log('All translator tests passed.');
