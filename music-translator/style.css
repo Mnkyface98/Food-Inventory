@@ -133,6 +133,14 @@ button:hover { opacity: 0.9; }
   margin: 0.5rem 0 0;
   min-height: 1.2em;
 }
+.ocr-status.upload-error {
+  color: #c0392b;
+  font-weight: 600;
+  background: rgba(192, 57, 43, 0.08);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+}
 
 .output {
   margin-top: 0.9rem;

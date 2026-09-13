@@ -252,9 +252,12 @@ function buildTab(midiNotes, tuningKey) {
  * Recognize one line of ASCII guitar/bass tab: an optional short string
  * label, a "|", a body of dashes/fret numbers/technique letters, and an
  * optional closing "|". Requires a run of dashes so a note-name line like
- * "S, R2, G3" (which has no "|") never matches.
+ * "S, R2, G3" (which has no "|") never matches. The label is captured
+ * separately (group 1) so a partial tab - one that only shows the strings
+ * actually played, e.g. just "E|" "B|" "G|" for a melody that never
+ * touches the low strings - can still be matched to the right strings.
  */
-const TAB_LINE_RE = /^\s*[A-Za-z0-9#]{0,3}\|(.*?)\|?\s*$/;
+const TAB_LINE_RE = /^\s*([A-Za-z0-9#]{0,3})\|(.*?)\|?\s*$/;
 function looksLikeTabLine(line) {
   return TAB_LINE_RE.test(line) && /-{2,}/.test(line);
 }
@@ -288,30 +291,81 @@ function tuningForLineCount(count) {
 }
 
 /**
- * Parse one tab block (array of line strings, top line = highest-pitched
- * string, matching conventional tab layout and this app's own buildTab
- * output) into an ordered array of Western note tokens like "G4".
+ * Try to line up a block's string labels (top to bottom, i.e. high to low)
+ * against one tuning's string names in the same order. Labels don't have
+ * to cover every string - a tab that skips strings it never plays still
+ * matches, as long as the labels it does give appear in the right relative
+ * order (an omitted string is just skipped over). Returns the tuning
+ * high-to-low index for each given line, or null if this tuning doesn't
+ * fit (wrong letters, or out of order).
  */
-function parseTabBlock(lines) {
+function matchLabelsToTuning(labels, tuningKey) {
+  const tuningHighToLow = TUNINGS[tuningKey].strings.slice().reverse();
+  const tuningLetters = tuningHighToLow.map(([name]) => name.toUpperCase());
+  let searchFrom = 0;
+  const rowToStringIndex = [];
+  for (const label of labels) {
+    const letter = label.toUpperCase();
+    const found = tuningLetters.indexOf(letter, searchFrom);
+    if (found === -1) return null;
+    rowToStringIndex.push(found);
+    searchFrom = found + 1;
+  }
+  return rowToStringIndex;
+}
+
+/**
+ * Work out which tuning a tab block uses and which string each of its
+ * lines is. Labeled lines (e.g. "E|", "B|", "G|") are matched against
+ * guitar and bass by letter and order, so a partial tab - showing only
+ * the strings actually played - still resolves correctly. Unlabeled
+ * lines fall back to the old assumption: the block covers every string of
+ * whichever tuning has that many strings, top line highest-pitched.
+ */
+function resolveTabTuning(lines) {
+  const parsed = lines.map((line) => {
+    const m = line.match(TAB_LINE_RE);
+    return { label: m ? m[1].trim() : '', body: m ? m[2] : line };
+  });
+  const labels = parsed.map((p) => p.label);
+  const bodies = parsed.map((p) => p.body);
+
+  if (labels.some((l) => l !== '')) {
+    for (const tuningKey of Object.keys(TUNINGS)) {
+      const rowToStringIndex = matchLabelsToTuning(labels, tuningKey);
+      if (rowToStringIndex) return { tuningKey, rowToStringIndex, bodies };
+    }
+    throw new Error(`Couldn't match string labels (${labels.join(', ') || '(none)'}) to guitar or bass tuning.`);
+  }
+
   const tuningKey = tuningForLineCount(lines.length);
   if (!tuningKey) {
-    throw new Error(`A ${lines.length}-line tab block doesn't match guitar (6 strings) or bass (4 strings) — check the paste.`);
+    throw new Error(`A ${lines.length}-line tab block with no string labels doesn't match guitar (6 strings) or bass (4 strings) — add labels (e.g. "E|", "B|", "G|"...) if you're only showing some strings.`);
   }
+  return { tuningKey, rowToStringIndex: lines.map((_, i) => i), bodies };
+}
+
+/**
+ * Parse one tab block (array of line strings, top line = highest-pitched
+ * string played, matching conventional tab layout) into an ordered array
+ * of Western note tokens like "G4".
+ */
+function parseTabBlock(lines) {
+  const { tuningKey, rowToStringIndex, bodies } = resolveTabTuning(lines);
   const tuningHighToLow = TUNINGS[tuningKey].strings.slice().reverse();
-  const bodies = lines.map((line) => (line.match(TAB_LINE_RE) || [, line])[1]);
 
   const events = [];
   bodies.forEach((body, rowIndex) => {
     const re = /\d+/g;
     let m;
     while ((m = re.exec(body)) !== null) {
-      events.push({ col: m.index, rowIndex, fret: parseInt(m[0], 10) });
+      events.push({ col: m.index, stringIndex: rowToStringIndex[rowIndex], fret: parseInt(m[0], 10) });
     }
   });
-  events.sort((a, b) => a.col - b.col || a.rowIndex - b.rowIndex);
+  events.sort((a, b) => a.col - b.col || a.stringIndex - b.stringIndex);
 
-  return events.map(({ rowIndex, fret }) => {
-    const [name, octave] = tuningHighToLow[rowIndex];
+  return events.map(({ stringIndex, fret }) => {
+    const [name, octave] = tuningHighToLow[stringIndex];
     const midi = noteNameToMidi(name, octave) + fret;
     const note = midiToNoteName(midi);
     return `${note.name}${note.octave}`;
@@ -337,5 +391,6 @@ if (typeof module !== 'undefined' && module.exports) {
     SWARA_TO_SEMITONE, SEMITONE_TO_SWARA, DANDA, DOUBLE_DANDA,
     TUNINGS, buildTab, noteNameToMidi, midiToNoteName,
     extractTabBlocks, parseTabBlock, tabTextToNoteText, looksLikeTabLine,
+    matchLabelsToTuning, resolveTabTuning,
   };
 }

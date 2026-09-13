@@ -100,6 +100,39 @@ assert.deepStrictEqual(splitPhrases('   '), []);
   assert.deepStrictEqual(parseTabBlock(blocks[0]), ['C4', 'D4', 'E4', 'F4', 'G4']);
 }
 
+// A partial tab (only the strings actually played, common on tab sites/
+// hand-copied cheat sheets) parses correctly by matching string labels
+// instead of requiring a full 6- or 4-line block.
+{
+  const tab = [
+    'E|-----------|',
+    'B|--5---5----|',
+    'G|-----------|',
+  ].join('\n');
+  const blocks = extractTabBlocks(tab);
+  assert.strictEqual(blocks.length, 1);
+  // Open B string (B3) + fret 5 = E4, twice.
+  assert.deepStrictEqual(parseTabBlock(blocks[0]), ['E4', 'E4']);
+}
+
+// An unlabeled full 4-line block still falls back to bass (line-count
+// based) exactly as before this change.
+{
+  const tab = ['|--2--|', '|-----|', '|-----|', '|-----|'].join('\n');
+  assert.deepStrictEqual(parseTabBlock(extractTabBlocks(tab)[0]), ['A2']);
+}
+
+// A partial tab labeled with guitar's unique "B" string resolves
+// unambiguously to guitar even though B/G/D/A/E letters overlap with bass.
+{
+  const tab = ['B|--3--|', 'G|-----|'].join('\n');
+  assert.deepStrictEqual(parseTabBlock(extractTabBlocks(tab)[0]), ['D4']);
+}
+
+// Labels that don't fit either tuning's order raise a clear error rather
+// than silently misreading frets onto the wrong string.
+assert.throws(() => parseTabBlock(['C|--1--|', 'F|--2--|']), /Couldn't match string labels/);
+
 // tabTextToNoteText wraps each detected block in danda marks so it flows
 // straight into westernToCarnatic as its own phrase.
 {

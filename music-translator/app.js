@@ -429,6 +429,7 @@
       const file = inputEl.files[0];
       if (!file) return;
       const lower = file.name.toLowerCase();
+      statusEl.classList.remove('upload-error');
       statusEl.textContent = 'Reading document…';
       let job;
       let bestEffort = false;
@@ -445,6 +446,7 @@
             : 'Loaded from document.';
         })
         .catch((err) => {
+          statusEl.classList.add('upload-error');
           statusEl.textContent = `Couldn't read that file: ${err.message}`;
         })
         .finally(() => { inputEl.value = ''; });
@@ -455,7 +457,9 @@
     inputEl.addEventListener('change', () => {
       const file = inputEl.files[0];
       if (!file) return;
+      statusEl.classList.remove('upload-error');
       if (typeof Tesseract === 'undefined') {
+        statusEl.classList.add('upload-error');
         statusEl.textContent = 'OCR library failed to load — check your connection and try again.';
         inputEl.value = '';
         return;
@@ -467,6 +471,7 @@
           statusEl.textContent = 'Loaded from photo — please review for OCR mistakes before translating.';
         })
         .catch((err) => {
+          statusEl.classList.add('upload-error');
           statusEl.textContent = `Couldn't read that photo: ${err.message}`;
         })
         .finally(() => { inputEl.value = ''; });
